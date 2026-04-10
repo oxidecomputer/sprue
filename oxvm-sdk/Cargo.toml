@@ -1,0 +1,17 @@
+[package]
+name = "oxvm-sdk"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+chrono = { workspace = true, features = ["serde"] }
+futures = { workspace = true }
+progenitor-client = { workspace = true }
+schemars = { workspace = true, features = ["chrono", "uuid1"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+reqwest = { workspace = true }
+uuid = { workspace = true }
+
+[package.metadata.cargo-machete]
+ignored = ["schemars", "serde"]

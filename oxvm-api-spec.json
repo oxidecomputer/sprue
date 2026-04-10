@@ -1,0 +1,892 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "OXVM Services API",
+    "description": "Shared Oxide VM support services",
+    "contact": {
+      "url": "https://oxide.computer",
+      "email": "augustus@oxidecomputer.com"
+    },
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/.well-known/jwks.json": {
+      "get": {
+        "operationId": "jwks_json",
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Jwks"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/.well-known/openid-configuration": {
+      "get": {
+        "operationId": "openid_configuration",
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenIdConfiguration"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/blob/{blob}/upload/cancel": {
+      "post": {
+        "summary": "Cancels a blob so that it can no longer be written to. Any data already sent will eventually",
+        "description": "be deleted.",
+        "operationId": "cancel_blob_upload",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "blob",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TypedUuidForBlobId"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "resource updated"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/blob/{blob}/upload/complete": {
+      "post": {
+        "summary": "Mark a blob as being fully uploaded and ready to be persisted.",
+        "operationId": "complete_blob_upload",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "blob",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TypedUuidForBlobId"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "resource updated"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/blob/{blob}/upload/reset": {
+      "post": {
+        "summary": "Reset a blob to synchronously remove any data already uploaded to this blob.",
+        "operationId": "reset_blob_upload",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "blob",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TypedUuidForBlobId"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "resource updated"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/blob/{blob}/upload/write": {
+      "post": {
+        "summary": "Stream data to fill a registered blob. Any data that is streamed is appended to any data that",
+        "description": "has already been recieved. Concurrent writes to the same blob are not supported.",
+        "operationId": "write_blob_upload",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "blob",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TypedUuidForBlobId"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "resource updated"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/server/{server}/accept": {
+      "post": {
+        "summary": "Accept a server's request to be added as a representative instance of a service.",
+        "operationId": "accept_server",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "server",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TypedUuidForServerRegistrationId"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "resource updated"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/server/{server}/blob/register": {
+      "post": {
+        "summary": "Register a new blob request to upload a blob to. Returns a blob instance that the",
+        "description": "requesting server is authorized to upload to.",
+        "operationId": "register_blob",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "server",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TypedUuidForServerRegistrationId"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterBlobBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterBlobResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/server/{server}/checkin": {
+      "post": {
+        "summary": "Report a check in of a server for aliveness checks.",
+        "operationId": "checkin_server",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "server",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TypedUuidForServerRegistrationId"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckinBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthCheck"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/server/{server}/oidc/token": {
+      "post": {
+        "operationId": "register_oidc_token_request",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "server",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TypedUuidForServerRegistrationId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OidcServerTokenNonce"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/server/{server}/oidc/token/prove": {
+      "post": {
+        "operationId": "prove_oidc_token_request",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "server",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TypedUuidForServerRegistrationId"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServerAttestation"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OidcServerToken"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/server/{server}/reject": {
+      "post": {
+        "summary": "Reject a server's request to be added as a representative instance of a service.",
+        "operationId": "reject_server",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "server",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TypedUuidForServerRegistrationId"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "resource updated"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/server/{server}/terminate": {
+      "post": {
+        "summary": "Remove a server from the pool of representative instances of a service.",
+        "operationId": "terminate_server",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "server",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TypedUuidForServerRegistrationId"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "resource updated"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/service/{service}/register": {
+      "post": {
+        "summary": "Request a server be registered as a representative instance of a service. The registration",
+        "description": "will need to be accepted before the server can begin check ins or blobs.",
+        "operationId": "register_server",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "service",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterServerBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterServerResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Blob": {
+        "type": "object",
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "$ref": "#/components/schemas/TypedUuidForBlobId"
+          },
+          "service_id": {
+            "$ref": "#/components/schemas/TypedUuidForServiceId"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "state": {
+            "$ref": "#/components/schemas/BlobState"
+          },
+          "total_size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "created_at",
+          "id",
+          "service_id",
+          "size",
+          "state",
+          "total_size",
+          "updated_at"
+        ]
+      },
+      "BlobId": {
+        "not": {}
+      },
+      "BlobState": {
+        "oneOf": [
+          {
+            "type": "string",
+            "enum": [
+              "Pending",
+              "Cancelled",
+              "Failed"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "Uploading": {
+                "$ref": "#/components/schemas/BlobUploadState"
+              }
+            },
+            "required": [
+              "Uploading"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "Transferring": {
+                "$ref": "#/components/schemas/BlobTransferState"
+              }
+            },
+            "required": [
+              "Transferring"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "BlobTransferState": {
+        "type": "string",
+        "enum": [
+          "Started",
+          "Complete"
+        ]
+      },
+      "BlobUploadState": {
+        "type": "string",
+        "enum": [
+          "Started",
+          "Complete"
+        ]
+      },
+      "CheckinBody": {
+        "type": "object",
+        "properties": {
+          "checked_in_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "checked_in_at"
+        ]
+      },
+      "Error": {
+        "description": "Error information from a response.",
+        "type": "object",
+        "properties": {
+          "error_code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "request_id"
+        ]
+      },
+      "HealthCheck": {
+        "type": "object",
+        "properties": {
+          "checked_in_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "$ref": "#/components/schemas/TypedUuidForHealthCheckId"
+          },
+          "server_registration_id": {
+            "$ref": "#/components/schemas/TypedUuidForServerRegistrationId"
+          }
+        },
+        "required": [
+          "checked_in_at",
+          "created_at",
+          "id",
+          "server_registration_id"
+        ]
+      },
+      "HealthCheckId": {
+        "not": {}
+      },
+      "Jwk": {
+        "type": "object",
+        "properties": {
+          "e": {
+            "type": "string"
+          },
+          "kid": {
+            "type": "string"
+          },
+          "kty": {
+            "type": "string"
+          },
+          "n": {
+            "type": "string"
+          },
+          "use": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "e",
+          "kid",
+          "kty",
+          "n",
+          "use"
+        ]
+      },
+      "Jwks": {
+        "type": "object",
+        "properties": {
+          "keys": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Jwk"
+            }
+          }
+        },
+        "required": [
+          "keys"
+        ]
+      },
+      "OidcServerToken": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ]
+      },
+      "OidcServerTokenNonce": {
+        "type": "object",
+        "properties": {
+          "nonce": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "nonce"
+        ]
+      },
+      "OpenIdConfiguration": {
+        "type": "object",
+        "properties": {
+          "jwks_uri": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "jwks_uri"
+        ]
+      },
+      "RegisterBlobBody": {
+        "type": "object",
+        "properties": {
+          "idempotency_key": {
+            "nullable": true,
+            "type": "string"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "size"
+        ]
+      },
+      "RegisterBlobResponse": {
+        "type": "object",
+        "properties": {
+          "blob": {
+            "$ref": "#/components/schemas/Blob"
+          }
+        },
+        "required": [
+          "blob"
+        ]
+      },
+      "RegisterServerBody": {
+        "type": "object",
+        "properties": {
+          "instance": {
+            "$ref": "#/components/schemas/TypedUuidForServerRegistrationInstanceId"
+          }
+        },
+        "required": [
+          "instance"
+        ]
+      },
+      "RegisterServerResponse": {
+        "type": "object",
+        "properties": {
+          "registration": {
+            "$ref": "#/components/schemas/ServerRegistration"
+          }
+        },
+        "required": [
+          "registration"
+        ]
+      },
+      "ServerAttestation": {
+        "type": "object",
+        "properties": {
+          "attestation": {}
+        },
+        "required": [
+          "attestation"
+        ]
+      },
+      "ServerRegistration": {
+        "type": "object",
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "$ref": "#/components/schemas/TypedUuidForServerRegistrationId"
+          },
+          "instance_id": {
+            "$ref": "#/components/schemas/TypedUuidForServerRegistrationInstanceId"
+          },
+          "service_id": {
+            "$ref": "#/components/schemas/TypedUuidForServiceId"
+          },
+          "state": {
+            "$ref": "#/components/schemas/ServerRegistrationState"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "created_at",
+          "id",
+          "instance_id",
+          "service_id",
+          "state",
+          "updated_at"
+        ]
+      },
+      "ServerRegistrationId": {
+        "not": {}
+      },
+      "ServerRegistrationInstanceId": {
+        "not": {}
+      },
+      "ServerRegistrationState": {
+        "type": "string",
+        "enum": [
+          "Pending",
+          "Accepted",
+          "Rejected",
+          "Terminated"
+        ]
+      },
+      "ServiceId": {
+        "not": {}
+      },
+      "TypedUuidForBlobId": {
+        "x-rust-type": {
+          "crate": "newtype-uuid",
+          "parameters": [
+            {
+              "$ref": "#/components/schemas/BlobId"
+            }
+          ],
+          "path": "newtype_uuid::TypedUuid",
+          "version": "1"
+        },
+        "type": "string",
+        "format": "uuid"
+      },
+      "TypedUuidForHealthCheckId": {
+        "x-rust-type": {
+          "crate": "newtype-uuid",
+          "parameters": [
+            {
+              "$ref": "#/components/schemas/HealthCheckId"
+            }
+          ],
+          "path": "newtype_uuid::TypedUuid",
+          "version": "1"
+        },
+        "type": "string",
+        "format": "uuid"
+      },
+      "TypedUuidForServerRegistrationId": {
+        "x-rust-type": {
+          "crate": "newtype-uuid",
+          "parameters": [
+            {
+              "$ref": "#/components/schemas/ServerRegistrationId"
+            }
+          ],
+          "path": "newtype_uuid::TypedUuid",
+          "version": "1"
+        },
+        "type": "string",
+        "format": "uuid"
+      },
+      "TypedUuidForServerRegistrationInstanceId": {
+        "x-rust-type": {
+          "crate": "newtype-uuid",
+          "parameters": [
+            {
+              "$ref": "#/components/schemas/ServerRegistrationInstanceId"
+            }
+          ],
+          "path": "newtype_uuid::TypedUuid",
+          "version": "1"
+        },
+        "type": "string",
+        "format": "uuid"
+      },
+      "TypedUuidForServiceId": {
+        "x-rust-type": {
+          "crate": "newtype-uuid",
+          "parameters": [
+            {
+              "$ref": "#/components/schemas/ServiceId"
+            }
+          ],
+          "path": "newtype_uuid::TypedUuid",
+          "version": "1"
+        },
+        "type": "string",
+        "format": "uuid"
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "Error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      }
+    }
+  }
+}

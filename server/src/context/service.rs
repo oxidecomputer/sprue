@@ -1,11 +1,11 @@
 use chrono::{DateTime, Utc};
 use newtype_uuid::TypedUuid;
-use std::sync::Arc;
+use std::{ops::Add, sync::Arc, time::Duration};
 use thiserror::Error;
 
 use model::{
-    HealthCheck, ServerRegistration, ServerRegistrationId, ServerRegistrationInstanceId,
-    ServerRegistrationState, Service,
+    HealthCheck, InvalidStateTransition, ServerRegistration, ServerRegistrationId,
+    ServerRegistrationInstanceId, ServerRegistrationState, Service,
     db::{NewHealthCheckModel, NewServerRegistrationModel, NewServiceModel},
     storage::{HealthCheckStorage, ServerRegistrationStorage, ServiceStorage, StorageError},
 };
@@ -15,6 +15,8 @@ use crate::endpoints::service::ServiceIdentifier;
 
 #[derive(Debug, Error)]
 pub enum ServiceError {
+    #[error("Invalid state transition for registration")]
+    RegistrationState(#[from] InvalidStateTransition),
     #[error(transparent)]
     Storage(#[from] StorageError),
 }
@@ -31,14 +33,21 @@ impl<T: ServiceStorage + ServerRegistrationStorage + HealthCheckStorage> Service
 #[derive(Clone)]
 pub struct ServiceContext {
     storage: Arc<dyn ServiceContextStorage>,
+    max_server_registration_age: Duration,
 }
 
 impl ServiceContext {
-    pub fn new(storage: Arc<dyn ServiceContextStorage>) -> Self {
-        Self { storage }
+    pub fn new(
+        storage: Arc<dyn ServiceContextStorage>,
+        max_server_registration_age: Duration,
+    ) -> Self {
+        Self {
+            storage,
+            max_server_registration_age,
+        }
     }
 
-    async fn get_service(
+    pub async fn get_service(
         &self,
         service: &ServiceIdentifier,
     ) -> ResourceResult<Service, ServiceError> {
@@ -48,6 +57,41 @@ impl ServiceContext {
         }
         .optional()?
         .into())
+    }
+
+    pub async fn create_service(&self, name: &str) -> ResourceResult<Service, ServiceError> {
+        Ok(self
+            .storage
+            .create_service(&NewServiceModel {
+                name: name.to_string(),
+            })
+            .await
+            .map_err(ResourceError::InternalError)
+            .inner_err_into()?
+            .into())
+    }
+
+    pub async fn get_service_servers(
+        &self,
+        service: &ServiceIdentifier,
+    ) -> ResourceResult<Vec<ServerRegistration>, ServiceError> {
+        let service: Service = match service {
+            ServiceIdentifier::Id(id) => self.storage.get_service_by_id(*id).await,
+            ServiceIdentifier::Name(name) => self.storage.get_service_by_name(name).await,
+        }
+        .optional()?
+        .into();
+
+        let registrations = self
+            .storage
+            .list_server_registrations_by_service_id(service.id)
+            .await
+            .map_err(ResourceError::InternalError)
+            .inner_err_into()?
+            .into_iter()
+            .map(Into::into)
+            .collect();
+        Ok(registrations)
     }
 
     pub async fn get_server(
@@ -86,8 +130,9 @@ impl ServiceContext {
 
     pub async fn register_server(
         &self,
-        service_name: &str,
+        service: &ServiceIdentifier,
         instance: TypedUuid<ServerRegistrationInstanceId>,
+        nonce: String,
     ) -> ResourceResult<ServerRegistration, ServiceError> {
         let existing = self
             .storage
@@ -98,12 +143,14 @@ impl ServiceContext {
 
         match existing {
             None => {
-                let service = self.register_service(service_name).await?;
+                let service = self.get_service(service).await?;
                 Ok(self
                     .storage
                     .create_server_registration(&NewServerRegistrationModel {
                         service_id: service.id,
                         instance_id: instance,
+                        nonce: Some(nonce),
+                        expires_at: Some(Utc::now().add(self.max_server_registration_age)),
                     })
                     .await
                     .map_err(ResourceError::InternalError)
@@ -116,14 +163,37 @@ impl ServiceContext {
 
     pub async fn accept_server(
         &self,
-        server: TypedUuid<ServerRegistrationId>,
+        server: &ServerRegistration,
     ) -> ResourceResult<(), ServiceError> {
         Ok(self
             .storage
             .update_server_registration_state(
-                server,
+                server.id,
                 ServerRegistrationState::Pending,
-                ServerRegistrationState::Accepted,
+                server
+                    .state
+                    .accept()
+                    .map_err(ResourceError::InternalError)
+                    .inner_err_into()?,
+            )
+            .await
+            .optional()?)
+    }
+
+    pub async fn prove_server(
+        &self,
+        server: &ServerRegistration,
+    ) -> ResourceResult<(), ServiceError> {
+        Ok(self
+            .storage
+            .update_server_registration_state(
+                server.id,
+                ServerRegistrationState::Pending,
+                server
+                    .state
+                    .prove()
+                    .map_err(ResourceError::InternalError)
+                    .inner_err_into()?,
             )
             .await
             .optional()?)
@@ -131,14 +201,18 @@ impl ServiceContext {
 
     pub async fn reject_server(
         &self,
-        server: TypedUuid<ServerRegistrationId>,
+        server: &ServerRegistration,
     ) -> ResourceResult<(), ServiceError> {
         Ok(self
             .storage
             .update_server_registration_state(
-                server,
+                server.id,
                 ServerRegistrationState::Pending,
-                ServerRegistrationState::Rejected,
+                server
+                    .state
+                    .reject()
+                    .map_err(ResourceError::InternalError)
+                    .inner_err_into()?,
             )
             .await
             .optional()?)
@@ -146,14 +220,18 @@ impl ServiceContext {
 
     pub async fn terminate_server(
         &self,
-        server: TypedUuid<ServerRegistrationId>,
+        server: &ServerRegistration,
     ) -> ResourceResult<(), ServiceError> {
         Ok(self
             .storage
             .update_server_registration_state(
-                server,
+                server.id,
                 ServerRegistrationState::Accepted,
-                ServerRegistrationState::Terminated,
+                server
+                    .state
+                    .terminate()
+                    .map_err(ResourceError::InternalError)
+                    .inner_err_into()?,
             )
             .await
             .optional()?)
@@ -177,169 +255,4 @@ impl ServiceContext {
             .into();
         Ok(record)
     }
-
-    // pub async fn create_service(
-    //     &self,
-    //     service: &NewServiceModel,
-    // ) -> ResourceResult<Service, ServiceError> {
-    //     Ok(self
-    //         .storage
-    //         .create_service(service)
-    //         .await
-    //         .map_err(ResourceError::InternalError)
-    //         .inner_err_into()?
-    //         .into())
-    // }
-
-    // pub async fn get_service(
-    //     &self,
-    //     name: &str,
-    //     key: &str,
-    // ) -> ResourceResult<Service, ServiceError> {
-    //     let service: Service = self
-    //         .storage
-    //         .get_service(name)
-    //         .await
-    //         .map_err(ResourceError::InternalError)
-    //         .inner_err_into()?
-    //         .into();
-
-    //     // Verify the key is registered for this service and is accepted
-    //     let registration = self
-    //         .storage
-    //         .get_server_registration_by_key(key)
-    //         .await
-    //         .map_err(|_| ResourceError::DoesNotExist)?;
-
-    //     // Verify the registration is for the correct service and is accepted
-    //     if registration.service_id != service.id
-    //         || registration.state != ServerRegistrationState::Accepted
-    //     {
-    //         return Err(ResourceError::DoesNotExist);
-    //     }
-
-    //     Ok(service)
-    // }
-
-    // pub async fn get_server_registration_by_key(
-    //     &self,
-    //     key: &str,
-    // ) -> ResourceResult<ServerRegistration, ServiceError> {
-    //     Ok(self
-    //         .storage
-    //         .get_server_registration_by_key(key)
-    //         .await
-    //         .map_err(ResourceError::InternalError)
-    //         .inner_err_into()?
-    //         .into())
-    // }
-
-    // pub async fn create_server_registration(
-    //     &self,
-    //     registration: &NewServerRegistrationModel,
-    // ) -> ResourceResult<ServerRegistration, ServiceError> {
-    //     Ok(self
-    //         .storage
-    //         .create_server_registration(registration)
-    //         .await
-    //         .map_err(ResourceError::InternalError)
-    //         .inner_err_into()?
-    //         .into())
-    // }
-
-    // pub async fn accept_server_registration(
-    //     &self,
-    //     registration: &ServerRegistration,
-    // ) -> ResourceResult<(), ServiceError> {
-    //     self.storage
-    //         .update_server_registration_state(
-    //             registration.id,
-    //             ServerRegistrationState::Pending,
-    //             ServerRegistrationState::Accepted,
-    //         )
-    //         .await
-    //         .map_err(ResourceError::InternalError)
-    //         .inner_err_into()?;
-    //     Ok(())
-    // }
-
-    // pub async fn reject_server_registration(
-    //     &self,
-    //     registration: &ServerRegistration,
-    // ) -> ResourceResult<(), ServiceError> {
-    //     self.storage
-    //         .update_server_registration_state(
-    //             registration.id,
-    //             ServerRegistrationState::Pending,
-    //             ServerRegistrationState::Rejected,
-    //         )
-    //         .await
-    //         .map_err(ResourceError::InternalError)
-    //         .inner_err_into()?;
-    //     Ok(())
-    // }
-
-    // pub async fn terminate_server_registration(
-    //     &self,
-    //     registration: &ServerRegistration,
-    // ) -> ResourceResult<(), ServiceError> {
-    //     self.storage
-    //         .update_server_registration_state(
-    //             registration.id,
-    //             ServerRegistrationState::Accepted,
-    //             ServerRegistrationState::Terminated,
-    //         )
-    //         .await
-    //         .map_err(ResourceError::InternalError)
-    //         .inner_err_into()?;
-    //     Ok(())
-    // }
-
-    // pub async fn list_server_registrations_by_service(
-    //     &self,
-    //     service: &Service,
-    // ) -> ResourceResult<Vec<ServerRegistration>, ServiceError> {
-    //     let registrations = self
-    //         .storage
-    //         .list_server_registrations_by_service_id(service.id)
-    //         .await
-    //         .map_err(ResourceError::InternalError)
-    //         .inner_err_into()?
-    //         .into_iter()
-    //         .map(Into::into)
-    //         .collect();
-    //     Ok(registrations)
-    // }
-
-    // pub async fn delete_server_registration(
-    //     &self,
-    //     instance_id: TypedUuid<ServerRegistrationInstanceId>,
-    // ) -> ResourceResult<(), ServiceError> {
-    //     self.storage
-    //         .delete_server_registration_by_instance_id(instance_id)
-    //         .await
-    //         .map_err(ResourceError::InternalError)
-    //         .inner_err_into()?;
-    //     Ok(())
-    // }
-
-    // pub async fn log_health(
-    //     &self,
-    //     registration: &ServerRegistration,
-    //     ip_address: String,
-    //     checked_in_at: DateTime<Utc>,
-    // ) -> ResourceResult<HealthCheck, ServiceError> {
-    //     let record = self
-    //         .storage
-    //         .create_health_check(&NewHealthCheckModel {
-    //             server_registration_id: registration.id,
-    //             ip_address,
-    //             checked_in_at,
-    //         })
-    //         .await
-    //         .map_err(ResourceError::InternalError)
-    //         .inner_err_into()?
-    //         .into();
-    //     Ok(record)
-    // }
 }

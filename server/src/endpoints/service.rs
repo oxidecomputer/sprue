@@ -5,11 +5,13 @@ use dropshot::{
 };
 use model::{
     Blob, HealthCheck, ServerRegistration, ServerRegistrationId, ServerRegistrationInstanceId,
-    ServiceId,
+    Service, ServiceId,
 };
 use newtype_uuid::TypedUuid;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use vm_attest::VmInstanceAttestation;
 
 use crate::context::ApiContext;
 
@@ -21,8 +23,61 @@ pub enum ServiceIdentifier {
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
-pub struct RegisterServerPath {
-    service: String,
+pub struct ServicePath {
+    service: ServiceIdentifier,
+}
+
+/// Get a service by its identifier. This may be either a service uuid or a service name.
+#[endpoint {
+    method = GET,
+    path = "/service/{service}",
+}]
+pub async fn get_service(
+    rqctx: RequestContext<ApiContext>,
+    path: Path<ServicePath>,
+) -> Result<HttpResponseOk<Service>, HttpError> {
+    let ctx = rqctx.context();
+    let path = path.into_inner();
+    let service = ctx.service.get_service(&path.service).await?;
+
+    Ok(HttpResponseOk(service))
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct CreateService {
+    name: String,
+}
+
+/// Create a new service.
+#[endpoint {
+    method = POST,
+    path = "/service",
+}]
+pub async fn create_service(
+    rqctx: RequestContext<ApiContext>,
+    path: TypedBody<CreateService>,
+) -> Result<HttpResponseOk<Service>, HttpError> {
+    let ctx = rqctx.context();
+    let path = path.into_inner();
+    let service = ctx.service.create_service(&path.name).await?;
+
+    Ok(HttpResponseOk(service))
+}
+
+/// Get all servers registered for a service.
+#[endpoint {
+    method = GET,
+    path = "/service/{service}/server",
+}]
+pub async fn get_service_servers(
+    rqctx: RequestContext<ApiContext>,
+    path: Path<ServicePath>,
+) -> Result<HttpResponseOk<Vec<ServerRegistration>>, HttpError> {
+    let ctx = rqctx.context();
+    let path = path.into_inner();
+    let servers = ctx.service.get_service_servers(&path.service).await?;
+
+    Ok(HttpResponseOk(servers))
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -35,30 +90,75 @@ pub struct RegisterServerResponse {
     registration: ServerRegistration,
 }
 
-/// Request a server be registered as a representative instance of a service. The registration
-/// will need to be accepted before the server can begin check ins or blobs.
+/// Request a server be registered as a representative instance of a service. The server will need
+/// to prove its identity via an attestation. Once its identity is verified the server will need
+/// to either be accepted by policy or manual intervention.
 #[endpoint {
     method = POST,
     path = "/service/{service}/register",
 }]
 pub async fn register_server(
     rqctx: RequestContext<ApiContext>,
-    path: Path<RegisterServerPath>,
+    path: Path<ServicePath>,
     body: TypedBody<RegisterServerBody>,
 ) -> Result<HttpResponseOk<RegisterServerResponse>, HttpError> {
     let ctx = rqctx.context();
     let path = path.into_inner();
     let body = body.into_inner();
+    let nonce = ctx.server_identity.generate_nonce()?;
     let registration = ctx
         .service
-        .register_server(&path.service, body.instance)
+        .register_server(&path.service, body.instance, nonce)
         .await?;
+
     Ok(HttpResponseOk(RegisterServerResponse { registration }))
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ServerPath {
     pub server: TypedUuid<ServerRegistrationId>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct ServerAttestation {
+    attestation: Value,
+}
+
+/// Prove the identity of a server.
+#[endpoint {
+    method = POST,
+    path = "/server/{server}/prove",
+}]
+pub async fn prove_server(
+    rqctx: RequestContext<ApiContext>,
+    path: Path<ServerPath>,
+    body: TypedBody<ServerAttestation>,
+) -> Result<HttpResponseUpdatedNoContent, HttpError> {
+    let ctx = rqctx.context();
+    let path = path.into_inner();
+    let body = body.into_inner();
+    let server = ctx.service.get_server(path.server).await?;
+    let attestation: VmInstanceAttestation =
+        serde_json::from_value(body.attestation).map_err(|err| {
+            tracing::info!(?err, "Unable to deserialize attestation");
+            HttpError::for_bad_request(None, "Failed to deserialize attestation".to_string())
+        })?;
+
+    // Verify the attestation
+    ctx.server_identity
+        .verify_attestation(&server, &attestation)
+        .map_err(|_| HttpError::for_internal_error("Failed to verify attestation".to_string()))?;
+
+    // The server has proven its identity and we can mark it as proven
+    let _ = ctx.service.prove_server(&server).await.map_err(|err| {
+        // TODO: Currently all failures are emited as bad request errors. This is not strictly
+        // correct as we may have a misconfigured server. From the stance of the server though this
+        // request does not match what it is expecting
+        tracing::info!(?err, "Failed to prove server");
+        HttpError::for_bad_request(None, "Failed to prove server".to_string())
+    })?;
+
+    Ok(HttpResponseUpdatedNoContent())
 }
 
 /// Accept a server's request to be added as a representative instance of a service.
@@ -72,7 +172,8 @@ pub async fn accept_server(
 ) -> Result<HttpResponseUpdatedNoContent, HttpError> {
     let ctx = rqctx.context();
     let path = path.into_inner();
-    ctx.service.accept_server(path.server).await?;
+    let server = ctx.service.get_server(path.server).await?;
+    ctx.service.accept_server(&server).await?;
     Ok(HttpResponseUpdatedNoContent())
 }
 
@@ -87,7 +188,8 @@ pub async fn reject_server(
 ) -> Result<HttpResponseUpdatedNoContent, HttpError> {
     let ctx = rqctx.context();
     let path = path.into_inner();
-    ctx.service.reject_server(path.server).await?;
+    let server = ctx.service.get_server(path.server).await?;
+    ctx.service.reject_server(&server).await?;
     Ok(HttpResponseUpdatedNoContent())
 }
 
@@ -102,7 +204,8 @@ pub async fn terminate_server(
 ) -> Result<HttpResponseUpdatedNoContent, HttpError> {
     let ctx = rqctx.context();
     let path = path.into_inner();
-    ctx.service.terminate_server(path.server).await?;
+    let server = ctx.service.get_server(path.server).await?;
+    ctx.service.terminate_server(&server).await?;
     Ok(HttpResponseUpdatedNoContent())
 }
 

@@ -5,6 +5,7 @@ use partial_struct::partial;
 use crate::{
     BlobId, BlobState, HealthCheckId, IdempotentRequestId, IdempotentRequestState,
     ServerRegistrationId, ServerRegistrationInstanceId, ServerRegistrationState, ServiceId,
+    TokenRequestId, TokenRequestState,
 };
 
 #[partial(NewServiceModel)]
@@ -22,11 +23,28 @@ pub struct ServerRegistrationModel {
     pub id: TypedUuid<ServerRegistrationId>,
     pub service_id: TypedUuid<ServiceId>,
     pub instance_id: TypedUuid<ServerRegistrationInstanceId>,
+    pub nonce: Option<String>,
+    pub expires_at: Option<DateTime<Utc>>,
     #[partial(NewServerRegistrationModel(skip))]
     pub state: ServerRegistrationState,
     #[partial(NewServerRegistrationModel(skip))]
     pub created_at: DateTime<Utc>,
     #[partial(NewServerRegistrationModel(skip))]
+    pub updated_at: DateTime<Utc>,
+}
+
+#[partial(NewTokenRequestModel)]
+pub struct TokenRequestModel {
+    #[partial(NewTokenRequestModel(skip))]
+    pub id: TypedUuid<TokenRequestId>,
+    pub server_registration_id: TypedUuid<ServerRegistrationId>,
+    pub nonce: Option<String>,
+    pub expires_at: Option<DateTime<Utc>>,
+    #[partial(NewTokenRequestModel(skip))]
+    pub state: TokenRequestState,
+    #[partial(NewTokenRequestModel(skip))]
+    pub created_at: DateTime<Utc>,
+    #[partial(NewTokenRequestModel(skip))]
     pub updated_at: DateTime<Utc>,
 }
 

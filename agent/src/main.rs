@@ -27,7 +27,7 @@ enum Commands {
     /// Retrieve an OIDC token from the oxvm service
     GetToken {
         /// Registraiton id
-        id: Uuid
+        id: Uuid,
     },
     /// Register a server instance with the oxvm service
     RegisterServer {
@@ -50,10 +50,13 @@ async fn main() -> anyhow::Result<()> {
 
     match args.command {
         Commands::GetToken { id } => {
-
             // Send our id to the server to register a token flow and receive back a nonce to prove
             // ownership of this challenge
-            let response = client.register_oidc_token_request().server(id).send().await?;
+            let response = client
+                .register_oidc_token_request()
+                .server(id)
+                .send()
+                .await?;
 
             // Convert the nonce into a 32 byte array which is used by the attestation API
             let server_nonce: [u8; 32] = hex::decode(&response.nonce)?
@@ -63,18 +66,19 @@ async fn main() -> anyhow::Result<()> {
 
             // Communicate over the known VM attestation port to retrieve a platform attestation
             let addr = VsockAddr::new(VMADDR_CID_HOST, VM_ATTESTATION_PORT);
-            let stream = VsockStream::connect(&addr)
-                .context("vsock stream connect")?;
+            let stream = VsockStream::connect(&addr).context("vsock stream connect")?;
             let vm_instance_rot = VmInstanceRotVsockClient::new(stream);
             let attestation = vm_instance_rot.attest(&qualifying_data)?;
             let serialized = serde_json::to_value(attestation)?;
 
             // Send the attestation back to the server to complete the challenge. The server will
             // verify that the id of the vm in the attestation matches the id of the vm we sent.
-            let token_response = client.prove_oidc_token_request().server(id).body_map(|body| {
-                body.attestation(serialized)
-            })
-            .send().await?;
+            let token_response = client
+                .prove_oidc_token_request()
+                .server(id)
+                .body_map(|body| body.attestation(serialized))
+                .send()
+                .await?;
 
             let token = token_response.into_inner().token;
 
@@ -92,17 +96,20 @@ async fn main() -> anyhow::Result<()> {
             println!("  Audience: {}", claims.aud);
             println!("");
             println!("  Token: {}", token);
-        },
+        }
         Commands::RegisterServer { id, service } => {
-            let response = client.register_server().service(service).body_map(|body| {
-                body.instance(id)
-            }).send().await?;
+            let response = client
+                .register_server()
+                .service(service)
+                .body_map(|body| body.instance(id))
+                .send()
+                .await?;
             println!("{:?}", response);
-        },
+        }
         Commands::AcceptServer { id } => {
             let response = client.accept_server().server(id).send().await?;
             println!("{:?}", response);
-        },
+        }
     }
 
     Ok(())

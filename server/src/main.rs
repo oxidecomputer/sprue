@@ -1,7 +1,7 @@
 use clap::Parser;
 use dropshot::semver::Version;
-use rustls::crypto;
 use oxvm_api::{ServerConfig, create_server, describe};
+use rustls::crypto;
 use slog::Drain;
 use std::{
     fs::File,

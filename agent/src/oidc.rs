@@ -60,37 +60,37 @@ fn decoding_key_from_jwk(jwk: &Jwk) -> Result<DecodingKey, JwtValidationError> {
 }
 
 /// Validate a JWT against a JWKS
-/// 
+///
 /// This function:
 /// 1. Extracts the key id (kid) from the JWT header
 /// 2. Finds the matching key in the JWKS
 /// 3. Validates the JWT signature and claims using that key
-/// 
+///
 /// Returns the validated claims on success
 pub fn validate_jwt(token: &str, jwks: &Jwks) -> Result<VmClaims, JwtValidationError> {
     // Decode the JWT header to get the key id
     let header = decode_header(token).map_err(JwtValidationError::DecodeHeader)?;
-    
+
     let kid = header.kid.ok_or(JwtValidationError::MissingKid)?;
-    
+
     // Find the matching key in the JWKS
     let jwk = find_key_by_kid(jwks, &kid)
         .ok_or_else(|| JwtValidationError::NoMatchingKey(kid.clone()))?;
-    
+
     // Construct the decoding key from the JWK
     let decoding_key = decoding_key_from_jwk(jwk)?;
-    
+
     // Set up validation parameters
     let mut validation = Validation::new(Algorithm::RS256);
     // The server sets issuer to "vm-attest-oidc"
     validation.set_issuer(&["vm-attest-oidc"]);
     // Validate the audience - we'll accept any audience that starts with the expected prefix
     validation.validate_aud = false;
-    
+
     // Decode and validate the JWT
     let token_data = decode::<VmClaims>(token, &decoding_key, &validation)
         .map_err(JwtValidationError::DecodeJwt)?;
-    
+
     Ok(token_data.claims)
 }
 

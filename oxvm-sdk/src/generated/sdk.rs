@@ -1,9 +1,9 @@
 // The contents of this file are generated; do not modify them.
 
 #[allow(unused_imports)]
-use progenitor_client::{encode_path, ClientHooks, OperationInfo, RequestBuilderExt};
-#[allow(unused_imports)]
 pub use progenitor_client::{ByteStream, ClientInfo, Error, ResponseValue};
+#[allow(unused_imports)]
+use progenitor_client::{ClientHooks, OperationInfo, RequestBuilderExt, encode_path};
 /// Types used as operation parameters and responses.
 #[allow(clippy::all)]
 pub mod types {
@@ -87,7 +87,9 @@ pub mod types {
 
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema)]
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
     pub struct Blob {
         pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
         pub id: TypedUuidForBlobId,
@@ -175,7 +177,9 @@ pub mod types {
 
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema)]
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
     pub enum BlobState {
         Pending,
         Cancelled,
@@ -258,14 +262,18 @@ pub mod types {
 
     impl ::std::convert::TryFrom<&::std::string::String> for BlobTransferState {
         type Error = self::error::ConversionError;
-        fn try_from(value: &::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+        fn try_from(
+            value: &::std::string::String,
+        ) -> ::std::result::Result<Self, self::error::ConversionError> {
             value.parse()
         }
     }
 
     impl ::std::convert::TryFrom<::std::string::String> for BlobTransferState {
         type Error = self::error::ConversionError;
-        fn try_from(value: ::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+        fn try_from(
+            value: ::std::string::String,
+        ) -> ::std::result::Result<Self, self::error::ConversionError> {
             value.parse()
         }
     }
@@ -332,14 +340,18 @@ pub mod types {
 
     impl ::std::convert::TryFrom<&::std::string::String> for BlobUploadState {
         type Error = self::error::ConversionError;
-        fn try_from(value: &::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+        fn try_from(
+            value: &::std::string::String,
+        ) -> ::std::result::Result<Self, self::error::ConversionError> {
             value.parse()
         }
     }
 
     impl ::std::convert::TryFrom<::std::string::String> for BlobUploadState {
         type Error = self::error::ConversionError;
-        fn try_from(value: ::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+        fn try_from(
+            value: ::std::string::String,
+        ) -> ::std::result::Result<Self, self::error::ConversionError> {
             value.parse()
         }
     }
@@ -366,7 +378,9 @@ pub mod types {
 
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema)]
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
     pub struct CheckinBody {
         pub checked_in_at: ::chrono::DateTime<::chrono::offset::Utc>,
     }
@@ -406,7 +420,9 @@ pub mod types {
 
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema)]
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
     pub struct Error {
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub error_code: ::std::option::Option<::std::string::String>,
@@ -455,7 +471,9 @@ pub mod types {
 
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema)]
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
     pub struct HealthCheck {
         pub checked_in_at: ::chrono::DateTime<::chrono::offset::Utc>,
         pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
@@ -530,7 +548,9 @@ pub mod types {
 
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema)]
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
     pub struct Jwk {
         pub e: ::std::string::String,
         pub kid: ::std::string::String,
@@ -571,7 +591,9 @@ pub mod types {
 
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema)]
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
     pub struct Jwks {
         pub keys: ::std::vec::Vec<Jwk>,
     }
@@ -603,7 +625,9 @@ pub mod types {
 
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema)]
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
     pub struct OidcServerToken {
         pub token: ::std::string::String,
     }
@@ -635,7 +659,9 @@ pub mod types {
 
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema)]
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
     pub struct OidcServerTokenNonce {
         pub nonce: ::std::string::String,
     }
@@ -667,7 +693,9 @@ pub mod types {
 
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema)]
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
     pub struct OpenIdConfiguration {
         pub jwks_uri: ::std::string::String,
     }
@@ -706,7 +734,9 @@ pub mod types {
 
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema)]
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
     pub struct RegisterBlobBody {
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub idempotency_key: ::std::option::Option<::std::string::String>,
@@ -740,7 +770,9 @@ pub mod types {
 
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema)]
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
     pub struct RegisterBlobResponse {
         pub blob: Blob,
     }
@@ -773,7 +805,9 @@ pub mod types {
 
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema)]
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
     pub struct RegisterServerBody {
         pub instance: TypedUuidForServerRegistrationInstanceId,
     }
@@ -805,7 +839,9 @@ pub mod types {
 
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema)]
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
     pub struct RegisterServerResponse {
         pub registration: ServerRegistration,
     }
@@ -835,7 +871,9 @@ pub mod types {
 
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema)]
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
     pub struct ServerAttestation {
         pub attestation: ::serde_json::Value,
     }
@@ -890,7 +928,9 @@ pub mod types {
 
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema)]
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
     pub struct ServerRegistration {
         pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
         pub id: TypedUuidForServerRegistrationId,
@@ -1024,14 +1064,18 @@ pub mod types {
 
     impl ::std::convert::TryFrom<&::std::string::String> for ServerRegistrationState {
         type Error = self::error::ConversionError;
-        fn try_from(value: &::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+        fn try_from(
+            value: &::std::string::String,
+        ) -> ::std::result::Result<Self, self::error::ConversionError> {
             value.parse()
         }
     }
 
     impl ::std::convert::TryFrom<::std::string::String> for ServerRegistrationState {
         type Error = self::error::ConversionError;
-        fn try_from(value: ::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+        fn try_from(
+            value: ::std::string::String,
+        ) -> ::std::result::Result<Self, self::error::ConversionError> {
             value.parse()
         }
     }
@@ -1084,7 +1128,9 @@ pub mod types {
 
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema)]
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
     #[serde(transparent)]
     pub struct TypedUuidForBlobId(pub ::uuid::Uuid);
     impl ::std::ops::Deref for TypedUuidForBlobId {
@@ -1157,7 +1203,9 @@ pub mod types {
 
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema)]
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
     #[serde(transparent)]
     pub struct TypedUuidForHealthCheckId(pub ::uuid::Uuid);
     impl ::std::ops::Deref for TypedUuidForHealthCheckId {
@@ -1230,7 +1278,9 @@ pub mod types {
 
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema)]
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
     #[serde(transparent)]
     pub struct TypedUuidForServerRegistrationId(pub ::uuid::Uuid);
     impl ::std::ops::Deref for TypedUuidForServerRegistrationId {
@@ -1303,7 +1353,9 @@ pub mod types {
 
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema)]
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
     #[serde(transparent)]
     pub struct TypedUuidForServerRegistrationInstanceId(pub ::uuid::Uuid);
     impl ::std::ops::Deref for TypedUuidForServerRegistrationInstanceId {
@@ -1376,7 +1428,9 @@ pub mod types {
 
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema)]
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
     #[serde(transparent)]
     pub struct TypedUuidForServiceId(pub ::uuid::Uuid);
     impl ::std::ops::Deref for TypedUuidForServiceId {
@@ -1429,13 +1483,19 @@ pub mod types {
     pub mod builder {
         #[derive(Clone, Debug)]
         pub struct Blob {
-            created_at: ::std::result::Result<::chrono::DateTime<::chrono::offset::Utc>, ::std::string::String>,
+            created_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
             id: ::std::result::Result<super::TypedUuidForBlobId, ::std::string::String>,
             service_id: ::std::result::Result<super::TypedUuidForServiceId, ::std::string::String>,
             size: ::std::result::Result<i64, ::std::string::String>,
             state: ::std::result::Result<super::BlobState, ::std::string::String>,
             total_size: ::std::result::Result<i64, ::std::string::String>,
-            updated_at: ::std::result::Result<::chrono::DateTime<::chrono::offset::Utc>, ::std::string::String>,
+            updated_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
         }
 
         impl ::std::default::Default for Blob {
@@ -1556,7 +1616,10 @@ pub mod types {
 
         #[derive(Clone, Debug)]
         pub struct CheckinBody {
-            checked_in_at: ::std::result::Result<::chrono::DateTime<::chrono::offset::Utc>, ::std::string::String>,
+            checked_in_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
         }
 
         impl ::std::default::Default for CheckinBody {
@@ -1582,7 +1645,9 @@ pub mod types {
 
         impl ::std::convert::TryFrom<CheckinBody> for super::CheckinBody {
             type Error = super::error::ConversionError;
-            fn try_from(value: CheckinBody) -> ::std::result::Result<Self, super::error::ConversionError> {
+            fn try_from(
+                value: CheckinBody,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
                     checked_in_at: value.checked_in_at?,
                 })
@@ -1599,7 +1664,10 @@ pub mod types {
 
         #[derive(Clone, Debug)]
         pub struct Error {
-            error_code: ::std::result::Result<::std::option::Option<::std::string::String>, ::std::string::String>,
+            error_code: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
             message: ::std::result::Result<::std::string::String, ::std::string::String>,
             request_id: ::std::result::Result<::std::string::String, ::std::string::String>,
         }
@@ -1649,7 +1717,9 @@ pub mod types {
 
         impl ::std::convert::TryFrom<Error> for super::Error {
             type Error = super::error::ConversionError;
-            fn try_from(value: Error) -> ::std::result::Result<Self, super::error::ConversionError> {
+            fn try_from(
+                value: Error,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
                     error_code: value.error_code?,
                     message: value.message?,
@@ -1670,11 +1740,19 @@ pub mod types {
 
         #[derive(Clone, Debug)]
         pub struct HealthCheck {
-            checked_in_at: ::std::result::Result<::chrono::DateTime<::chrono::offset::Utc>, ::std::string::String>,
-            created_at: ::std::result::Result<::chrono::DateTime<::chrono::offset::Utc>, ::std::string::String>,
+            checked_in_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+            created_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
             id: ::std::result::Result<super::TypedUuidForHealthCheckId, ::std::string::String>,
-            server_registration_id:
-                ::std::result::Result<super::TypedUuidForServerRegistrationId, ::std::string::String>,
+            server_registration_id: ::std::result::Result<
+                super::TypedUuidForServerRegistrationId,
+                ::std::string::String,
+            >,
         }
 
         impl ::std::default::Default for HealthCheck {
@@ -1683,7 +1761,9 @@ pub mod types {
                     checked_in_at: Err("no value supplied for checked_in_at".to_string()),
                     created_at: Err("no value supplied for created_at".to_string()),
                     id: Err("no value supplied for id".to_string()),
-                    server_registration_id: Err("no value supplied for server_registration_id".to_string()),
+                    server_registration_id: Err(
+                        "no value supplied for server_registration_id".to_string()
+                    ),
                 }
             }
         }
@@ -1724,16 +1804,18 @@ pub mod types {
                 T: ::std::convert::TryInto<super::TypedUuidForServerRegistrationId>,
                 T::Error: ::std::fmt::Display,
             {
-                self.server_registration_id = value
-                    .try_into()
-                    .map_err(|e| format!("error converting supplied value for server_registration_id: {e}"));
+                self.server_registration_id = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for server_registration_id: {e}")
+                });
                 self
             }
         }
 
         impl ::std::convert::TryFrom<HealthCheck> for super::HealthCheck {
             type Error = super::error::ConversionError;
-            fn try_from(value: HealthCheck) -> ::std::result::Result<Self, super::error::ConversionError> {
+            fn try_from(
+                value: HealthCheck,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
                     checked_in_at: value.checked_in_at?,
                     created_at: value.created_at?,
@@ -1888,7 +1970,9 @@ pub mod types {
 
         impl ::std::convert::From<super::Jwks> for Jwks {
             fn from(value: super::Jwks) -> Self {
-                Self { keys: Ok(value.keys) }
+                Self {
+                    keys: Ok(value.keys),
+                }
             }
         }
 
@@ -1920,14 +2004,20 @@ pub mod types {
 
         impl ::std::convert::TryFrom<OidcServerToken> for super::OidcServerToken {
             type Error = super::error::ConversionError;
-            fn try_from(value: OidcServerToken) -> ::std::result::Result<Self, super::error::ConversionError> {
-                Ok(Self { token: value.token? })
+            fn try_from(
+                value: OidcServerToken,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    token: value.token?,
+                })
             }
         }
 
         impl ::std::convert::From<super::OidcServerToken> for OidcServerToken {
             fn from(value: super::OidcServerToken) -> Self {
-                Self { token: Ok(value.token) }
+                Self {
+                    token: Ok(value.token),
+                }
             }
         }
 
@@ -1959,14 +2049,20 @@ pub mod types {
 
         impl ::std::convert::TryFrom<OidcServerTokenNonce> for super::OidcServerTokenNonce {
             type Error = super::error::ConversionError;
-            fn try_from(value: OidcServerTokenNonce) -> ::std::result::Result<Self, super::error::ConversionError> {
-                Ok(Self { nonce: value.nonce? })
+            fn try_from(
+                value: OidcServerTokenNonce,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    nonce: value.nonce?,
+                })
             }
         }
 
         impl ::std::convert::From<super::OidcServerTokenNonce> for OidcServerTokenNonce {
             fn from(value: super::OidcServerTokenNonce) -> Self {
-                Self { nonce: Ok(value.nonce) }
+                Self {
+                    nonce: Ok(value.nonce),
+                }
             }
         }
 
@@ -1998,7 +2094,9 @@ pub mod types {
 
         impl ::std::convert::TryFrom<OpenIdConfiguration> for super::OpenIdConfiguration {
             type Error = super::error::ConversionError;
-            fn try_from(value: OpenIdConfiguration) -> ::std::result::Result<Self, super::error::ConversionError> {
+            fn try_from(
+                value: OpenIdConfiguration,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
                     jwks_uri: value.jwks_uri?,
                 })
@@ -2015,7 +2113,10 @@ pub mod types {
 
         #[derive(Clone, Debug)]
         pub struct RegisterBlobBody {
-            idempotency_key: ::std::result::Result<::std::option::Option<::std::string::String>, ::std::string::String>,
+            idempotency_key: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
             size: ::std::result::Result<i64, ::std::string::String>,
         }
 
@@ -2034,9 +2135,9 @@ pub mod types {
                 T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
                 T::Error: ::std::fmt::Display,
             {
-                self.idempotency_key = value
-                    .try_into()
-                    .map_err(|e| format!("error converting supplied value for idempotency_key: {e}"));
+                self.idempotency_key = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for idempotency_key: {e}")
+                });
                 self
             }
             pub fn size<T>(mut self, value: T) -> Self
@@ -2053,7 +2154,9 @@ pub mod types {
 
         impl ::std::convert::TryFrom<RegisterBlobBody> for super::RegisterBlobBody {
             type Error = super::error::ConversionError;
-            fn try_from(value: RegisterBlobBody) -> ::std::result::Result<Self, super::error::ConversionError> {
+            fn try_from(
+                value: RegisterBlobBody,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
                     idempotency_key: value.idempotency_key?,
                     size: value.size?,
@@ -2098,20 +2201,27 @@ pub mod types {
 
         impl ::std::convert::TryFrom<RegisterBlobResponse> for super::RegisterBlobResponse {
             type Error = super::error::ConversionError;
-            fn try_from(value: RegisterBlobResponse) -> ::std::result::Result<Self, super::error::ConversionError> {
+            fn try_from(
+                value: RegisterBlobResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self { blob: value.blob? })
             }
         }
 
         impl ::std::convert::From<super::RegisterBlobResponse> for RegisterBlobResponse {
             fn from(value: super::RegisterBlobResponse) -> Self {
-                Self { blob: Ok(value.blob) }
+                Self {
+                    blob: Ok(value.blob),
+                }
             }
         }
 
         #[derive(Clone, Debug)]
         pub struct RegisterServerBody {
-            instance: ::std::result::Result<super::TypedUuidForServerRegistrationInstanceId, ::std::string::String>,
+            instance: ::std::result::Result<
+                super::TypedUuidForServerRegistrationInstanceId,
+                ::std::string::String,
+            >,
         }
 
         impl ::std::default::Default for RegisterServerBody {
@@ -2137,7 +2247,9 @@ pub mod types {
 
         impl ::std::convert::TryFrom<RegisterServerBody> for super::RegisterServerBody {
             type Error = super::error::ConversionError;
-            fn try_from(value: RegisterServerBody) -> ::std::result::Result<Self, super::error::ConversionError> {
+            fn try_from(
+                value: RegisterServerBody,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
                     instance: value.instance?,
                 })
@@ -2180,7 +2292,9 @@ pub mod types {
 
         impl ::std::convert::TryFrom<RegisterServerResponse> for super::RegisterServerResponse {
             type Error = super::error::ConversionError;
-            fn try_from(value: RegisterServerResponse) -> ::std::result::Result<Self, super::error::ConversionError> {
+            fn try_from(
+                value: RegisterServerResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
                     registration: value.registration?,
                 })
@@ -2223,7 +2337,9 @@ pub mod types {
 
         impl ::std::convert::TryFrom<ServerAttestation> for super::ServerAttestation {
             type Error = super::error::ConversionError;
-            fn try_from(value: ServerAttestation) -> ::std::result::Result<Self, super::error::ConversionError> {
+            fn try_from(
+                value: ServerAttestation,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
                     attestation: value.attestation?,
                 })
@@ -2240,12 +2356,24 @@ pub mod types {
 
         #[derive(Clone, Debug)]
         pub struct ServerRegistration {
-            created_at: ::std::result::Result<::chrono::DateTime<::chrono::offset::Utc>, ::std::string::String>,
-            id: ::std::result::Result<super::TypedUuidForServerRegistrationId, ::std::string::String>,
-            instance_id: ::std::result::Result<super::TypedUuidForServerRegistrationInstanceId, ::std::string::String>,
+            created_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+            id: ::std::result::Result<
+                super::TypedUuidForServerRegistrationId,
+                ::std::string::String,
+            >,
+            instance_id: ::std::result::Result<
+                super::TypedUuidForServerRegistrationInstanceId,
+                ::std::string::String,
+            >,
             service_id: ::std::result::Result<super::TypedUuidForServiceId, ::std::string::String>,
             state: ::std::result::Result<super::ServerRegistrationState, ::std::string::String>,
-            updated_at: ::std::result::Result<::chrono::DateTime<::chrono::offset::Utc>, ::std::string::String>,
+            updated_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
         }
 
         impl ::std::default::Default for ServerRegistration {
@@ -2326,7 +2454,9 @@ pub mod types {
 
         impl ::std::convert::TryFrom<ServerRegistration> for super::ServerRegistration {
             type Error = super::error::ConversionError;
-            fn try_from(value: ServerRegistration) -> ::std::result::Result<Self, super::error::ConversionError> {
+            fn try_from(
+                value: ServerRegistration,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
                     created_at: value.created_at?,
                     id: value.id?,
@@ -2374,7 +2504,9 @@ impl Client {
         #[cfg(not(target_arch = "wasm32"))]
         let client = {
             let dur = ::std::time::Duration::from_secs(15u64);
-            reqwest::ClientBuilder::new().connect_timeout(dur).timeout(dur)
+            reqwest::ClientBuilder::new()
+                .connect_timeout(dur)
+                .timeout(dur)
         };
         #[cfg(target_arch = "wasm32")]
         let client = reqwest::ClientBuilder::new();
@@ -2630,7 +2762,8 @@ pub mod builder {
     use super::types;
     #[allow(unused_imports)]
     use super::{
-        encode_path, ByteStream, ClientHooks, ClientInfo, Error, OperationInfo, RequestBuilderExt, ResponseValue,
+        ByteStream, ClientHooks, ClientInfo, Error, OperationInfo, RequestBuilderExt,
+        ResponseValue, encode_path,
     };
     /// Builder for [`Client::jwks_json`]
     ///
@@ -2673,8 +2806,12 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(ResponseValue::from_response(response).await?)),
-                500u16..=599u16 => Err(Error::ErrorResponse(ResponseValue::from_response(response).await?)),
+                400u16..=499u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                500u16..=599u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -2694,7 +2831,9 @@ pub mod builder {
         }
 
         /// Sends a `GET` request to `/.well-known/openid-configuration`
-        pub async fn send(self) -> Result<ResponseValue<types::OpenIdConfiguration>, Error<types::Error>> {
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<types::OpenIdConfiguration>, Error<types::Error>> {
             let Self { client } = self;
             let url = format!("{}/.well-known/openid-configuration", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -2721,8 +2860,12 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(ResponseValue::from_response(response).await?)),
-                500u16..=599u16 => Err(Error::ErrorResponse(ResponseValue::from_response(response).await?)),
+                400u16..=499u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                500u16..=599u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -2788,8 +2931,12 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
-                400u16..=499u16 => Err(Error::ErrorResponse(ResponseValue::from_response(response).await?)),
-                500u16..=599u16 => Err(Error::ErrorResponse(ResponseValue::from_response(response).await?)),
+                400u16..=499u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                500u16..=599u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -2855,8 +3002,12 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
-                400u16..=499u16 => Err(Error::ErrorResponse(ResponseValue::from_response(response).await?)),
-                500u16..=599u16 => Err(Error::ErrorResponse(ResponseValue::from_response(response).await?)),
+                400u16..=499u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                500u16..=599u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -2922,8 +3073,12 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
-                400u16..=499u16 => Err(Error::ErrorResponse(ResponseValue::from_response(response).await?)),
-                500u16..=599u16 => Err(Error::ErrorResponse(ResponseValue::from_response(response).await?)),
+                400u16..=499u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                500u16..=599u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -3007,8 +3162,12 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
-                400u16..=499u16 => Err(Error::ErrorResponse(ResponseValue::from_response(response).await?)),
-                500u16..=599u16 => Err(Error::ErrorResponse(ResponseValue::from_response(response).await?)),
+                400u16..=499u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                500u16..=599u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -3035,9 +3194,9 @@ pub mod builder {
         where
             V: std::convert::TryInto<types::TypedUuidForServerRegistrationId>,
         {
-            self.server = value
-                .try_into()
-                .map_err(|_| "conversion to `TypedUuidForServerRegistrationId` for server failed".to_string());
+            self.server = value.try_into().map_err(|_| {
+                "conversion to `TypedUuidForServerRegistrationId` for server failed".to_string()
+            });
             self
         }
 
@@ -3045,7 +3204,11 @@ pub mod builder {
         pub async fn send(self) -> Result<ResponseValue<()>, Error<types::Error>> {
             let Self { client, server } = self;
             let server = server.map_err(Error::InvalidRequest)?;
-            let url = format!("{}/server/{}/accept", client.baseurl, encode_path(&server.to_string()),);
+            let url = format!(
+                "{}/server/{}/accept",
+                client.baseurl,
+                encode_path(&server.to_string()),
+            );
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
             header_map.append(
                 ::reqwest::header::HeaderName::from_static("api-version"),
@@ -3070,8 +3233,12 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
-                400u16..=499u16 => Err(Error::ErrorResponse(ResponseValue::from_response(response).await?)),
-                500u16..=599u16 => Err(Error::ErrorResponse(ResponseValue::from_response(response).await?)),
+                400u16..=499u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                500u16..=599u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -3100,9 +3267,9 @@ pub mod builder {
         where
             V: std::convert::TryInto<types::TypedUuidForServerRegistrationId>,
         {
-            self.server = value
-                .try_into()
-                .map_err(|_| "conversion to `TypedUuidForServerRegistrationId` for server failed".to_string());
+            self.server = value.try_into().map_err(|_| {
+                "conversion to `TypedUuidForServerRegistrationId` for server failed".to_string()
+            });
             self
         }
 
@@ -3120,15 +3287,23 @@ pub mod builder {
 
         pub fn body_map<F>(mut self, f: F) -> Self
         where
-            F: std::ops::FnOnce(types::builder::RegisterBlobBody) -> types::builder::RegisterBlobBody,
+            F: std::ops::FnOnce(
+                    types::builder::RegisterBlobBody,
+                ) -> types::builder::RegisterBlobBody,
         {
             self.body = self.body.map(f);
             self
         }
 
         /// Sends a `POST` request to `/server/{server}/blob/register`
-        pub async fn send(self) -> Result<ResponseValue<types::RegisterBlobResponse>, Error<types::Error>> {
-            let Self { client, server, body } = self;
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<types::RegisterBlobResponse>, Error<types::Error>> {
+            let Self {
+                client,
+                server,
+                body,
+            } = self;
             let server = server.map_err(Error::InvalidRequest)?;
             let body = body
                 .and_then(|v| types::RegisterBlobBody::try_from(v).map_err(|e| e.to_string()))
@@ -3163,8 +3338,12 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(ResponseValue::from_response(response).await?)),
-                500u16..=599u16 => Err(Error::ErrorResponse(ResponseValue::from_response(response).await?)),
+                400u16..=499u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                500u16..=599u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -3193,9 +3372,9 @@ pub mod builder {
         where
             V: std::convert::TryInto<types::TypedUuidForServerRegistrationId>,
         {
-            self.server = value
-                .try_into()
-                .map_err(|_| "conversion to `TypedUuidForServerRegistrationId` for server failed".to_string());
+            self.server = value.try_into().map_err(|_| {
+                "conversion to `TypedUuidForServerRegistrationId` for server failed".to_string()
+            });
             self
         }
 
@@ -3221,12 +3400,20 @@ pub mod builder {
 
         /// Sends a `POST` request to `/server/{server}/checkin`
         pub async fn send(self) -> Result<ResponseValue<types::HealthCheck>, Error<types::Error>> {
-            let Self { client, server, body } = self;
+            let Self {
+                client,
+                server,
+                body,
+            } = self;
             let server = server.map_err(Error::InvalidRequest)?;
             let body = body
                 .and_then(|v| types::CheckinBody::try_from(v).map_err(|e| e.to_string()))
                 .map_err(Error::InvalidRequest)?;
-            let url = format!("{}/server/{}/checkin", client.baseurl, encode_path(&server.to_string()),);
+            let url = format!(
+                "{}/server/{}/checkin",
+                client.baseurl,
+                encode_path(&server.to_string()),
+            );
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
             header_map.append(
                 ::reqwest::header::HeaderName::from_static("api-version"),
@@ -3252,8 +3439,12 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(ResponseValue::from_response(response).await?)),
-                500u16..=599u16 => Err(Error::ErrorResponse(ResponseValue::from_response(response).await?)),
+                400u16..=499u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                500u16..=599u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -3280,14 +3471,16 @@ pub mod builder {
         where
             V: std::convert::TryInto<types::TypedUuidForServerRegistrationId>,
         {
-            self.server = value
-                .try_into()
-                .map_err(|_| "conversion to `TypedUuidForServerRegistrationId` for server failed".to_string());
+            self.server = value.try_into().map_err(|_| {
+                "conversion to `TypedUuidForServerRegistrationId` for server failed".to_string()
+            });
             self
         }
 
         /// Sends a `POST` request to `/server/{server}/oidc/token`
-        pub async fn send(self) -> Result<ResponseValue<types::OidcServerTokenNonce>, Error<types::Error>> {
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<types::OidcServerTokenNonce>, Error<types::Error>> {
             let Self { client, server } = self;
             let server = server.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -3319,8 +3512,12 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(ResponseValue::from_response(response).await?)),
-                500u16..=599u16 => Err(Error::ErrorResponse(ResponseValue::from_response(response).await?)),
+                400u16..=499u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                500u16..=599u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -3349,9 +3546,9 @@ pub mod builder {
         where
             V: std::convert::TryInto<types::TypedUuidForServerRegistrationId>,
         {
-            self.server = value
-                .try_into()
-                .map_err(|_| "conversion to `TypedUuidForServerRegistrationId` for server failed".to_string());
+            self.server = value.try_into().map_err(|_| {
+                "conversion to `TypedUuidForServerRegistrationId` for server failed".to_string()
+            });
             self
         }
 
@@ -3369,15 +3566,23 @@ pub mod builder {
 
         pub fn body_map<F>(mut self, f: F) -> Self
         where
-            F: std::ops::FnOnce(types::builder::ServerAttestation) -> types::builder::ServerAttestation,
+            F: std::ops::FnOnce(
+                    types::builder::ServerAttestation,
+                ) -> types::builder::ServerAttestation,
         {
             self.body = self.body.map(f);
             self
         }
 
         /// Sends a `POST` request to `/server/{server}/oidc/token/prove`
-        pub async fn send(self) -> Result<ResponseValue<types::OidcServerToken>, Error<types::Error>> {
-            let Self { client, server, body } = self;
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<types::OidcServerToken>, Error<types::Error>> {
+            let Self {
+                client,
+                server,
+                body,
+            } = self;
             let server = server.map_err(Error::InvalidRequest)?;
             let body = body
                 .and_then(|v| types::ServerAttestation::try_from(v).map_err(|e| e.to_string()))
@@ -3412,8 +3617,12 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(ResponseValue::from_response(response).await?)),
-                500u16..=599u16 => Err(Error::ErrorResponse(ResponseValue::from_response(response).await?)),
+                400u16..=499u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                500u16..=599u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -3440,9 +3649,9 @@ pub mod builder {
         where
             V: std::convert::TryInto<types::TypedUuidForServerRegistrationId>,
         {
-            self.server = value
-                .try_into()
-                .map_err(|_| "conversion to `TypedUuidForServerRegistrationId` for server failed".to_string());
+            self.server = value.try_into().map_err(|_| {
+                "conversion to `TypedUuidForServerRegistrationId` for server failed".to_string()
+            });
             self
         }
 
@@ -3450,7 +3659,11 @@ pub mod builder {
         pub async fn send(self) -> Result<ResponseValue<()>, Error<types::Error>> {
             let Self { client, server } = self;
             let server = server.map_err(Error::InvalidRequest)?;
-            let url = format!("{}/server/{}/reject", client.baseurl, encode_path(&server.to_string()),);
+            let url = format!(
+                "{}/server/{}/reject",
+                client.baseurl,
+                encode_path(&server.to_string()),
+            );
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
             header_map.append(
                 ::reqwest::header::HeaderName::from_static("api-version"),
@@ -3475,8 +3688,12 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
-                400u16..=499u16 => Err(Error::ErrorResponse(ResponseValue::from_response(response).await?)),
-                500u16..=599u16 => Err(Error::ErrorResponse(ResponseValue::from_response(response).await?)),
+                400u16..=499u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                500u16..=599u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -3503,9 +3720,9 @@ pub mod builder {
         where
             V: std::convert::TryInto<types::TypedUuidForServerRegistrationId>,
         {
-            self.server = value
-                .try_into()
-                .map_err(|_| "conversion to `TypedUuidForServerRegistrationId` for server failed".to_string());
+            self.server = value.try_into().map_err(|_| {
+                "conversion to `TypedUuidForServerRegistrationId` for server failed".to_string()
+            });
             self
         }
 
@@ -3542,8 +3759,12 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
-                400u16..=499u16 => Err(Error::ErrorResponse(ResponseValue::from_response(response).await?)),
-                500u16..=599u16 => Err(Error::ErrorResponse(ResponseValue::from_response(response).await?)),
+                400u16..=499u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                500u16..=599u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -3572,9 +3793,9 @@ pub mod builder {
         where
             V: std::convert::TryInto<::std::string::String>,
         {
-            self.service = value
-                .try_into()
-                .map_err(|_| "conversion to `:: std :: string :: String` for service failed".to_string());
+            self.service = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for service failed".to_string()
+            });
             self
         }
 
@@ -3592,15 +3813,23 @@ pub mod builder {
 
         pub fn body_map<F>(mut self, f: F) -> Self
         where
-            F: std::ops::FnOnce(types::builder::RegisterServerBody) -> types::builder::RegisterServerBody,
+            F: std::ops::FnOnce(
+                    types::builder::RegisterServerBody,
+                ) -> types::builder::RegisterServerBody,
         {
             self.body = self.body.map(f);
             self
         }
 
         /// Sends a `POST` request to `/service/{service}/register`
-        pub async fn send(self) -> Result<ResponseValue<types::RegisterServerResponse>, Error<types::Error>> {
-            let Self { client, service, body } = self;
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<types::RegisterServerResponse>, Error<types::Error>> {
+            let Self {
+                client,
+                service,
+                body,
+            } = self;
             let service = service.map_err(Error::InvalidRequest)?;
             let body = body
                 .and_then(|v| types::RegisterServerBody::try_from(v).map_err(|e| e.to_string()))
@@ -3635,8 +3864,12 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(ResponseValue::from_response(response).await?)),
-                500u16..=599u16 => Err(Error::ErrorResponse(ResponseValue::from_response(response).await?)),
+                400u16..=499u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                500u16..=599u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }

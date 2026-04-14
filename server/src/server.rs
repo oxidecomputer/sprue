@@ -11,8 +11,8 @@ use crate::{
         oidc::{prove_oidc_token_request, register_oidc_token_request},
         openid_configuration,
         service::{
-            accept_server, checkin_server, register_blob, register_server, reject_server,
-            terminate_server,
+            accept_server, checkin_server, create_service, get_service, get_service_servers,
+            prove_server, register_blob, register_server, reject_server, terminate_server,
         },
     },
 };
@@ -41,7 +41,19 @@ pub fn describe() -> ApiDescription<ApiContext> {
         .expect("Register endpoint");
 
     description
+        .register(get_service)
+        .expect("Register endpoint");
+    description
+        .register(get_service_servers)
+        .expect("Register endpoint");
+    description
+        .register(create_service)
+        .expect("Register endpoint");
+    description
         .register(accept_server)
+        .expect("Register endpoint");
+    description
+        .register(prove_server)
         .expect("Register endpoint");
     description
         .register(reject_server)

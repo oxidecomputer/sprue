@@ -1,36 +1,27 @@
-use std::{
-    collections::HashMap,
-    str::Utf8Error,
-    sync::{Arc, RwLock},
-};
-
-use attest_data::{Attestation, Log};
 use base64::{Engine, prelude::BASE64_URL_SAFE_NO_PAD as URL_SAFE_NO_PAD};
 use chrono::Utc;
-use dice_verifier::{
-    MeasurementSet, MeasurementSetError, Nonce, PkiPathSignatureVerifierError,
-    ReferenceMeasurements, VerifyAttestationError, VerifyMeasurementsError,
-};
 use jsonwebtoken::{
-    Algorithm, DecodingKey, EncodingKey, Header,
+    Algorithm, DecodingKey, EncodingKey, Header, Validation,
     jwk::{
         AlgorithmParameters, CommonParameters, Jwk, JwkSet, KeyAlgorithm, PublicKeyUse,
         RSAKeyParameters, RSAKeyType,
     },
 };
-use model::{ServerRegistrationId, ServerRegistrationInstanceId};
-use newtype_uuid::{GenericUuid, TypedUuid};
+use model::{
+    InvalidTokenRequestStateTransition, ServerRegistration, ServerRegistrationInstanceId,
+    TokenRequest, TokenRequestId,
+    db::NewTokenRequestModel,
+    storage::{StorageError, TokenRequestStorage},
+};
+use newtype_uuid::TypedUuid;
 use rsa::{RsaPublicKey, pkcs8::DecodePublicKey, traits::PublicKeyParts};
-use serde::Serialize;
-use sha2::{Digest, Sha256};
-use tap::TapFallible;
+use serde::{Deserialize, Serialize};
+use std::{ops::Add, sync::Arc, time::Duration};
 use thiserror::Error;
 use uuid::Uuid;
-use vm_attest::{QualifyingData, RotType, VmInstanceAttestation, VmInstanceConf};
-use x509_cert::{
-    Certificate,
-    der::{Decode, asn1::Utf8StringRef},
-};
+use v_api::response::{OptionalResource, ResourceError, ResourceErrorInner, ResourceResult};
+
+use crate::config::OidcConfig;
 
 #[derive(Debug, Error)]
 pub enum OidcContextError {
@@ -38,248 +29,143 @@ pub enum OidcContextError {
     DecodeJwt(#[source] jsonwebtoken::errors::Error),
     #[error("Failed to encode JWT")]
     EncodeJwt(#[source] jsonwebtoken::errors::Error),
-    #[error("Failed to deserialize")]
-    Hubpack(#[from] hubpack::Error),
     #[error("Failed to decode RSA public key")]
     InvalidKey(#[source] x509_cert::spki::Error),
-    #[error("Failed to verify measurements")]
-    InvalidMeasurements(#[from] VerifyMeasurementsError),
-    #[error("Invalid measurement set")]
-    InvalidMeasurementSet(#[from] MeasurementSetError),
     #[error("Failed to decode pem")]
     JwtKey(#[source] jsonwebtoken::errors::Error),
-    #[error("Certificate chain missing common name")]
-    MissingCommonName,
-    #[error("RoT measurement missing")]
-    MissingRotMeasurement,
-    #[error("No request found for registration id")]
-    NoRequest,
-    #[error("Failed to parse certificate from attestation chain")]
-    ParseCertificate,
-    #[error("Failed to deserialize VM data")]
-    ParseVmData(#[source] serde_json::Error),
+    #[error("Invalid state transition for token request")]
+    TokenRequestState(#[from] InvalidTokenRequestStateTransition),
+    #[error(transparent)]
+    Storage(#[from] StorageError),
     #[error("Vm uuid does not match the expected value")]
     UnexpectedVmId,
-    #[error("Failed to verify attestation")]
-    VerifyAttestation(#[from] VerifyAttestationError),
-    #[error("Failed to verify certificate chain")]
-    VerifyChain(#[from] PkiPathSignatureVerifierError),
-    #[error("Malformed VM data")]
-    VmData(#[source] Utf8Error),
-    #[error("Wrong instance id")]
-    WrongInstanceId,
 }
+
+pub trait OidcContextStorage: TokenRequestStorage {}
+impl<T: TokenRequestStorage> OidcContextStorage for T {}
 
 #[derive(Clone)]
 pub struct OidcContext {
-    root_certs: Vec<Certificate>,
-    ref_measurements: Arc<ReferenceMeasurements>,
-    requests: Arc<RwLock<HashMap<TypedUuid<ServerRegistrationId>, (TypedUuid<ServerRegistrationInstanceId>, QualifyingData)>>>,
-    jwt: Arc<OidcJwtContext>,
-    pub jwks: JwkSet,
+    storage: Arc<dyn OidcContextStorage>,
+    oidc: Arc<OidcConfig>,
+    jwks: JwkSet,
     signing_key: EncodingKey,
     verifying_key: DecodingKey,
+    validation: Validation,
 }
 
-#[derive(Clone)]
-pub struct OidcJwtContext {
-    pub kid: String,
-    pub public: String,
-    pub private: String,
-}
-
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct VmClaims {
     pub iss: String,
     pub aud: String,
-    pub sub: Uuid,
+    pub sub: TypedUuid<ServerRegistrationInstanceId>,
     pub exp: i64,
     pub nbf: i64,
     pub jti: Uuid,
 }
 
-// utility function to get common name from cert subject
-fn get_cert_cn(cert: &Certificate) -> Option<Utf8StringRef<'_>> {
-    use const_oid::db::rfc4519::COMMON_NAME;
-
-    for elm in cert.tbs_certificate.subject.0.iter() {
-        for atav in elm.0.iter() {
-            if atav.oid == COMMON_NAME {
-                return Some(
-                    Utf8StringRef::try_from(&atav.value)
-                        .expect("Decode name attribute value to UTF8 string"),
-                );
-            }
-        }
-    }
-
-    None
-}
-
 impl OidcContext {
     pub fn new(
-        root_certs: Vec<Certificate>,
-        ref_measurements: ReferenceMeasurements,
-        jwt: OidcJwtContext,
+        oidc: OidcConfig,
+        storage: Arc<dyn OidcContextStorage>,
     ) -> Result<Self, OidcContextError> {
         let jwks = JwkSet {
-            keys: vec![Self::jwk(&jwt.kid, &jwt.public)?],
+            keys: vec![Self::jwk(&oidc.kid, &oidc.public)?],
         };
+        let mut validation = Validation::new(Algorithm::RS256);
+        validation.set_audience(&[&oidc.token.audience]);
         Ok(Self {
-            root_certs,
-            ref_measurements: Arc::new(ref_measurements),
-            requests: Arc::new(RwLock::new(HashMap::new())),
+            storage,
             jwks,
-            signing_key: EncodingKey::from_rsa_pem(jwt.private.as_bytes())
+            signing_key: EncodingKey::from_rsa_pem(oidc.private.as_bytes())
                 .map_err(OidcContextError::JwtKey)?,
-            verifying_key: DecodingKey::from_rsa_pem(jwt.public.as_bytes())
+            verifying_key: DecodingKey::from_rsa_pem(oidc.public.as_bytes())
                 .map_err(OidcContextError::JwtKey)?,
-            jwt: Arc::new(jwt),
+            oidc: Arc::new(oidc),
+            validation,
         })
     }
 
-    pub fn store_nonce(
+    pub async fn register_token_request(
         &self,
-        registration_id: TypedUuid<ServerRegistrationId>,
-        instance_id: TypedUuid<ServerRegistrationInstanceId>,
-        nonce: QualifyingData,
-    ) {
-        let mut requests = self.requests.write().unwrap();
-        requests.insert(registration_id, (instance_id, nonce));
+        server: ServerRegistration,
+        nonce: String,
+    ) -> ResourceResult<TokenRequest, OidcContextError> {
+        Ok(self
+            .storage
+            .create_token_request(&NewTokenRequestModel {
+                server_registration_id: server.id,
+                nonce: Some(nonce),
+                expires_at: Some(Utc::now().add(Duration::from_secs(
+                    self.oidc.token.max_token_request_duration,
+                ))),
+            })
+            .await
+            .map_err(ResourceError::InternalError)
+            .inner_err_into()?
+            .into())
     }
 
-    pub fn exchange_platform_attestation(
+    pub async fn get_token_request(
         &self,
-        attestation: &VmInstanceAttestation,
-        registration_id: TypedUuid<ServerRegistrationId>,
-    ) -> Result<Option<String>, OidcContextError> {
-        let qualifying_data = self.requests.write().unwrap().remove(&registration_id);
-        if qualifying_data.is_none() {
-            return Err(OidcContextError::NoRequest);
-        }
-        let (instance_id, qualifying_data) = qualifying_data.unwrap();
-
-        tracing::info!(?instance_id, ?qualifying_data, "Retrieved instance id and qualifying data for registration");
-        tracing::info!(?attestation, "Testing attestation");
-
-        let mut cert_chain_pem = Vec::new();
-        for cert in &attestation.cert_chain {
-            cert_chain_pem.push(Certificate::from_der(cert).map_err(|err| {
-                tracing::info!(?err, "Failed to parse attestation certificate");
-                OidcContextError::ParseCertificate
-            })?);
-        }
-        let cert_chain_pem = cert_chain_pem;
-        let verified_root =
-            dice_verifier::verify_cert_chain(&cert_chain_pem, Some(&self.root_certs))?;
-
-        tracing::info!(?verified_root, "Verified cert chain");
-
-        let common_name = get_cert_cn(verified_root).ok_or(OidcContextError::MissingCommonName)?;
-        tracing::info!(?common_name, "Verified cert chain");
-
-        // The qualifying data provided to this function must be the qualifying
-        // data passed from the vm instance down to the vm instance RoT. This means
-        // the nonce generated by the challenger / appraiser has already been
-        // combined with the data produced by the vm instance.
-        //
-        // So we must calculate the qualifying data produced by the vm instance
-        // RoT by combining the provided qualifying data w/ the serialized log
-        // for the vm instance:
-        let mut qdata = Sha256::new();
-        for log in &attestation.measurement_logs {
-            match log.rot {
-                RotType::OxideInstance => qdata.update(&log.data),
-                _ => continue,
-            }
-        }
-        qdata.update(qualifying_data);
-
-        // smuggle this data into the `verify_attestation` function in the
-        // `attest_data::Nonce` type
-        let qualifying_data = Nonce::N32(attest_data::Array(qdata.finalize().into()));
-
-        // get the log from the Oxide platform RoT
-        let oxlog = attestation
-            .measurement_logs
-            .iter()
-            .find(|&log| log.rot == RotType::OxidePlatform);
-
-        tracing::info!(?oxlog, "Found Oxide platform log");
-
-        // put log in the form expected by the `verify_attestation` function
-        let (log, _): (Log, _) = if let Some(oxlog) = oxlog {
-            hubpack::deserialize(&oxlog.data)
-                .tap_err(|err| tracing::error!(?err, "Failed to deserialize RoT measurement"))?
-        } else {
-            return Err(OidcContextError::MissingRotMeasurement);
-        };
-
-        tracing::info!(?log, "Deserialized log");
-
-        let (ox_attest, _): (Attestation, _) = hubpack::deserialize(&attestation.attestation)?;
-
-        tracing::info!(?ox_attest, "Deserialized attestation");
-
-        dice_verifier::verify_attestation(&cert_chain_pem[0], &ox_attest, &log, &qualifying_data)?;
-
-        tracing::info!("Verified attestation");
-
-        let mut vm_uuid = None;
-
-        // appraise logs
-        for log in &attestation.measurement_logs {
-            match log.rot {
-                RotType::OxidePlatform => {
-                    // use dice-verifier crate to use the RIMs to appraise the
-                    // log from the OxidePlatform RoT
-                    let (log, _): (Log, _) = hubpack::deserialize(&log.data)?;
-                    let measurements = MeasurementSet::from_artifacts(&cert_chain_pem, &log)?;
-
-                    dice_verifier::verify_measurements(&measurements, &self.ref_measurements)?;
-
-                    tracing::info!(?log, ?measurements, "Verified Oxide platform measurements");
-                }
-                RotType::OxideInstance => {
-                    // compare log / config description from the OxideInstance
-                    // RoT to the reference from the config reference
-                    let instance_cfg =
-                        str::from_utf8(&log.data).map_err(OidcContextError::VmData)?;
-                    let instance_cfg: VmInstanceConf = serde_json::from_str(instance_cfg)
-                        .map_err(OidcContextError::ParseVmData)?;
-
-                    tracing::info!(?instance_cfg, "Validating instance cfg");
-
-                    // Verify that the uuid of the instance in the attestation matches the uuid of
-                    // the instance requesting the token
-                    if instance_cfg.uuid != instance_id.into_untyped_uuid() {
-                        return Err(OidcContextError::WrongInstanceId);
-                    }
-
-                    tracing::info!(instance_id = ?instance_id.into_untyped_uuid(), ?instance_cfg.uuid, "Verified instance id in vm instance config matches registered server");
-                    vm_uuid = Some(instance_cfg.uuid);
-                }
-            }
-        }
-
-        Ok(vm_uuid.map(|id| self.create_jwt(id)).transpose()?)
+        id: TypedUuid<TokenRequestId>,
+    ) -> ResourceResult<TokenRequest, OidcContextError> {
+        Ok(self.storage.get_token_request(id).await.optional()?.into())
     }
 
-    fn create_jwt(&self, vm: Uuid) -> Result<String, OidcContextError> {
+    pub async fn generate_token(
+        &self,
+        server: &ServerRegistration,
+        token_request: TokenRequest,
+    ) -> ResourceResult<String, OidcContextError> {
+        self.storage
+            .update_token_request_state(
+                token_request.id,
+                token_request.state,
+                token_request
+                    .state
+                    .consume()
+                    .map_err(ResourceError::InternalError)
+                    .inner_err_into()?,
+            )
+            .await
+            .map_err(ResourceError::InternalError)
+            .inner_err_into()?;
+        self.create_jwt(server.instance_id)
+    }
+
+    pub fn validate_token(
+        &self,
+        token: &str,
+    ) -> Result<TypedUuid<ServerRegistrationInstanceId>, OidcContextError> {
+        let claims = jsonwebtoken::decode::<VmClaims>(token, &self.verifying_key, &self.validation)
+            .map_err(|err| OidcContextError::DecodeJwt(err))?;
+        Ok(claims.claims.sub)
+    }
+
+    fn create_jwt(
+        &self,
+        server: TypedUuid<ServerRegistrationInstanceId>,
+    ) -> ResourceResult<String, OidcContextError> {
         let mut header = Header::new(Algorithm::RS256);
-        header.kid = Some(self.jwt.kid.clone());
+        header.kid = Some(self.oidc.kid.clone());
 
         let claims = VmClaims {
-            iss: "vm-attest-oidc".to_string(),
-            aud: format!("vm-attest-oidc/{}", vm),
-            sub: vm,
-            exp: Utc::now().timestamp() + 3600,
+            iss: self.oidc.token.issuer.to_string(),
+            aud: self.oidc.token.audience.to_string(),
+            sub: server,
+            exp: Utc::now().timestamp() + (self.oidc.token.token_lifetime as i64),
             nbf: Utc::now().timestamp(),
             jti: Uuid::new_v4(),
         };
 
         Ok(jsonwebtoken::encode(&header, &claims, &self.signing_key)
-            .map_err(OidcContextError::EncodeJwt)?)
+            .map_err(OidcContextError::EncodeJwt)
+            .map_err(ResourceError::InternalError)?)
+    }
+
+    pub fn jwks(&self) -> &JwkSet {
+        &self.jwks
     }
 
     fn jwk(kid: &str, public_key_pem: &str) -> Result<Jwk, OidcContextError> {

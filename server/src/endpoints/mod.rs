@@ -48,7 +48,7 @@ pub struct Jwk {
 pub async fn jwks_json(
     rqctx: RequestContext<ApiContext>,
 ) -> Result<HttpResponseOk<Jwks>, HttpError> {
-    Ok(HttpResponseOk((&rqctx.context().oidc.jwks).into()))
+    Ok(HttpResponseOk((rqctx.context().oidc.jwks()).into()))
 }
 
 impl From<&JwkSet> for Jwks {

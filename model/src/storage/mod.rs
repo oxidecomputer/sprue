@@ -4,12 +4,13 @@ use newtype_uuid::TypedUuid;
 
 use crate::db::{
     BlobModel, HealthCheckModel, IdempotentRequestModel, NewBlobModel, NewHealthCheckModel,
-    NewIdempotentRequestModel, NewServerRegistrationModel, NewServiceModel,
-    ServerRegistrationModel, ServiceModel,
+    NewIdempotentRequestModel, NewServerRegistrationModel, NewServiceModel, NewTokenRequestModel,
+    ServerRegistrationModel, ServiceModel, TokenRequestModel,
 };
 use crate::{
     BlobId, BlobState, IdempotentRequestId, IdempotentRequestState, ServerRegistrationId,
-    ServerRegistrationInstanceId, ServerRegistrationState, ServiceId,
+    ServerRegistrationInstanceId, ServerRegistrationState, ServiceId, TokenRequestId,
+    TokenRequestState,
 };
 
 pub mod postgres;
@@ -47,6 +48,14 @@ pub enum StorageError {
         expected: IdempotentRequestState,
     },
 
+    #[error(
+        "Invalid state transition for token request {token_request_id}: expected state {expected:?}"
+    )]
+    InvalidTokenRequestStateTransition {
+        token_request_id: TypedUuid<TokenRequestId>,
+        expected: TokenRequestState,
+    },
+
     #[error("Internal error: {0}")]
     Internal(String),
 }
@@ -71,6 +80,13 @@ pub struct ServerRegistrationStateTransition {
 #[derive(Debug, Clone)]
 pub struct IdempotentRequestStateTransition {
     pub state: IdempotentRequestState,
+    pub created_at: DateTime<Utc>,
+}
+
+/// Represents a state transition for a token request
+#[derive(Debug, Clone)]
+pub struct TokenRequestStateTransition {
+    pub state: TokenRequestState,
     pub created_at: DateTime<Utc>,
 }
 
@@ -257,6 +273,54 @@ pub trait IdempotentRequestStorage: Send + Sync {
     async fn delete_expired_requests(&self) -> StorageResult<u64>;
 }
 
+/// Storage interface for token request operations
+#[async_trait]
+pub trait TokenRequestStorage: Send + Sync {
+    /// Create a new token request
+    /// The request is created with Pending state
+    async fn create_token_request(
+        &self,
+        request: &NewTokenRequestModel,
+    ) -> StorageResult<TokenRequestModel>;
+
+    /// Get a token request by ID
+    /// Returns None if the request does not exist
+    async fn get_token_request(
+        &self,
+        id: TypedUuid<TokenRequestId>,
+    ) -> StorageResult<Option<TokenRequestModel>>;
+
+    /// List all token requests for a server registration
+    async fn list_token_requests_by_server_registration(
+        &self,
+        server_registration_id: TypedUuid<ServerRegistrationId>,
+    ) -> StorageResult<Vec<TokenRequestModel>>;
+
+    /// Update token request state (atomic, creates a new state transition record)
+    /// Only succeeds if from_state matches the current state
+    /// Returns None if the request does not exist
+    async fn update_token_request_state(
+        &self,
+        id: TypedUuid<TokenRequestId>,
+        from_state: TokenRequestState,
+        to_state: TokenRequestState,
+    ) -> StorageResult<Option<()>>;
+
+    /// Get all state transitions for a token request (ordered by creation time)
+    /// Returns None if the request does not exist
+    async fn get_token_request_state_history(
+        &self,
+        id: TypedUuid<TokenRequestId>,
+    ) -> StorageResult<Option<Vec<TokenRequestStateTransition>>>;
+
+    /// Delete a token request
+    /// Returns None if the request does not exist
+    async fn delete_token_request(
+        &self,
+        id: TypedUuid<TokenRequestId>,
+    ) -> StorageResult<Option<()>>;
+}
+
 /// Combined storage interface
 #[async_trait]
 pub trait Storage:
@@ -265,6 +329,7 @@ pub trait Storage:
     + BlobStorage
     + HealthCheckStorage
     + IdempotentRequestStorage
+    + TokenRequestStorage
     + Send
     + Sync
 {

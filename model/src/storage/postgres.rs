@@ -6,16 +6,17 @@ use sqlx::{PgPool, Row};
 use super::{
     BlobStateTransition, BlobStorage, HealthCheckStorage, IdempotentRequestStorage,
     ServerRegistrationStateTransition, ServerRegistrationStorage, ServiceStorage, Storage,
-    StorageError, StorageResult,
+    StorageError, StorageResult, TokenRequestStateTransition, TokenRequestStorage,
 };
 use crate::db::{
     BlobModel, HealthCheckModel, IdempotentRequestModel, NewBlobModel, NewHealthCheckModel,
-    NewIdempotentRequestModel, NewServerRegistrationModel, NewServiceModel,
-    ServerRegistrationModel, ServiceModel,
+    NewIdempotentRequestModel, NewServerRegistrationModel, NewServiceModel, NewTokenRequestModel,
+    ServerRegistrationModel, ServiceModel, TokenRequestModel,
 };
 use crate::{
     BlobId, BlobState, IdempotentRequestId, IdempotentRequestState, ServerRegistrationId,
-    ServerRegistrationInstanceId, ServerRegistrationState, ServiceId,
+    ServerRegistrationInstanceId, ServerRegistrationState, ServiceId, TokenRequestId,
+    TokenRequestState,
 };
 
 /// PostgreSQL storage implementation
@@ -183,13 +184,15 @@ impl ServerRegistrationStorage for PostgresStorage {
         // Insert the server registration record
         let row = sqlx::query(
             r#"
-            INSERT INTO server_registration (service_id, instance_id, created_at, updated_at)
-            VALUES ($1, $2, $3, $4)
-            RETURNING id, service_id, instance_id, created_at, updated_at
+            INSERT INTO server_registration (service_id, instance_id, nonce, expires_at, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING id, service_id, instance_id, nonce, expires_at, created_at, updated_at
             "#,
         )
         .bind(registration.service_id.as_untyped_uuid())
         .bind(registration.instance_id.as_untyped_uuid())
+        .bind(registration.nonce.as_deref().unwrap_or_default())
+        .bind(registration.expires_at)
         .bind(now)
         .bind(now)
         .fetch_one(&mut *tx)
@@ -228,6 +231,8 @@ impl ServerRegistrationStorage for PostgresStorage {
             id: registration_id,
             service_id: TypedUuid::from_untyped_uuid(service_id_uuid),
             instance_id: TypedUuid::from_untyped_uuid(instance_id_uuid),
+            nonce: row.try_get("nonce")?,
+            expires_at: row.try_get("expires_at")?,
             state: pending_state,
             created_at: row.try_get("created_at")?,
             updated_at: row.try_get("updated_at")?,
@@ -240,7 +245,7 @@ impl ServerRegistrationStorage for PostgresStorage {
     ) -> StorageResult<Option<ServerRegistrationModel>> {
         let row = sqlx::query(
             r#"
-            SELECT sr.id, sr.service_id, sr.instance_id, sr.created_at, sr.updated_at, srs.state
+            SELECT sr.id, sr.service_id, sr.instance_id, sr.nonce, sr.expires_at, sr.created_at, sr.updated_at, srs.state
             FROM server_registration sr
             JOIN server_registration_state srs ON srs.server_registration_id = sr.id
             WHERE sr.id = $1
@@ -270,6 +275,8 @@ impl ServerRegistrationStorage for PostgresStorage {
                     id: TypedUuid::from_untyped_uuid(id_uuid),
                     service_id: TypedUuid::from_untyped_uuid(service_id_uuid),
                     instance_id: TypedUuid::from_untyped_uuid(instance_id_uuid),
+                    nonce: row.try_get("nonce")?,
+                    expires_at: row.try_get("expires_at")?,
                     state,
                     created_at: row.try_get("created_at")?,
                     updated_at: row.try_get("updated_at")?,
@@ -285,7 +292,7 @@ impl ServerRegistrationStorage for PostgresStorage {
     ) -> StorageResult<Option<ServerRegistrationModel>> {
         let row = sqlx::query(
             r#"
-            SELECT sr.id, sr.service_id, sr.instance_id, sr.created_at, sr.updated_at, srs.state
+            SELECT sr.id, sr.service_id, sr.instance_id, sr.nonce, sr.expires_at, sr.created_at, sr.updated_at, srs.state
             FROM server_registration sr
             JOIN server_registration_state srs ON srs.server_registration_id = sr.id
             WHERE sr.instance_id = $1
@@ -315,6 +322,8 @@ impl ServerRegistrationStorage for PostgresStorage {
                     id: TypedUuid::from_untyped_uuid(id_uuid),
                     service_id: TypedUuid::from_untyped_uuid(service_id_uuid),
                     instance_id: TypedUuid::from_untyped_uuid(instance_id_uuid),
+                    nonce: row.try_get("nonce")?,
+                    expires_at: row.try_get("expires_at")?,
                     state,
                     created_at: row.try_get("created_at")?,
                     updated_at: row.try_get("updated_at")?,
@@ -330,7 +339,7 @@ impl ServerRegistrationStorage for PostgresStorage {
     ) -> StorageResult<Vec<ServerRegistrationModel>> {
         let rows = sqlx::query(
             r#"
-            SELECT DISTINCT ON (sr.id) sr.id, sr.service_id, sr.instance_id, sr.created_at, sr.updated_at, srs.state
+            SELECT DISTINCT ON (sr.id) sr.id, sr.service_id, sr.instance_id, sr.nonce, sr.expires_at, sr.created_at, sr.updated_at, srs.state
             FROM server_registration sr
             JOIN server_registration_state srs ON srs.server_registration_id = sr.id
             WHERE sr.service_id = $1
@@ -360,6 +369,8 @@ impl ServerRegistrationStorage for PostgresStorage {
                     id: TypedUuid::from_untyped_uuid(id_uuid),
                     service_id: TypedUuid::from_untyped_uuid(service_id_uuid),
                     instance_id: TypedUuid::from_untyped_uuid(instance_id_uuid),
+                    nonce: row.try_get("nonce")?,
+                    expires_at: row.try_get("expires_at")?,
                     state,
                     created_at: row.try_get("created_at")?,
                     updated_at: row.try_get("updated_at")?,
@@ -376,7 +387,6 @@ impl ServerRegistrationStorage for PostgresStorage {
         from_state: ServerRegistrationState,
         to_state: ServerRegistrationState,
     ) -> StorageResult<Option<()>> {
-        let now = Utc::now();
         let from_state_json = serde_json::to_value(&from_state).map_err(|e| {
             StorageError::Internal(format!("Failed to serialize from_state: {}", e))
         })?;
@@ -420,17 +430,21 @@ impl ServerRegistrationStorage for PostgresStorage {
         )
         .bind(id.as_untyped_uuid())
         .bind(&to_state_json)
-        .bind(now)
+        .bind(Utc::now())
         .execute(&mut *tx)
         .await?;
 
-        // Update server_registration updated_at
+        // Any update to a server registration will mean blanking out the nonce. The only cases
+        // where a value will be present are when the the previous state is Pending and we are
+        // transitioning to Proven, Rejected, or Terminated. In each of those cases we no longer
+        // want to be storing the nonce. Once a request has been proven, rejected, or terminated,
+        // the request is no longer active and we can also clear out the expiration time.
         sqlx::query(
             r#"
-            UPDATE server_registration SET updated_at = $1 WHERE id = $2
+            UPDATE server_registration SET nonce = null, expires_at = null, updated_at = $1 WHERE id = $2
             "#,
         )
-        .bind(now)
+        .bind(Utc::now())
         .bind(id.as_untyped_uuid())
         .execute(&mut *tx)
         .await?;
@@ -1174,6 +1188,298 @@ impl IdempotentRequestStorage for PostgresStorage {
         .await?;
 
         Ok(result.rows_affected())
+    }
+}
+
+#[async_trait]
+impl TokenRequestStorage for PostgresStorage {
+    async fn create_token_request(
+        &self,
+        request: &NewTokenRequestModel,
+    ) -> StorageResult<TokenRequestModel> {
+        let now = Utc::now();
+        let pending_state = TokenRequestState::Pending;
+        let state_json = serde_json::to_value(&pending_state).map_err(|e| {
+            StorageError::Internal(format!("Failed to serialize token request state: {}", e))
+        })?;
+
+        let mut tx = self.pool.begin().await?;
+
+        // Insert the token request record
+        let row = sqlx::query(
+            r#"
+            INSERT INTO token_request (server_registration_id, nonce, expires_at, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING id, server_registration_id, nonce, expires_at, created_at, updated_at
+            "#,
+        )
+        .bind(request.server_registration_id.as_untyped_uuid())
+        .bind(request.nonce.as_deref().unwrap_or_default())
+        .bind(request.expires_at)
+        .bind(now)
+        .bind(now)
+        .fetch_one(&mut *tx)
+        .await?;
+
+        let id_uuid: sqlx::types::Uuid = row.try_get("id")?;
+        let token_request_id = TypedUuid::from_untyped_uuid(id_uuid);
+
+        // Insert initial Pending state into token_request_state table
+        sqlx::query(
+            r#"
+            INSERT INTO token_request_state (token_request_id, state, created_at)
+            VALUES ($1, $2, $3)
+            "#,
+        )
+        .bind(token_request_id.as_untyped_uuid())
+        .bind(&state_json)
+        .bind(now)
+        .execute(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
+
+        let server_registration_id_uuid: sqlx::types::Uuid =
+            row.try_get("server_registration_id")?;
+        Ok(TokenRequestModel {
+            id: token_request_id,
+            server_registration_id: TypedUuid::from_untyped_uuid(server_registration_id_uuid),
+            nonce: row.try_get("nonce")?,
+            expires_at: row.try_get("expires_at")?,
+            state: pending_state,
+            created_at: row.try_get("created_at")?,
+            updated_at: row.try_get("updated_at")?,
+        })
+    }
+
+    async fn get_token_request(
+        &self,
+        id: TypedUuid<TokenRequestId>,
+    ) -> StorageResult<Option<TokenRequestModel>> {
+        let row = sqlx::query(
+            r#"
+            SELECT tr.id, tr.server_registration_id, tr.nonce, tr.expires_at, tr.created_at, tr.updated_at, trs.state
+            FROM token_request tr
+            JOIN token_request_state trs ON trs.token_request_id = tr.id
+            WHERE tr.id = $1
+            ORDER BY trs.created_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(id.as_untyped_uuid())
+        .fetch_optional(&self.pool)
+        .await?;
+
+        match row {
+            Some(row) => {
+                let id_uuid: sqlx::types::Uuid = row.try_get("id")?;
+                let server_registration_id_uuid: sqlx::types::Uuid =
+                    row.try_get("server_registration_id")?;
+                let state_json: serde_json::Value = row.try_get("state")?;
+                let state: TokenRequestState = serde_json::from_value(state_json).map_err(|e| {
+                    StorageError::Internal(format!(
+                        "Failed to deserialize token request state: {}",
+                        e
+                    ))
+                })?;
+
+                Ok(Some(TokenRequestModel {
+                    id: TypedUuid::from_untyped_uuid(id_uuid),
+                    server_registration_id: TypedUuid::from_untyped_uuid(
+                        server_registration_id_uuid,
+                    ),
+                    nonce: row.try_get("nonce")?,
+                    expires_at: row.try_get("expires_at")?,
+                    state,
+                    created_at: row.try_get("created_at")?,
+                    updated_at: row.try_get("updated_at")?,
+                }))
+            }
+            None => Ok(None),
+        }
+    }
+
+    async fn list_token_requests_by_server_registration(
+        &self,
+        server_registration_id: TypedUuid<ServerRegistrationId>,
+    ) -> StorageResult<Vec<TokenRequestModel>> {
+        let rows = sqlx::query(
+            r#"
+            SELECT DISTINCT ON (tr.id) tr.id, tr.server_registration_id, tr.nonce, tr.expires_at, tr.created_at, tr.updated_at, trs.state
+            FROM token_request tr
+            JOIN token_request_state trs ON trs.token_request_id = tr.id
+            WHERE tr.server_registration_id = $1
+            ORDER BY tr.id, trs.created_at DESC
+            "#,
+        )
+        .bind(server_registration_id.as_untyped_uuid())
+        .fetch_all(&self.pool)
+        .await?;
+
+        let requests = rows
+            .iter()
+            .map(|row| {
+                let id_uuid: sqlx::types::Uuid = row.try_get("id")?;
+                let server_registration_id_uuid: sqlx::types::Uuid =
+                    row.try_get("server_registration_id")?;
+                let state_json: serde_json::Value = row.try_get("state")?;
+                let state: TokenRequestState = serde_json::from_value(state_json).map_err(|e| {
+                    sqlx::Error::Decode(Box::new(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        format!("Failed to deserialize token request state: {}", e),
+                    )))
+                })?;
+
+                Ok(TokenRequestModel {
+                    id: TypedUuid::from_untyped_uuid(id_uuid),
+                    server_registration_id: TypedUuid::from_untyped_uuid(
+                        server_registration_id_uuid,
+                    ),
+                    nonce: row.try_get("nonce")?,
+                    expires_at: row.try_get("expires_at")?,
+                    state,
+                    created_at: row.try_get("created_at")?,
+                    updated_at: row.try_get("updated_at")?,
+                })
+            })
+            .collect::<Result<Vec<_>, sqlx::Error>>()?;
+
+        Ok(requests)
+    }
+
+    async fn update_token_request_state(
+        &self,
+        id: TypedUuid<TokenRequestId>,
+        from_state: TokenRequestState,
+        to_state: TokenRequestState,
+    ) -> StorageResult<Option<()>> {
+        let now = Utc::now();
+        let from_state_json = serde_json::to_value(&from_state).map_err(|e| {
+            StorageError::Internal(format!("Failed to serialize from_state: {}", e))
+        })?;
+        let to_state_json = serde_json::to_value(&to_state)
+            .map_err(|e| StorageError::Internal(format!("Failed to serialize to_state: {}", e)))?;
+
+        let mut tx = self.pool.begin().await?;
+
+        // Check current state matches from_state
+        let current_state_row = sqlx::query(
+            r#"
+            SELECT state FROM token_request_state
+            WHERE token_request_id = $1
+            ORDER BY created_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(id.as_untyped_uuid())
+        .fetch_optional(&mut *tx)
+        .await?;
+
+        match current_state_row {
+            Some(row) => {
+                let current_state_json: serde_json::Value = row.try_get("state")?;
+                if current_state_json != from_state_json {
+                    return Err(StorageError::InvalidTokenRequestStateTransition {
+                        token_request_id: id,
+                        expected: from_state,
+                    });
+                }
+            }
+            None => return Ok(None),
+        }
+
+        // Insert new state
+        sqlx::query(
+            r#"
+            INSERT INTO token_request_state (token_request_id, state, created_at)
+            VALUES ($1, $2, $3)
+            "#,
+        )
+        .bind(id.as_untyped_uuid())
+        .bind(&to_state_json)
+        .bind(now)
+        .execute(&mut *tx)
+        .await?;
+
+        // Any update to a token request will mean blanking out the nonce. The only cases
+        // where a value will be present are when the previous state is Pending and we are
+        // transitioning to Proven, Rejected, or Terminated. In each of those cases we no longer
+        // want to be storing the nonce. Once a request has been proven, rejected, or terminated,
+        // the request is no longer active and we can also clear out the expiration time.
+        sqlx::query(
+            r#"
+            UPDATE token_request SET nonce = null, expires_at = null, updated_at = $1 WHERE id = $2
+            "#,
+        )
+        .bind(now)
+        .bind(id.as_untyped_uuid())
+        .execute(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
+
+        Ok(Some(()))
+    }
+
+    async fn get_token_request_state_history(
+        &self,
+        id: TypedUuid<TokenRequestId>,
+    ) -> StorageResult<Option<Vec<TokenRequestStateTransition>>> {
+        let rows = sqlx::query(
+            r#"
+            SELECT state, created_at
+            FROM token_request_state
+            WHERE token_request_id = $1
+            ORDER BY created_at ASC
+            "#,
+        )
+        .bind(id.as_untyped_uuid())
+        .fetch_all(&self.pool)
+        .await?;
+
+        if rows.is_empty() {
+            return Ok(None);
+        }
+
+        let transitions = rows
+            .iter()
+            .map(|row| {
+                let state_json: serde_json::Value = row.try_get("state")?;
+                let state: TokenRequestState = serde_json::from_value(state_json).map_err(|e| {
+                    sqlx::Error::Decode(Box::new(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        format!("Failed to deserialize token request state: {}", e),
+                    )))
+                })?;
+                Ok(TokenRequestStateTransition {
+                    state,
+                    created_at: row.try_get("created_at")?,
+                })
+            })
+            .collect::<Result<Vec<_>, sqlx::Error>>()?;
+
+        Ok(Some(transitions))
+    }
+
+    async fn delete_token_request(
+        &self,
+        id: TypedUuid<TokenRequestId>,
+    ) -> StorageResult<Option<()>> {
+        let result = sqlx::query(
+            r#"
+            DELETE FROM token_request
+            WHERE id = $1
+            "#,
+        )
+        .bind(id.as_untyped_uuid())
+        .execute(&self.pool)
+        .await?;
+
+        if result.rows_affected() == 0 {
+            return Ok(None);
+        }
+
+        Ok(Some(()))
     }
 }
 

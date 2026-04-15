@@ -12,10 +12,12 @@ chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4.5.60", features = ["derive", "string"] }
 config = { version = "0.15", features = ["toml"] }
 const-oid = { version = "0.9.5", features = ["db"] }
+derive_builder = "0.20.2"
 dice-verifier = { git = "https://github.com/oxidecomputer/dice-util" }
 dropshot = "0.17"
 futures = "0.3"
 hex = "0.4.3"
+http = "1.4.0"
 hubpack = "0.1.2"
 jsonwebtoken = "10.3.0"
 newline-converter = "0.3.0"
@@ -46,11 +48,11 @@ tracing-appender = "0.2.4"
 tracing-slog = { git = "https://github.com/oxidecomputer/tracing-slog", default-features = false }
 tracing-subscriber = { version = "0.3.22", features = ["env-filter", "json"] }
 uuid = { version = "1", features = ["serde"] }
-v-api = { git = "https://github.com/oxidecomputer/v-api", tag = "v0.3.0-alpha.3" }
-v-api-installer = { git = "https://github.com/oxidecomputer/v-api", tag = "v0.3.0-alpha.3" }
-v-api-param = { git = "https://github.com/oxidecomputer/v-api", tag = "v0.3.0-alpha.3" }
-v-api-permission-derive = { git = "https://github.com/oxidecomputer/v-api", tag = "v0.3.0-alpha.3" }
-v-model = { git = "https://github.com/oxidecomputer/v-api", tag = "v0.3.0-alpha.3" }
+v-api = { git = "https://github.com/oxidecomputer/v-api", tag = "v0.3.0-alpha.4" }
+v-api-installer = { git = "https://github.com/oxidecomputer/v-api", tag = "v0.3.0-alpha.4" }
+v-api-param = { git = "https://github.com/oxidecomputer/v-api", tag = "v0.3.0-alpha.4" }
+v-api-permission-derive = { git = "https://github.com/oxidecomputer/v-api", tag = "v0.3.0-alpha.4" }
+v-model = { git = "https://github.com/oxidecomputer/v-api", tag = "v0.3.0-alpha.4" }
 vm-attest = { git = "https://github.com/oxidecomputer/vm-attest" }
 lib-vsock = { package = "vsock", version = "0.5.3" }
 x509-cert = "0.2.5"

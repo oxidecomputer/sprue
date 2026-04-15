@@ -118,7 +118,7 @@ async fn run_server(config: ServerConfig, node_id: Uuid) -> anyhow::Result<()> {
         slog::Logger::root(async_drain, slog::o!("node" => node_id.to_string()))
     };
 
-    let server = create_server(config, params_base_path, slog_logger)?;
+    let server = create_server(config, params_base_path, slog_logger).await?;
     let _ = server.start().await.tap_err(|err| {
         tracing::error!(?err, "Server exited unexpectedly");
     });

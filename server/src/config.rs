@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use config::{Config, ConfigError, Environment, File};
 use serde::Deserialize;
 use tap::TapFallible;
-use v_api::config::{ServerLogFormat, SpecConfig};
+use v_api::config::{JwtConfig, ServerLogFormat, SpecConfig};
 use v_api_param::StringParam;
 
 #[derive(Debug, Deserialize)]
@@ -13,6 +13,7 @@ pub struct ServerConfig {
     pub spec: Option<SpecConfig>,
     pub database_url: StringParam,
     pub public_url: String,
+    pub jwt: JwtConfig,
     pub vm_identity: VmIdentityConfig,
     pub oidc: OidcConfig,
 }

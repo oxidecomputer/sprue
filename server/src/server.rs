@@ -1,20 +1,18 @@
-use std::net::SocketAddr;
-
 use dropshot::{ApiDescription, BuildError, HttpServerStarter};
 use slog::Logger;
+use std::net::SocketAddr;
 
 use crate::{
     context::ApiContext,
     endpoints::{
         blob::{cancel_blob_upload, complete_blob_upload, reset_blob_upload, write_blob_upload},
-        jwks_json,
         oidc::{prove_oidc_token_request, register_oidc_token_request},
-        openid_configuration,
         service::{
             accept_server, checkin_server, create_service, get_service, get_service_servers,
             prove_server, register_blob, register_server, reject_server, terminate_server,
         },
     },
+    permissions::ApiPermissions,
 };
 
 pub(crate) fn server(
@@ -33,8 +31,12 @@ pub(crate) fn server(
     Ok(server)
 }
 
+v_api::v_system_endpoints!(ApiContext, ApiPermissions);
+
 pub fn describe() -> ApiDescription<ApiContext> {
     let mut description = ApiDescription::new();
+
+    v_api::inject_endpoints!(description);
 
     description
         .register(register_server)
@@ -87,11 +89,6 @@ pub fn describe() -> ApiDescription<ApiContext> {
     description
         .register(prove_oidc_token_request)
         .expect("Register endpoint");
-
-    description
-        .register(openid_configuration)
-        .expect("Register endpoint");
-    description.register(jwks_json).expect("Register endpoint");
 
     description
 }

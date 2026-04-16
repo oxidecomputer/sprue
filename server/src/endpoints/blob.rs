@@ -27,11 +27,13 @@ pub async fn write_blob_upload(
     body: StreamingBody,
 ) -> Result<HttpResponseUpdatedNoContent, HttpError> {
     let ctx = rqctx.context();
+    let caller = ctx.get_server_caller(&rqctx).await?;
     let path = path.into_inner();
 
-    ctx.blob.start_blob_upload(path.blob).await?;
+    ctx.blob.start_blob_upload(&caller, path.blob).await?;
+    let blob = ctx.blob.get_blob(&caller, path.blob).await?;
 
-    let mut writer = ctx.blob.writer(path.blob);
+    let mut writer = ctx.blob.local_writer(&caller, blob).await?;
     let stream = body.into_stream();
     tokio::pin!(stream);
 
@@ -61,9 +63,9 @@ pub async fn reset_blob_upload(
     path: Path<BlobPath>,
 ) -> Result<HttpResponseUpdatedNoContent, HttpError> {
     let ctx = rqctx.context();
+    let caller = ctx.get_server_caller(&rqctx).await?;
     let path = path.into_inner();
-    let mut blob = ctx.blob.resource(path.blob);
-    ctx.blob.reset_blob_upload(&mut blob).await?;
+    ctx.blob.reset_blob_upload(&caller, path.blob).await?;
     Ok(HttpResponseUpdatedNoContent())
 }
 
@@ -77,8 +79,9 @@ pub async fn complete_blob_upload(
     path: Path<BlobPath>,
 ) -> Result<HttpResponseUpdatedNoContent, HttpError> {
     let ctx = rqctx.context();
+    let caller = ctx.get_server_caller(&rqctx).await?;
     let path = path.into_inner();
-    ctx.blob.complete_blob_upload(path.blob).await?;
+    ctx.blob.complete_blob_upload(&caller, path.blob).await?;
     Ok(HttpResponseUpdatedNoContent())
 }
 
@@ -93,7 +96,8 @@ pub async fn cancel_blob_upload(
     path: Path<BlobPath>,
 ) -> Result<HttpResponseUpdatedNoContent, HttpError> {
     let ctx = rqctx.context();
+    let caller = ctx.get_server_caller(&rqctx).await?;
     let path = path.into_inner();
-    ctx.blob.cancel_blob_upload(path.blob).await?;
+    ctx.blob.cancel_blob_upload(&caller, path.blob).await?;
     Ok(HttpResponseUpdatedNoContent())
 }

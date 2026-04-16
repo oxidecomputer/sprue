@@ -552,12 +552,13 @@ impl BlobStorage for PostgresStorage {
         // Insert the blob record
         let row = sqlx::query(
             r#"
-            INSERT INTO blob (service_id, blob_time, size, total_size, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6)
-            RETURNING id, service_id, blob_time, size, total_size, created_at, updated_at
+            INSERT INTO blob (service_id, server_registration_id, blob_time, size, total_size, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            RETURNING id, service_id, server_registration_id, blob_time, size, total_size, created_at, updated_at
             "#,
         )
         .bind(blob.service_id.as_untyped_uuid())
+        .bind(blob.server_registration_id.as_untyped_uuid())
         .bind(0i64) // Initial size is 0
         .bind(blob.total_size)
         .bind(now)
@@ -584,9 +585,12 @@ impl BlobStorage for PostgresStorage {
         tx.commit().await?;
 
         let service_id_uuid: sqlx::types::Uuid = row.try_get("service_id")?;
+        let server_registration_id_uuid: sqlx::types::Uuid =
+            row.try_get("server_registration_id")?;
         Ok(BlobModel {
             id: blob_id,
             service_id: TypedUuid::from_untyped_uuid(service_id_uuid),
+            server_registration_id: TypedUuid::from_untyped_uuid(server_registration_id_uuid),
             size: row.try_get("size")?,
             total_size: row.try_get("total_size")?,
             state: pending_state,
@@ -598,7 +602,7 @@ impl BlobStorage for PostgresStorage {
     async fn get_blob(&self, id: TypedUuid<BlobId>) -> StorageResult<Option<BlobModel>> {
         let row = sqlx::query(
             r#"
-            SELECT b.id, b.service_id, b.blob_time, b.size, b.total_size, b.created_at, b.updated_at,
+            SELECT b.id, b.service_id, b.server_registration_id, b.blob_time, b.size, b.total_size, b.created_at, b.updated_at,
                    bs.state
             FROM blob b
             JOIN blob_state bs ON bs.blob_id = b.id
@@ -615,6 +619,8 @@ impl BlobStorage for PostgresStorage {
             Some(row) => {
                 let id_uuid: sqlx::types::Uuid = row.try_get("id")?;
                 let service_id_uuid: sqlx::types::Uuid = row.try_get("service_id")?;
+                let server_registration_id_uuid: sqlx::types::Uuid =
+                    row.try_get("server_registration_id")?;
                 let state_json: serde_json::Value = row.try_get("state")?;
                 let state: BlobState = serde_json::from_value(state_json).map_err(|e| {
                     StorageError::Internal(format!("Failed to deserialize blob state: {}", e))
@@ -623,6 +629,9 @@ impl BlobStorage for PostgresStorage {
                 Ok(Some(BlobModel {
                     id: TypedUuid::from_untyped_uuid(id_uuid),
                     service_id: TypedUuid::from_untyped_uuid(service_id_uuid),
+                    server_registration_id: TypedUuid::from_untyped_uuid(
+                        server_registration_id_uuid,
+                    ),
                     size: row.try_get("size")?,
                     total_size: row.try_get("total_size")?,
                     state,
@@ -637,7 +646,7 @@ impl BlobStorage for PostgresStorage {
     async fn list_blobs(&self) -> StorageResult<Vec<BlobModel>> {
         let rows = sqlx::query(
             r#"
-            SELECT DISTINCT ON (b.id) b.id, b.service_id, b.blob_time, b.size, b.total_size,
+            SELECT DISTINCT ON (b.id) b.id, b.service_id, b.server_registration_id, b.blob_time, b.size, b.total_size,
                    b.created_at, b.updated_at, bs.state
             FROM blob b
             JOIN blob_state bs ON bs.blob_id = b.id
@@ -652,6 +661,8 @@ impl BlobStorage for PostgresStorage {
             .map(|row| {
                 let id_uuid: sqlx::types::Uuid = row.try_get("id")?;
                 let service_id_uuid: sqlx::types::Uuid = row.try_get("service_id")?;
+                let server_registration_id_uuid: sqlx::types::Uuid =
+                    row.try_get("server_registration_id")?;
                 let state_json: serde_json::Value = row.try_get("state")?;
                 let state: BlobState = serde_json::from_value(state_json).map_err(|e| {
                     sqlx::Error::Decode(Box::new(std::io::Error::new(
@@ -663,6 +674,9 @@ impl BlobStorage for PostgresStorage {
                 Ok(BlobModel {
                     id: TypedUuid::from_untyped_uuid(id_uuid),
                     service_id: TypedUuid::from_untyped_uuid(service_id_uuid),
+                    server_registration_id: TypedUuid::from_untyped_uuid(
+                        server_registration_id_uuid,
+                    ),
                     size: row.try_get("size")?,
                     total_size: row.try_get("total_size")?,
                     state,
@@ -817,7 +831,7 @@ impl BlobStorage for PostgresStorage {
     ) -> StorageResult<Vec<BlobModel>> {
         let rows = sqlx::query(
             r#"
-            SELECT DISTINCT ON (b.id) b.id, b.service_id, b.blob_time, b.size, b.total_size,
+            SELECT DISTINCT ON (b.id) b.id, b.service_id, b.server_registration_id, b.blob_time, b.size, b.total_size,
                    b.created_at, b.updated_at, bs.state
             FROM blob b
             JOIN blob_state bs ON bs.blob_id = b.id
@@ -834,6 +848,8 @@ impl BlobStorage for PostgresStorage {
             .map(|row| {
                 let id_uuid: sqlx::types::Uuid = row.try_get("id")?;
                 let service_id_uuid: sqlx::types::Uuid = row.try_get("service_id")?;
+                let server_registration_id_uuid: sqlx::types::Uuid =
+                    row.try_get("server_registration_id")?;
                 let state_json: serde_json::Value = row.try_get("state")?;
                 let state: BlobState = serde_json::from_value(state_json).map_err(|e| {
                     sqlx::Error::Decode(Box::new(std::io::Error::new(
@@ -845,6 +861,9 @@ impl BlobStorage for PostgresStorage {
                 Ok(BlobModel {
                     id: TypedUuid::from_untyped_uuid(id_uuid),
                     service_id: TypedUuid::from_untyped_uuid(service_id_uuid),
+                    server_registration_id: TypedUuid::from_untyped_uuid(
+                        server_registration_id_uuid,
+                    ),
                     size: row.try_get("size")?,
                     total_size: row.try_get("total_size")?,
                     state,

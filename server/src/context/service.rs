@@ -2,16 +2,19 @@ use chrono::{DateTime, Utc};
 use newtype_uuid::TypedUuid;
 use std::{ops::Add, sync::Arc, time::Duration};
 use thiserror::Error;
+use v_model::permissions::Caller;
 
 use model::{
     HealthCheck, InvalidStateTransition, ServerRegistration, ServerRegistrationId,
-    ServerRegistrationInstanceId, ServerRegistrationState, Service,
+    ServerRegistrationInstanceId, ServerRegistrationState, Service, ServiceId,
     db::{NewHealthCheckModel, NewServerRegistrationModel, NewServiceModel},
     storage::{HealthCheckStorage, ServerRegistrationStorage, ServiceStorage, StorageError},
 };
-use v_api::response::{OptionalResource, ResourceError, ResourceErrorInner, ResourceResult};
+use v_api::response::{
+    OptionalResource, ResourceError, ResourceErrorInner, ResourceResult, resource_restricted,
+};
 
-use crate::endpoints::service::ServiceIdentifier;
+use crate::{context::ServerCaller, permissions::ApiPermissions};
 
 #[derive(Debug, Error)]
 pub enum ServiceError {
@@ -49,102 +52,124 @@ impl ServiceContext {
 
     pub async fn get_service(
         &self,
-        service: &ServiceIdentifier,
+        caller: &Caller<ApiPermissions>,
+        service: TypedUuid<ServiceId>,
     ) -> ResourceResult<Service, ServiceError> {
-        Ok(match service {
-            ServiceIdentifier::Id(id) => self.storage.get_service_by_id(*id).await,
-            ServiceIdentifier::Name(name) => self.storage.get_service_by_name(name).await,
+        if caller.any(
+            [
+                ApiPermissions::GetService(service),
+                ApiPermissions::GetServicesAll,
+            ]
+            .iter(),
+        ) {
+            Ok(self
+                .storage
+                .get_service_by_id(service)
+                .await
+                .optional()?
+                .into())
+        } else {
+            resource_restricted()
         }
-        .optional()?
-        .into())
     }
 
-    pub async fn create_service(&self, name: &str) -> ResourceResult<Service, ServiceError> {
-        Ok(self
-            .storage
-            .create_service(&NewServiceModel {
-                name: name.to_string(),
-            })
-            .await
-            .map_err(ResourceError::InternalError)
-            .inner_err_into()?
-            .into())
-    }
-
-    pub async fn get_service_servers(
+    pub async fn create_service(
         &self,
-        service: &ServiceIdentifier,
-    ) -> ResourceResult<Vec<ServerRegistration>, ServiceError> {
-        let service: Service = match service {
-            ServiceIdentifier::Id(id) => self.storage.get_service_by_id(*id).await,
-            ServiceIdentifier::Name(name) => self.storage.get_service_by_name(name).await,
-        }
-        .optional()?
-        .into();
-
-        let registrations = self
-            .storage
-            .list_server_registrations_by_service_id(service.id)
-            .await
-            .map_err(ResourceError::InternalError)
-            .inner_err_into()?
-            .into_iter()
-            .map(Into::into)
-            .collect();
-        Ok(registrations)
-    }
-
-    pub async fn get_server(
-        &self,
-        server: TypedUuid<ServerRegistrationId>,
-    ) -> ResourceResult<ServerRegistration, ServiceError> {
-        Ok(self
-            .storage
-            .get_server_registration(server)
-            .await
-            .optional()?
-            .into())
-    }
-
-    pub async fn register_service(
-        &self,
-        service_name: &str,
+        caller: &Caller<ApiPermissions>,
+        name: &str,
     ) -> ResourceResult<Service, ServiceError> {
-        let service = self
-            .get_service(&ServiceIdentifier::Name(service_name.to_string()))
-            .await;
-
-        match service {
-            Err(ResourceError::DoesNotExist) => Ok(self
+        if caller.can(&ApiPermissions::CreateService) {
+            Ok(self
                 .storage
                 .create_service(&NewServiceModel {
-                    name: service_name.to_string(),
+                    name: name.to_string(),
                 })
                 .await
                 .map_err(ResourceError::InternalError)
                 .inner_err_into()?
-                .into()),
-            other => other,
+                .into())
+        } else {
+            resource_restricted()
+        }
+    }
+
+    pub async fn get_service_servers(
+        &self,
+        caller: &Caller<ApiPermissions>,
+        service: TypedUuid<ServiceId>,
+    ) -> ResourceResult<Vec<ServerRegistration>, ServiceError> {
+        if caller.any(
+            [
+                ApiPermissions::GetService(service),
+                ApiPermissions::GetServicesAll,
+            ]
+            .iter(),
+        ) {
+            let registrations = self
+                .storage
+                .list_server_registrations_by_service_id(service)
+                .await
+                .map_err(ResourceError::InternalError)
+                .inner_err_into()?
+                .into_iter()
+                .map(Into::into)
+                .collect();
+
+            Ok(registrations)
+        } else {
+            resource_restricted()
+        }
+    }
+
+    pub async fn get_server(
+        &self,
+        caller: &Caller<ApiPermissions>,
+        server: TypedUuid<ServerRegistrationId>,
+    ) -> ResourceResult<ServerRegistration, ServiceError> {
+        let server: ServerRegistration = self
+            .storage
+            .get_server_registration(server)
+            .await
+            .optional()?
+            .into();
+
+        if caller.any(
+            [
+                ApiPermissions::GetService(server.service_id),
+                ApiPermissions::GetServicesAll,
+            ]
+            .iter(),
+        ) {
+            Ok(server)
+        } else {
+            resource_restricted()
         }
     }
 
     pub async fn register_server(
         &self,
-        service: &ServiceIdentifier,
+        caller: &Caller<ApiPermissions>,
+        service: TypedUuid<ServiceId>,
         instance: TypedUuid<ServerRegistrationInstanceId>,
         nonce: String,
     ) -> ResourceResult<ServerRegistration, ServiceError> {
-        let existing = self
-            .storage
-            .get_server_registration_by_instance_id(instance)
-            .await
-            .map_err(ResourceError::InternalError)
-            .inner_err_into()?;
+        let service = self.get_service(caller, service).await?;
+        if caller.any(
+            [
+                ApiPermissions::ManageService(service.id),
+                ApiPermissions::ManageServersAll,
+            ]
+            .iter(),
+        ) {
+            let existing = self
+                .storage
+                .get_server_registration_by_instance_id(instance)
+                .await
+                .map_err(ResourceError::InternalError)
+                .inner_err_into()?;
 
-        match existing {
-            None => {
-                let service = self.get_service(service).await?;
-                Ok(self
+            match existing {
+                None => Ok(self
                     .storage
                     .create_server_registration(&NewServerRegistrationModel {
                         service_id: service.id,
@@ -155,104 +180,154 @@ impl ServiceContext {
                     .await
                     .map_err(ResourceError::InternalError)
                     .inner_err_into()?
-                    .into())
+                    .into()),
+                Some(model) => Ok(model.into()),
             }
-            Some(model) => Ok(model.into()),
+        } else {
+            resource_restricted()
         }
     }
 
     pub async fn accept_server(
         &self,
+        caller: &Caller<ApiPermissions>,
         server: &ServerRegistration,
     ) -> ResourceResult<(), ServiceError> {
-        Ok(self
-            .storage
-            .update_server_registration_state(
-                server.id,
-                ServerRegistrationState::Pending,
-                server
-                    .state
-                    .accept()
-                    .map_err(ResourceError::InternalError)
-                    .inner_err_into()?,
-            )
-            .await
-            .optional()?)
+        if caller.any(
+            [
+                ApiPermissions::ManageService(server.service_id),
+                ApiPermissions::ManageServersAll,
+            ]
+            .iter(),
+        ) {
+            Ok(self
+                .storage
+                .update_server_registration_state(
+                    server.id,
+                    ServerRegistrationState::Pending,
+                    server
+                        .state
+                        .accept()
+                        .map_err(ResourceError::InternalError)
+                        .inner_err_into()?,
+                )
+                .await
+                .optional()?)
+        } else {
+            resource_restricted()
+        }
     }
 
     pub async fn prove_server(
         &self,
+        caller: &Caller<ApiPermissions>,
         server: &ServerRegistration,
     ) -> ResourceResult<(), ServiceError> {
-        Ok(self
-            .storage
-            .update_server_registration_state(
-                server.id,
-                ServerRegistrationState::Pending,
-                server
-                    .state
-                    .prove()
-                    .map_err(ResourceError::InternalError)
-                    .inner_err_into()?,
-            )
-            .await
-            .optional()?)
+        if caller.any(
+            [
+                ApiPermissions::ManageService(server.service_id),
+                ApiPermissions::ManageServersAll,
+            ]
+            .iter(),
+        ) {
+            Ok(self
+                .storage
+                .update_server_registration_state(
+                    server.id,
+                    ServerRegistrationState::Pending,
+                    server
+                        .state
+                        .prove()
+                        .map_err(ResourceError::InternalError)
+                        .inner_err_into()?,
+                )
+                .await
+                .optional()?)
+        } else {
+            resource_restricted()
+        }
     }
 
     pub async fn reject_server(
         &self,
+        caller: &Caller<ApiPermissions>,
         server: &ServerRegistration,
     ) -> ResourceResult<(), ServiceError> {
-        Ok(self
-            .storage
-            .update_server_registration_state(
-                server.id,
-                ServerRegistrationState::Pending,
-                server
-                    .state
-                    .reject()
-                    .map_err(ResourceError::InternalError)
-                    .inner_err_into()?,
-            )
-            .await
-            .optional()?)
+        if caller.any(
+            [
+                ApiPermissions::ManageService(server.service_id),
+                ApiPermissions::ManageServersAll,
+            ]
+            .iter(),
+        ) {
+            Ok(self
+                .storage
+                .update_server_registration_state(
+                    server.id,
+                    ServerRegistrationState::Pending,
+                    server
+                        .state
+                        .reject()
+                        .map_err(ResourceError::InternalError)
+                        .inner_err_into()?,
+                )
+                .await
+                .optional()?)
+        } else {
+            resource_restricted()
+        }
     }
 
     pub async fn terminate_server(
         &self,
+        caller: &Caller<ApiPermissions>,
         server: &ServerRegistration,
     ) -> ResourceResult<(), ServiceError> {
-        Ok(self
-            .storage
-            .update_server_registration_state(
-                server.id,
-                ServerRegistrationState::Accepted,
-                server
-                    .state
-                    .terminate()
-                    .map_err(ResourceError::InternalError)
-                    .inner_err_into()?,
-            )
-            .await
-            .optional()?)
+        if caller.any(
+            [
+                ApiPermissions::ManageService(server.service_id),
+                ApiPermissions::ManageServersAll,
+            ]
+            .iter(),
+        ) {
+            Ok(self
+                .storage
+                .update_server_registration_state(
+                    server.id,
+                    ServerRegistrationState::Accepted,
+                    server
+                        .state
+                        .terminate()
+                        .map_err(ResourceError::InternalError)
+                        .inner_err_into()?,
+                )
+                .await
+                .optional()?)
+        } else {
+            resource_restricted()
+        }
     }
 
     pub async fn checkin(
         &self,
+        caller: &ServerCaller,
         server: TypedUuid<ServerRegistrationId>,
         checked_in_at: DateTime<Utc>,
     ) -> ResourceResult<HealthCheck, ServiceError> {
-        let registration = self.get_server(server).await?;
-        let record = self
-            .storage
-            .create_health_check(&NewHealthCheckModel {
-                server_registration_id: registration.id,
-                checked_in_at,
-            })
-            .await
-            .map_err(ResourceError::InternalError)
-            .inner_err_into()?
-            .into();
-        Ok(record)
+        if caller.id == server {
+            let record = self
+                .storage
+                .create_health_check(&NewHealthCheckModel {
+                    server_registration_id: server,
+                    checked_in_at,
+                })
+                .await
+                .map_err(ResourceError::InternalError)
+                .inner_err_into()?
+                .into();
+            Ok(record)
+        } else {
+            resource_restricted()
+        }
     }
 }

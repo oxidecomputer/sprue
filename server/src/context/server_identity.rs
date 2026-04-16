@@ -25,14 +25,14 @@ pub enum ServerIdentityError {
     FailedToVerifyInstanceData,
     #[error("Failed to verify RoT")]
     FailedToVerifyRot,
-    #[error("Certificate chain has the wrong common name")]
-    IncorrectCommonName,
+    #[error("Certificate chain has the wrong organization")]
+    IncorrectOrganization,
     #[error("Failed to verify measurements")]
     InvalidMeasurements(#[from] VerifyMeasurementsError),
     #[error("Invalid measurement set")]
     InvalidMeasurementSet(#[from] MeasurementSetError),
-    #[error("Certificate chain missing common name")]
-    MissingCommonName,
+    #[error("Certificate chain missing organization")]
+    MissingOrganization,
     #[error("RoT measurement missing")]
     MissingRotMeasurement,
     #[error("Failed to generate nonce")]
@@ -61,19 +61,19 @@ pub enum ServerIdentityError {
 
 #[derive(Clone)]
 pub struct ServerIdentityContext {
-    common_name: String,
+    organization: String,
     root_certs: Vec<Certificate>,
     ref_measurements: Arc<ReferenceMeasurements>,
 }
 
 impl ServerIdentityContext {
     pub fn new(
-        common_name: String,
+        organization: String,
         root_certs: Vec<Certificate>,
         ref_measurements: Arc<ReferenceMeasurements>,
     ) -> Self {
         Self {
-            common_name,
+            organization,
             root_certs,
             ref_measurements,
         }
@@ -123,12 +123,12 @@ impl ServerIdentityContext {
 
         tracing::info!(?verified_root, "Verified cert chain");
 
-        let common_name =
-            get_cert_cn(verified_root).ok_or(ServerIdentityError::MissingCommonName)?;
-        tracing::info!(?common_name, "Verified cert chain");
+        let organization =
+            get_cert_organization(verified_root).ok_or(ServerIdentityError::MissingOrganization)?;
+        tracing::info!(?organization, "Verified cert chain");
 
-        if common_name.as_str() != self.common_name {
-            return Err(ServerIdentityError::IncorrectCommonName);
+        if organization.as_str() != self.organization {
+            return Err(ServerIdentityError::IncorrectOrganization);
         }
 
         // From vm-attest:
@@ -211,12 +211,12 @@ impl ServerIdentityContext {
 }
 
 // utility function to get common name from cert subject
-fn get_cert_cn(cert: &Certificate) -> Option<Utf8StringRef<'_>> {
-    use const_oid::db::rfc4519::COMMON_NAME;
+fn get_cert_organization(cert: &Certificate) -> Option<Utf8StringRef<'_>> {
+    use const_oid::db::rfc4519::ORGANIZATION;
 
     for elm in cert.tbs_certificate.subject.0.iter() {
         for atav in elm.0.iter() {
-            if atav.oid == COMMON_NAME {
+            if atav.oid == ORGANIZATION {
                 return Some(
                     Utf8StringRef::try_from(&atav.value)
                         .expect("Decode name attribute value to UTF8 string"),

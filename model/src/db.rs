@@ -53,6 +53,7 @@ pub struct BlobModel {
     #[partial(NewBlobModel(skip))]
     pub id: TypedUuid<BlobId>,
     pub service_id: TypedUuid<ServiceId>,
+    pub server_registration_id: TypedUuid<ServerRegistrationId>,
     #[partial(NewBlobModel(skip))]
     pub size: i64,
     pub total_size: i64,

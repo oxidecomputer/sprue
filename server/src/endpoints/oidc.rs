@@ -4,6 +4,7 @@ use newtype_uuid::TypedUuid;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use v_api::ApiContext as VApiContext;
 use vm_attest::VmInstanceAttestation;
 
 use crate::{context::ApiContext, endpoints::service::ServerPath};
@@ -18,7 +19,10 @@ pub async fn register_oidc_token_request(
 ) -> Result<HttpResponseOk<TokenRequest>, HttpError> {
     let ctx = rqctx.context();
     let path = path.into_inner();
-    let server = ctx.service.get_server(path.server).await?;
+    let server = ctx
+        .service
+        .get_server(&ctx.system_caller(), path.server)
+        .await?;
     let nonce = ctx.server_identity.generate_nonce()?;
 
     let token_request = ctx.oidc.register_token_request(server, nonce).await?;
@@ -48,7 +52,10 @@ pub async fn prove_oidc_token_request(
     let ctx = rqctx.context();
     let path = path.into_inner();
     let body = body.into_inner();
-    let server = ctx.service.get_server(path.server).await?;
+    let server = ctx
+        .service
+        .get_server(&ctx.system_caller(), path.server)
+        .await?;
     let attestation: VmInstanceAttestation =
         serde_json::from_value(body.attestation).map_err(|err| {
             tracing::info!(?err, "Unable to deserialize attestation");
@@ -61,7 +68,11 @@ pub async fn prove_oidc_token_request(
         .map_err(|_| HttpError::for_internal_error("Failed to verify attestation".to_string()))?;
 
     let token_request = ctx.oidc.get_token_request(body.request).await?;
-    let token = ctx.oidc.generate_token(&server, token_request).await?;
+    let claims = ctx.oidc.generate_claims(&server, token_request).await?;
+    let token = ctx.v_ctx().sign_jwt(&claims).await.map_err(|err| {
+        tracing::error!(?err, "Unable to sign claims");
+        HttpError::for_internal_error("Failed to sign claims".to_string())
+    })?;
 
     Ok(HttpResponseOk(OidcServerToken { token }))
 }

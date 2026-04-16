@@ -3,34 +3,39 @@ use std::path::PathBuf;
 use config::{Config, ConfigError, Environment, File};
 use serde::Deserialize;
 use tap::TapFallible;
-use v_api::config::{JwtConfig, ServerLogFormat, SpecConfig};
+use v_api::config::{AsymmetricKey, ServerLogFormat, SpecConfig};
 use v_api_param::StringParam;
 
 #[derive(Debug, Deserialize)]
 pub struct ServerConfig {
     pub log_format: ServerLogFormat,
     pub log_directory: Option<PathBuf>,
+    pub param_base_path: Option<PathBuf>,
     pub spec: Option<SpecConfig>,
-    pub database_url: StringParam,
     pub public_url: String,
+    pub database_url: StringParam,
     pub jwt: JwtConfig,
     pub vm_identity: VmIdentityConfig,
     pub oidc: OidcConfig,
+    pub backup: BackupConfig,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct JwtConfig {
+    pub default_expiration: i64,
+    pub keys: Vec<AsymmetricKey>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct VmIdentityConfig {
-    pub common_name: String,
+    pub organization: String,
     pub root_cert_chain: String,
     pub measurements: Vec<PathBuf>,
-    pub max_registration_duration: u64,
+    pub registration_duration: u64,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct OidcConfig {
-    pub kid: String,
-    pub public: String,
-    pub private: String,
     pub token: OidcTokenConfig,
 }
 
@@ -39,7 +44,12 @@ pub struct OidcTokenConfig {
     pub issuer: String,
     pub audience: String,
     pub token_lifetime: u32,
-    pub max_token_request_duration: u64,
+    pub token_request_duration: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BackupConfig {
+    pub local_root: PathBuf,
 }
 
 impl ServerConfig {

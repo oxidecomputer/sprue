@@ -61,16 +61,17 @@ pub async fn create_server(
         .with_public_url(config.public_url.clone())
         .with_jwt_expiration(config.jwt.default_expiration)
         .with_storage_url(database_url_secret.expose_secret().to_string())
+        .with_keys(config.jwt.keys)
         .build()
         .await?;
 
     let ctx = ApiContextBuilder::default()
         .public_url(config.public_url)
-        .blob(BlobContext::new(storage.clone()))
+        .blob(BlobContext::new(config.backup.local_root, storage.clone()))
         .idempotency(IdempotencyContext::new(storage.clone()))
         .oidc(OidcContext::new(config.oidc, storage.clone())?)
         .server_identity(ServerIdentityContext::new(
-            config.vm_identity.common_name,
+            config.vm_identity.organization,
             Certificate::load_pem_chain(config.vm_identity.root_cert_chain.as_bytes())?,
             Arc::new(TryFrom::<&[Corim]>::try_from(
                 &config
@@ -86,7 +87,7 @@ pub async fn create_server(
         ))
         .service(ServiceContext::new(
             storage,
-            Duration::from_secs(config.vm_identity.max_registration_duration),
+            Duration::from_secs(config.vm_identity.registration_duration),
         ))
         .v_ctx(Arc::new(v_ctx))
         .build()?;

@@ -48,11 +48,11 @@ tracing-appender = "0.2.4"
 tracing-slog = { git = "https://github.com/oxidecomputer/tracing-slog", default-features = false }
 tracing-subscriber = { version = "0.3.22", features = ["env-filter", "json"] }
 uuid = { version = "1", features = ["serde"] }
-v-api = { git = "https://github.com/oxidecomputer/v-api", tag = "v0.3.0-alpha.4" }
-v-api-installer = { git = "https://github.com/oxidecomputer/v-api", tag = "v0.3.0-alpha.4" }
-v-api-param = { git = "https://github.com/oxidecomputer/v-api", tag = "v0.3.0-alpha.4" }
-v-api-permission-derive = { git = "https://github.com/oxidecomputer/v-api", tag = "v0.3.0-alpha.4" }
-v-model = { git = "https://github.com/oxidecomputer/v-api", tag = "v0.3.0-alpha.4" }
+v-api = { git = "https://github.com/oxidecomputer/v-api", tag = "v0.3.0-alpha.6" }
+v-api-installer = { git = "https://github.com/oxidecomputer/v-api", tag = "v0.3.0-alpha.6" }
+v-api-param = { git = "https://github.com/oxidecomputer/v-api", tag = "v0.3.0-alpha.6" }
+v-api-permission-derive = { git = "https://github.com/oxidecomputer/v-api", tag = "v0.3.0-alpha.6" }
+v-model = { git = "https://github.com/oxidecomputer/v-api", tag = "v0.3.0-alpha.6" }
 vm-attest = { git = "https://github.com/oxidecomputer/vm-attest" }
 lib-vsock = { package = "vsock", version = "0.5.3" }
 x509-cert = "0.2.5"

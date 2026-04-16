@@ -11,20 +11,14 @@ use newtype_uuid::TypedUuid;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use v_api::ApiContext as VApiContext;
 use vm_attest::VmInstanceAttestation;
 
 use crate::context::ApiContext;
 
 #[derive(Debug, Deserialize, JsonSchema)]
-#[serde(untagged)]
-pub enum ServiceIdentifier {
-    Id(TypedUuid<ServiceId>),
-    Name(String),
-}
-
-#[derive(Debug, Deserialize, JsonSchema)]
 pub struct ServicePath {
-    service: ServiceIdentifier,
+    service: TypedUuid<ServiceId>,
 }
 
 /// Get a service by its identifier. This may be either a service uuid or a service name.
@@ -37,8 +31,9 @@ pub async fn get_service(
     path: Path<ServicePath>,
 ) -> Result<HttpResponseOk<Service>, HttpError> {
     let ctx = rqctx.context();
+    let caller = rqctx.v_ctx().get_caller(&rqctx).await?;
     let path = path.into_inner();
-    let service = ctx.service.get_service(&path.service).await?;
+    let service = ctx.service.get_service(&caller, path.service).await?;
 
     Ok(HttpResponseOk(service))
 }
@@ -58,8 +53,9 @@ pub async fn create_service(
     path: TypedBody<CreateService>,
 ) -> Result<HttpResponseOk<Service>, HttpError> {
     let ctx = rqctx.context();
+    let caller = rqctx.v_ctx().get_caller(&rqctx).await?;
     let path = path.into_inner();
-    let service = ctx.service.create_service(&path.name).await?;
+    let service = ctx.service.create_service(&caller, &path.name).await?;
 
     Ok(HttpResponseOk(service))
 }
@@ -74,8 +70,12 @@ pub async fn get_service_servers(
     path: Path<ServicePath>,
 ) -> Result<HttpResponseOk<Vec<ServerRegistration>>, HttpError> {
     let ctx = rqctx.context();
+    let caller = rqctx.v_ctx().get_caller(&rqctx).await?;
     let path = path.into_inner();
-    let servers = ctx.service.get_service_servers(&path.service).await?;
+    let servers = ctx
+        .service
+        .get_service_servers(&caller, path.service)
+        .await?;
 
     Ok(HttpResponseOk(servers))
 }
@@ -108,7 +108,7 @@ pub async fn register_server(
     let nonce = ctx.server_identity.generate_nonce()?;
     let registration = ctx
         .service
-        .register_server(&path.service, body.instance, nonce)
+        .register_server(ctx.system_caller(), path.service, body.instance, nonce)
         .await?;
 
     Ok(HttpResponseOk(RegisterServerResponse { registration }))
@@ -137,7 +137,10 @@ pub async fn prove_server(
     let ctx = rqctx.context();
     let path = path.into_inner();
     let body = body.into_inner();
-    let server = ctx.service.get_server(path.server).await?;
+    let server = ctx
+        .service
+        .get_server(ctx.system_caller(), path.server)
+        .await?;
     let attestation: VmInstanceAttestation =
         serde_json::from_value(body.attestation).map_err(|err| {
             tracing::info!(?err, "Unable to deserialize attestation");
@@ -150,13 +153,17 @@ pub async fn prove_server(
         .map_err(|_| HttpError::for_internal_error("Failed to verify attestation".to_string()))?;
 
     // The server has proven its identity and we can mark it as proven
-    let _ = ctx.service.prove_server(&server).await.map_err(|err| {
-        // TODO: Currently all failures are emited as bad request errors. This is not strictly
-        // correct as we may have a misconfigured server. From the stance of the server though this
-        // request does not match what it is expecting
-        tracing::info!(?err, "Failed to prove server");
-        HttpError::for_bad_request(None, "Failed to prove server".to_string())
-    })?;
+    let _ = ctx
+        .service
+        .prove_server(ctx.system_caller(), &server)
+        .await
+        .map_err(|err| {
+            // TODO: Currently all failures are emited as bad request errors. This is not strictly
+            // correct as we may have a misconfigured server. From the stance of the server though this
+            // request does not match what it is expecting
+            tracing::info!(?err, "Failed to prove server");
+            HttpError::for_bad_request(None, "Failed to prove server".to_string())
+        })?;
 
     Ok(HttpResponseUpdatedNoContent())
 }
@@ -171,9 +178,10 @@ pub async fn accept_server(
     path: Path<ServerPath>,
 ) -> Result<HttpResponseUpdatedNoContent, HttpError> {
     let ctx = rqctx.context();
+    let caller = rqctx.v_ctx().get_caller(&rqctx).await?;
     let path = path.into_inner();
-    let server = ctx.service.get_server(path.server).await?;
-    ctx.service.accept_server(&server).await?;
+    let server = ctx.service.get_server(&caller, path.server).await?;
+    ctx.service.accept_server(&caller, &server).await?;
     Ok(HttpResponseUpdatedNoContent())
 }
 
@@ -187,9 +195,10 @@ pub async fn reject_server(
     path: Path<ServerPath>,
 ) -> Result<HttpResponseUpdatedNoContent, HttpError> {
     let ctx = rqctx.context();
+    let caller = rqctx.v_ctx().get_caller(&rqctx).await?;
     let path = path.into_inner();
-    let server = ctx.service.get_server(path.server).await?;
-    ctx.service.reject_server(&server).await?;
+    let server = ctx.service.get_server(&caller, path.server).await?;
+    ctx.service.reject_server(&caller, &server).await?;
     Ok(HttpResponseUpdatedNoContent())
 }
 
@@ -203,9 +212,10 @@ pub async fn terminate_server(
     path: Path<ServerPath>,
 ) -> Result<HttpResponseUpdatedNoContent, HttpError> {
     let ctx = rqctx.context();
+    let caller = rqctx.v_ctx().get_caller(&rqctx).await?;
     let path = path.into_inner();
-    let server = ctx.service.get_server(path.server).await?;
-    ctx.service.terminate_server(&server).await?;
+    let server = ctx.service.get_server(&caller, path.server).await?;
+    ctx.service.terminate_server(&caller, &server).await?;
     Ok(HttpResponseUpdatedNoContent())
 }
 
@@ -225,9 +235,13 @@ pub async fn checkin_server(
     body: TypedBody<CheckinBody>,
 ) -> Result<HttpResponseOk<HealthCheck>, HttpError> {
     let ctx = rqctx.context();
+    let caller = ctx.get_server_caller(&rqctx).await?;
     let path = path.into_inner();
     let body = body.into_inner();
-    let record = ctx.service.checkin(path.server, body.checked_in_at).await?;
+    let record = ctx
+        .service
+        .checkin(&caller, path.server, body.checked_in_at)
+        .await?;
     Ok(HttpResponseOk(record))
 }
 
@@ -254,13 +268,16 @@ pub async fn register_blob(
     body: TypedBody<RegisterBlobBody>,
 ) -> Result<HttpResponseOk<RegisterBlobResponse>, HttpError> {
     let ctx = rqctx.context();
+    let caller = ctx.get_server_caller(&rqctx).await?;
     let path = path.into_inner();
     let body = body.into_inner();
 
     ctx.idempotency
         .execute_idempotent_request(path.server, body.idempotency_key, |_| async move {
-            let server = ctx.service.get_server(path.server).await?;
-            let blob = ctx.blob.create_blob(&server, body.size).await?;
+            let blob = ctx
+                .blob
+                .create_blob(caller.id, caller.service, body.size)
+                .await?;
             let response = RegisterBlobResponse { blob };
             Ok(response)
         })

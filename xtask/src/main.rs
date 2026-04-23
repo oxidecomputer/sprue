@@ -234,7 +234,7 @@ fn format_code(code: String) -> String {
     );
     let contents = rustfmt_wrapper::rustfmt_config(
         rustfmt_wrapper::config::Config {
-            max_width: Some(120),
+            max_width: Some(100),
             format_strings: Some(true),
             normalize_doc_attributes: Some(true),
             wrap_comments: Some(true),

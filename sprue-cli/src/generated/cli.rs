@@ -378,7 +378,10 @@ impl<T: CliConfig> Cli<T> {
                     .value_parser(::clap::value_parser!(types::TypedUuidForBlobId))
                     .required(true),
             )
-            .about("Cancels a blob so that it can no longer be written to. Any data already sent will eventually")
+            .about(
+                "Cancels a blob so that it can no longer be written to. Any data already sent \
+                 will eventually",
+            )
             .long_about("be deleted.")
     }
 
@@ -412,8 +415,13 @@ impl<T: CliConfig> Cli<T> {
                     .value_parser(::clap::value_parser!(types::TypedUuidForBlobId))
                     .required(true),
             )
-            .about("Stream data to fill a registered blob. Any data that is streamed is appended to any data that")
-            .long_about("has already been recieved. Concurrent writes to the same blob are not supported.")
+            .about(
+                "Stream data to fill a registered blob. Any data that is streamed is appended to \
+                 any data that",
+            )
+            .long_about(
+                "has already been recieved. Concurrent writes to the same blob are not supported.",
+            )
     }
 
     pub fn cli_get_groups() -> ::clap::Command {
@@ -1171,11 +1179,16 @@ impl<T: CliConfig> Cli<T> {
             .arg(
                 ::clap::Arg::new("server")
                     .long("server")
-                    .value_parser(::clap::value_parser!(types::TypedUuidForServerRegistrationId))
+                    .value_parser(::clap::value_parser!(
+                        types::TypedUuidForServerRegistrationId
+                    ))
                     .required(true),
             )
             .about("Register a request for a server OIDC token.")
-            .long_about("The server will be issued a challenge that it must sign and return to prove its identity.")
+            .long_about(
+                "The server will be issued a challenge that it must sign and return to prove its \
+                 identity.",
+            )
     }
 
     pub fn cli_prove_oidc_token_request() -> ::clap::Command {
@@ -1189,7 +1202,9 @@ impl<T: CliConfig> Cli<T> {
             .arg(
                 ::clap::Arg::new("server")
                     .long("server")
-                    .value_parser(::clap::value_parser!(types::TypedUuidForServerRegistrationId))
+                    .value_parser(::clap::value_parser!(
+                        types::TypedUuidForServerRegistrationId
+                    ))
                     .required(true),
             )
             .arg(
@@ -1208,8 +1223,8 @@ impl<T: CliConfig> Cli<T> {
             )
             .about("Complete a server OIDC token request")
             .long_about(
-                "Server must provide an attestation that proves the server's identity along with the challenge that \
-                 was issued in the initial request.",
+                "Server must provide an attestation that proves the server's identity along with \
+                 the challenge that was issued in the initial request.",
             )
     }
 
@@ -1309,7 +1324,9 @@ impl<T: CliConfig> Cli<T> {
             .arg(
                 ::clap::Arg::new("instance")
                     .long("instance")
-                    .value_parser(::clap::value_parser!(types::TypedUuidForServerRegistrationInstanceId))
+                    .value_parser(::clap::value_parser!(
+                        types::TypedUuidForServerRegistrationInstanceId
+                    ))
                     .required_unless_present("json-body"),
             )
             .arg(
@@ -1334,8 +1351,9 @@ impl<T: CliConfig> Cli<T> {
             )
             .about("Request a server be registered as a representative instance of a service")
             .long_about(
-                "The server will need to prove its identity via an attestation. Once its identity is verified the \
-                 server will need to either be accepted by policy or manual intervention.",
+                "The server will need to prove its identity via an attestation. Once its identity \
+                 is verified the server will need to either be accepted by policy or manual \
+                 intervention.",
             )
     }
 

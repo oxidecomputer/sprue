@@ -123,8 +123,6 @@ impl OidcContext {
     }
 
     fn create_claims(&self, server: &ServerRegistration) -> VmClaims {
-        
-
         VmClaims {
             iss: self.oidc.token.issuer.to_string(),
             aud: self.oidc.token.audience.to_string(),

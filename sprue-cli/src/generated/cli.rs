@@ -60,8 +60,12 @@ impl<T: CliConfig> Cli<T> {
             CliCommand::ListOauthClients => Self::cli_list_oauth_clients(),
             CliCommand::CreateOauthClient => Self::cli_create_oauth_client(),
             CliCommand::GetOauthClient => Self::cli_get_oauth_client(),
-            CliCommand::CreateOauthClientRedirectUri => Self::cli_create_oauth_client_redirect_uri(),
-            CliCommand::DeleteOauthClientRedirectUri => Self::cli_delete_oauth_client_redirect_uri(),
+            CliCommand::CreateOauthClientRedirectUri => {
+                Self::cli_create_oauth_client_redirect_uri()
+            }
+            CliCommand::DeleteOauthClientRedirectUri => {
+                Self::cli_delete_oauth_client_redirect_uri()
+            }
             CliCommand::CreateOauthClientSecret => Self::cli_create_oauth_client_secret(),
             CliCommand::DeleteOauthClientSecret => Self::cli_delete_oauth_client_secret(),
             CliCommand::GetSelf => Self::cli_get_self(),
@@ -273,7 +277,9 @@ impl<T: CliConfig> Cli<T> {
             .arg(
                 ::clap::Arg::new("expires-at")
                     .long("expires-at")
-                    .value_parser(::clap::value_parser!(::chrono::DateTime<::chrono::offset::Utc>))
+                    .value_parser(::clap::value_parser!(
+                        ::chrono::DateTime<::chrono::offset::Utc>
+                    ))
                     .required_unless_present("json-body"),
             )
             .arg(
@@ -553,7 +559,9 @@ impl<T: CliConfig> Cli<T> {
                 ::clap::Arg::new("medium")
                     .long("medium")
                     .value_parser(::clap::builder::TypedValueParser::map(
-                        ::clap::builder::PossibleValuesParser::new([types::MagicLinkMedium::Email.to_string()]),
+                        ::clap::builder::PossibleValuesParser::new([
+                            types::MagicLinkMedium::Email.to_string()
+                        ]),
                         |s| types::MagicLinkMedium::try_from(s).unwrap(),
                     ))
                     .required_unless_present("json-body"),
@@ -776,7 +784,9 @@ impl<T: CliConfig> Cli<T> {
             .arg(
                 ::clap::Arg::new("expires-at")
                     .long("expires-at")
-                    .value_parser(::clap::value_parser!(::chrono::DateTime<::chrono::offset::Utc>))
+                    .value_parser(::clap::value_parser!(
+                        ::chrono::DateTime<::chrono::offset::Utc>
+                    ))
                     .required(false),
             )
             .arg(
@@ -875,7 +885,9 @@ impl<T: CliConfig> Cli<T> {
             .arg(
                 ::clap::Arg::new("redirect-uri-id")
                     .long("redirect-uri-id")
-                    .value_parser(::clap::value_parser!(types::TypedUuidForMagicLinkRedirectUriId))
+                    .value_parser(::clap::value_parser!(
+                        types::TypedUuidForMagicLinkRedirectUriId
+                    ))
                     .required(true),
             )
             .about("Delete a Magic Link client redirect uri")
@@ -1067,10 +1079,14 @@ impl<T: CliConfig> Cli<T> {
             .arg(
                 ::clap::Arg::new("server")
                     .long("server")
-                    .value_parser(::clap::value_parser!(types::TypedUuidForServerRegistrationId))
+                    .value_parser(::clap::value_parser!(
+                        types::TypedUuidForServerRegistrationId
+                    ))
                     .required(true),
             )
-            .about("Accept a server's request to be added as a representative instance of a service")
+            .about(
+                "Accept a server's request to be added as a representative instance of a service",
+            )
     }
 
     pub fn cli_register_blob() -> ::clap::Command {
@@ -1084,7 +1100,9 @@ impl<T: CliConfig> Cli<T> {
             .arg(
                 ::clap::Arg::new("server")
                     .long("server")
-                    .value_parser(::clap::value_parser!(types::TypedUuidForServerRegistrationId))
+                    .value_parser(::clap::value_parser!(
+                        types::TypedUuidForServerRegistrationId
+                    ))
                     .required(true),
             )
             .arg(
@@ -1108,7 +1126,9 @@ impl<T: CliConfig> Cli<T> {
                     .help("XXX"),
             )
             .about("Register a new blob request to upload a blob to")
-            .long_about("Returns a blob instance that the requesting server is authorized to upload to.")
+            .long_about(
+                "Returns a blob instance that the requesting server is authorized to upload to.",
+            )
     }
 
     pub fn cli_checkin_server() -> ::clap::Command {
@@ -1116,13 +1136,17 @@ impl<T: CliConfig> Cli<T> {
             .arg(
                 ::clap::Arg::new("checked-in-at")
                     .long("checked-in-at")
-                    .value_parser(::clap::value_parser!(::chrono::DateTime<::chrono::offset::Utc>))
+                    .value_parser(::clap::value_parser!(
+                        ::chrono::DateTime<::chrono::offset::Utc>
+                    ))
                     .required_unless_present("json-body"),
             )
             .arg(
                 ::clap::Arg::new("server")
                     .long("server")
-                    .value_parser(::clap::value_parser!(types::TypedUuidForServerRegistrationId))
+                    .value_parser(::clap::value_parser!(
+                        types::TypedUuidForServerRegistrationId
+                    ))
                     .required(true),
             )
             .arg(
@@ -1194,7 +1218,9 @@ impl<T: CliConfig> Cli<T> {
             .arg(
                 ::clap::Arg::new("server")
                     .long("server")
-                    .value_parser(::clap::value_parser!(types::TypedUuidForServerRegistrationId))
+                    .value_parser(::clap::value_parser!(
+                        types::TypedUuidForServerRegistrationId
+                    ))
                     .required(true),
             )
             .arg(
@@ -1219,10 +1245,14 @@ impl<T: CliConfig> Cli<T> {
             .arg(
                 ::clap::Arg::new("server")
                     .long("server")
-                    .value_parser(::clap::value_parser!(types::TypedUuidForServerRegistrationId))
+                    .value_parser(::clap::value_parser!(
+                        types::TypedUuidForServerRegistrationId
+                    ))
                     .required(true),
             )
-            .about("Reject a server's request to be added as a representative instance of a service")
+            .about(
+                "Reject a server's request to be added as a representative instance of a service",
+            )
     }
 
     pub fn cli_terminate_server() -> ::clap::Command {
@@ -1230,7 +1260,9 @@ impl<T: CliConfig> Cli<T> {
             .arg(
                 ::clap::Arg::new("server")
                     .long("server")
-                    .value_parser(::clap::value_parser!(types::TypedUuidForServerRegistrationId))
+                    .value_parser(::clap::value_parser!(
+                        types::TypedUuidForServerRegistrationId
+                    ))
                     .required(true),
             )
             .about("Remove a server from the pool of representative instances of a service")
@@ -1318,7 +1350,11 @@ impl<T: CliConfig> Cli<T> {
             .about("Get all servers registered for a service")
     }
 
-    pub async fn execute(&self, cmd: CliCommand, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute(
+        &self,
+        cmd: CliCommand,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         match cmd {
             CliCommand::JwksJson => self.execute_jwks_json(matches).await,
             CliCommand::OpenidConfiguration => self.execute_openid_configuration(matches).await,
@@ -1326,9 +1362,13 @@ impl<T: CliConfig> Cli<T> {
             CliCommand::CreateApiUser => self.execute_create_api_user(matches).await,
             CliCommand::GetApiUser => self.execute_get_api_user(matches).await,
             CliCommand::UpdateApiUser => self.execute_update_api_user(matches).await,
-            CliCommand::SetApiUserContactEmail => self.execute_set_api_user_contact_email(matches).await,
+            CliCommand::SetApiUserContactEmail => {
+                self.execute_set_api_user_contact_email(matches).await
+            }
             CliCommand::AddApiUserToGroup => self.execute_add_api_user_to_group(matches).await,
-            CliCommand::RemoveApiUserFromGroup => self.execute_remove_api_user_from_group(matches).await,
+            CliCommand::RemoveApiUserFromGroup => {
+                self.execute_remove_api_user_from_group(matches).await
+            }
             CliCommand::LinkProvider => self.execute_link_provider(matches).await,
             CliCommand::ListApiUserTokens => self.execute_list_api_user_tokens(matches).await,
             CliCommand::CreateApiUserToken => self.execute_create_api_user_token(matches).await,
@@ -1354,26 +1394,46 @@ impl<T: CliConfig> Cli<T> {
             CliCommand::ListMagicLinks => self.execute_list_magic_links(matches).await,
             CliCommand::CreateMagicLink => self.execute_create_magic_link(matches).await,
             CliCommand::GetMagicLink => self.execute_get_magic_link(matches).await,
-            CliCommand::CreateMagicLinkRedirectUri => self.execute_create_magic_link_redirect_uri(matches).await,
-            CliCommand::DeleteMagicLinkRedirectUri => self.execute_delete_magic_link_redirect_uri(matches).await,
-            CliCommand::CreateMagicLinkSecret => self.execute_create_magic_link_secret(matches).await,
-            CliCommand::DeleteMagicLinkSecret => self.execute_delete_magic_link_secret(matches).await,
+            CliCommand::CreateMagicLinkRedirectUri => {
+                self.execute_create_magic_link_redirect_uri(matches).await
+            }
+            CliCommand::DeleteMagicLinkRedirectUri => {
+                self.execute_delete_magic_link_redirect_uri(matches).await
+            }
+            CliCommand::CreateMagicLinkSecret => {
+                self.execute_create_magic_link_secret(matches).await
+            }
+            CliCommand::DeleteMagicLinkSecret => {
+                self.execute_delete_magic_link_secret(matches).await
+            }
             CliCommand::GetMappers => self.execute_get_mappers(matches).await,
             CliCommand::CreateMapper => self.execute_create_mapper(matches).await,
             CliCommand::DeleteMapper => self.execute_delete_mapper(matches).await,
             CliCommand::ListOauthClients => self.execute_list_oauth_clients(matches).await,
             CliCommand::CreateOauthClient => self.execute_create_oauth_client(matches).await,
             CliCommand::GetOauthClient => self.execute_get_oauth_client(matches).await,
-            CliCommand::CreateOauthClientRedirectUri => self.execute_create_oauth_client_redirect_uri(matches).await,
-            CliCommand::DeleteOauthClientRedirectUri => self.execute_delete_oauth_client_redirect_uri(matches).await,
-            CliCommand::CreateOauthClientSecret => self.execute_create_oauth_client_secret(matches).await,
-            CliCommand::DeleteOauthClientSecret => self.execute_delete_oauth_client_secret(matches).await,
+            CliCommand::CreateOauthClientRedirectUri => {
+                self.execute_create_oauth_client_redirect_uri(matches).await
+            }
+            CliCommand::DeleteOauthClientRedirectUri => {
+                self.execute_delete_oauth_client_redirect_uri(matches).await
+            }
+            CliCommand::CreateOauthClientSecret => {
+                self.execute_create_oauth_client_secret(matches).await
+            }
+            CliCommand::DeleteOauthClientSecret => {
+                self.execute_delete_oauth_client_secret(matches).await
+            }
             CliCommand::GetSelf => self.execute_get_self(matches).await,
             CliCommand::AcceptServer => self.execute_accept_server(matches).await,
             CliCommand::RegisterBlob => self.execute_register_blob(matches).await,
             CliCommand::CheckinServer => self.execute_checkin_server(matches).await,
-            CliCommand::RegisterOidcTokenRequest => self.execute_register_oidc_token_request(matches).await,
-            CliCommand::ProveOidcTokenRequest => self.execute_prove_oidc_token_request(matches).await,
+            CliCommand::RegisterOidcTokenRequest => {
+                self.execute_register_oidc_token_request(matches).await
+            }
+            CliCommand::ProveOidcTokenRequest => {
+                self.execute_prove_oidc_token_request(matches).await
+            }
             CliCommand::ProveServer => self.execute_prove_server(matches).await,
             CliCommand::RejectServer => self.execute_reject_server(matches).await,
             CliCommand::TerminateServer => self.execute_terminate_server(matches).await,
@@ -1400,9 +1460,13 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_openid_configuration(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_openid_configuration(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.openid_configuration();
-        self.config.execute_openid_configuration(matches, &mut request)?;
+        self.config
+            .execute_openid_configuration(matches, &mut request)?;
         let result = request.send().await;
         match result {
             Ok(r) => {
@@ -1432,13 +1496,17 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_create_api_user(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_create_api_user(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.create_api_user();
         if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
-            let body_txt =
-                std::fs::read_to_string(value).with_context(|| format!("failed to read {}", value.display()))?;
-            let body_value = serde_json::from_str::<types::ApiUserUpdateParamsForApiPermissions>(&body_txt)
-                .with_context(|| format!("failed to parse {}", value.display()))?;
+            let body_txt = std::fs::read_to_string(value)
+                .with_context(|| format!("failed to read {}", value.display()))?;
+            let body_value =
+                serde_json::from_str::<types::ApiUserUpdateParamsForApiPermissions>(&body_txt)
+                    .with_context(|| format!("failed to parse {}", value.display()))?;
             request = request.body(body_value);
         }
 
@@ -1476,17 +1544,21 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_update_api_user(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_update_api_user(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.update_api_user();
         if let Some(value) = matches.get_one::<types::TypedUuidForUserId>("user-id") {
             request = request.user_id(value.clone());
         }
 
         if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
-            let body_txt =
-                std::fs::read_to_string(value).with_context(|| format!("failed to read {}", value.display()))?;
-            let body_value = serde_json::from_str::<types::ApiUserUpdateParamsForApiPermissions>(&body_txt)
-                .with_context(|| format!("failed to parse {}", value.display()))?;
+            let body_txt = std::fs::read_to_string(value)
+                .with_context(|| format!("failed to read {}", value.display()))?;
+            let body_value =
+                serde_json::from_str::<types::ApiUserUpdateParamsForApiPermissions>(&body_txt)
+                    .with_context(|| format!("failed to parse {}", value.display()))?;
             request = request.body(body_value);
         }
 
@@ -1504,7 +1576,10 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_set_api_user_contact_email(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_set_api_user_contact_email(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.set_api_user_contact_email();
         if let Some(value) = matches.get_one::<::std::string::String>("email") {
             request = request.body_map(|body| body.email(value.clone()))
@@ -1515,14 +1590,15 @@ impl<T: CliConfig> Cli<T> {
         }
 
         if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
-            let body_txt =
-                std::fs::read_to_string(value).with_context(|| format!("failed to read {}", value.display()))?;
+            let body_txt = std::fs::read_to_string(value)
+                .with_context(|| format!("failed to read {}", value.display()))?;
             let body_value = serde_json::from_str::<types::ApiUserEmailUpdateParams>(&body_txt)
                 .with_context(|| format!("failed to parse {}", value.display()))?;
             request = request.body(body_value);
         }
 
-        self.config.execute_set_api_user_contact_email(matches, &mut request)?;
+        self.config
+            .execute_set_api_user_contact_email(matches, &mut request)?;
         let result = request.send().await;
         match result {
             Ok(r) => {
@@ -1536,7 +1612,10 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_add_api_user_to_group(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_add_api_user_to_group(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.add_api_user_to_group();
         if let Some(value) = matches.get_one::<types::TypedUuidForAccessGroupId>("group-id") {
             request = request.body_map(|body| body.group_id(value.clone()))
@@ -1547,14 +1626,15 @@ impl<T: CliConfig> Cli<T> {
         }
 
         if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
-            let body_txt =
-                std::fs::read_to_string(value).with_context(|| format!("failed to read {}", value.display()))?;
+            let body_txt = std::fs::read_to_string(value)
+                .with_context(|| format!("failed to read {}", value.display()))?;
             let body_value = serde_json::from_str::<types::AddGroupBody>(&body_txt)
                 .with_context(|| format!("failed to parse {}", value.display()))?;
             request = request.body(body_value);
         }
 
-        self.config.execute_add_api_user_to_group(matches, &mut request)?;
+        self.config
+            .execute_add_api_user_to_group(matches, &mut request)?;
         let result = request.send().await;
         match result {
             Ok(r) => {
@@ -1568,7 +1648,10 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_remove_api_user_from_group(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_remove_api_user_from_group(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.remove_api_user_from_group();
         if let Some(value) = matches.get_one::<types::TypedUuidForAccessGroupId>("group-id") {
             request = request.group_id(value.clone());
@@ -1578,7 +1661,8 @@ impl<T: CliConfig> Cli<T> {
             request = request.user_id(value.clone());
         }
 
-        self.config.execute_remove_api_user_from_group(matches, &mut request)?;
+        self.config
+            .execute_remove_api_user_from_group(matches, &mut request)?;
         let result = request.send().await;
         match result {
             Ok(r) => {
@@ -1603,8 +1687,8 @@ impl<T: CliConfig> Cli<T> {
         }
 
         if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
-            let body_txt =
-                std::fs::read_to_string(value).with_context(|| format!("failed to read {}", value.display()))?;
+            let body_txt = std::fs::read_to_string(value)
+                .with_context(|| format!("failed to read {}", value.display()))?;
             let body_value = serde_json::from_str::<types::ApiUserProviderLinkPayload>(&body_txt)
                 .with_context(|| format!("failed to parse {}", value.display()))?;
             request = request.body(body_value);
@@ -1624,13 +1708,17 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_list_api_user_tokens(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_list_api_user_tokens(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.list_api_user_tokens();
         if let Some(value) = matches.get_one::<types::TypedUuidForUserId>("user-id") {
             request = request.user_id(value.clone());
         }
 
-        self.config.execute_list_api_user_tokens(matches, &mut request)?;
+        self.config
+            .execute_list_api_user_tokens(matches, &mut request)?;
         let result = request.send().await;
         match result {
             Ok(r) => {
@@ -1644,9 +1732,14 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_create_api_user_token(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_create_api_user_token(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.create_api_user_token();
-        if let Some(value) = matches.get_one::<::chrono::DateTime<::chrono::offset::Utc>>("expires-at") {
+        if let Some(value) =
+            matches.get_one::<::chrono::DateTime<::chrono::offset::Utc>>("expires-at")
+        {
             request = request.body_map(|body| body.expires_at(*value))
         }
 
@@ -1655,14 +1748,16 @@ impl<T: CliConfig> Cli<T> {
         }
 
         if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
-            let body_txt =
-                std::fs::read_to_string(value).with_context(|| format!("failed to read {}", value.display()))?;
-            let body_value = serde_json::from_str::<types::ApiKeyCreateParamsForApiPermissions>(&body_txt)
-                .with_context(|| format!("failed to parse {}", value.display()))?;
+            let body_txt = std::fs::read_to_string(value)
+                .with_context(|| format!("failed to read {}", value.display()))?;
+            let body_value =
+                serde_json::from_str::<types::ApiKeyCreateParamsForApiPermissions>(&body_txt)
+                    .with_context(|| format!("failed to parse {}", value.display()))?;
             request = request.body(body_value);
         }
 
-        self.config.execute_create_api_user_token(matches, &mut request)?;
+        self.config
+            .execute_create_api_user_token(matches, &mut request)?;
         let result = request.send().await;
         match result {
             Ok(r) => {
@@ -1676,7 +1771,10 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_get_api_user_token(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_get_api_user_token(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.get_api_user_token();
         if let Some(value) = matches.get_one::<types::TypedUuidForApiKeyId>("api-key-id") {
             request = request.api_key_id(value.clone());
@@ -1686,7 +1784,8 @@ impl<T: CliConfig> Cli<T> {
             request = request.user_id(value.clone());
         }
 
-        self.config.execute_get_api_user_token(matches, &mut request)?;
+        self.config
+            .execute_get_api_user_token(matches, &mut request)?;
         let result = request.send().await;
         match result {
             Ok(r) => {
@@ -1700,7 +1799,10 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_delete_api_user_token(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_delete_api_user_token(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.delete_api_user_token();
         if let Some(value) = matches.get_one::<types::TypedUuidForApiKeyId>("api-key-id") {
             request = request.api_key_id(value.clone());
@@ -1710,7 +1812,8 @@ impl<T: CliConfig> Cli<T> {
             request = request.user_id(value.clone());
         }
 
-        self.config.execute_delete_api_user_token(matches, &mut request)?;
+        self.config
+            .execute_delete_api_user_token(matches, &mut request)?;
         let result = request.send().await;
         match result {
             Ok(r) => {
@@ -1724,7 +1827,10 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_create_link_token(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_create_link_token(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.create_link_token();
         if let Some(value) = matches.get_one::<types::TypedUuidForUserProviderId>("provider-id") {
             request = request.provider_id(value.clone());
@@ -1735,14 +1841,15 @@ impl<T: CliConfig> Cli<T> {
         }
 
         if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
-            let body_txt =
-                std::fs::read_to_string(value).with_context(|| format!("failed to read {}", value.display()))?;
+            let body_txt = std::fs::read_to_string(value)
+                .with_context(|| format!("failed to read {}", value.display()))?;
             let body_value = serde_json::from_str::<types::ApiUserLinkRequestPayload>(&body_txt)
                 .with_context(|| format!("failed to parse {}", value.display()))?;
             request = request.body(body_value);
         }
 
-        self.config.execute_create_link_token(matches, &mut request)?;
+        self.config
+            .execute_create_link_token(matches, &mut request)?;
         let result = request.send().await;
         match result {
             Ok(r) => {
@@ -1756,13 +1863,17 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_cancel_blob_upload(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_cancel_blob_upload(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.cancel_blob_upload();
         if let Some(value) = matches.get_one::<types::TypedUuidForBlobId>("blob") {
             request = request.blob(value.clone());
         }
 
-        self.config.execute_cancel_blob_upload(matches, &mut request)?;
+        self.config
+            .execute_cancel_blob_upload(matches, &mut request)?;
         let result = request.send().await;
         match result {
             Ok(r) => {
@@ -1776,13 +1887,17 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_complete_blob_upload(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_complete_blob_upload(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.complete_blob_upload();
         if let Some(value) = matches.get_one::<types::TypedUuidForBlobId>("blob") {
             request = request.blob(value.clone());
         }
 
-        self.config.execute_complete_blob_upload(matches, &mut request)?;
+        self.config
+            .execute_complete_blob_upload(matches, &mut request)?;
         let result = request.send().await;
         match result {
             Ok(r) => {
@@ -1796,13 +1911,17 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_reset_blob_upload(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_reset_blob_upload(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.reset_blob_upload();
         if let Some(value) = matches.get_one::<types::TypedUuidForBlobId>("blob") {
             request = request.blob(value.clone());
         }
 
-        self.config.execute_reset_blob_upload(matches, &mut request)?;
+        self.config
+            .execute_reset_blob_upload(matches, &mut request)?;
         let result = request.send().await;
         match result {
             Ok(r) => {
@@ -1816,13 +1935,17 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_write_blob_upload(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_write_blob_upload(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.write_blob_upload();
         if let Some(value) = matches.get_one::<types::TypedUuidForBlobId>("blob") {
             request = request.blob(value.clone());
         }
 
-        self.config.execute_write_blob_upload(matches, &mut request)?;
+        self.config
+            .execute_write_blob_upload(matches, &mut request)?;
         let result = request.send().await;
         match result {
             Ok(r) => {
@@ -1859,10 +1982,11 @@ impl<T: CliConfig> Cli<T> {
         }
 
         if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
-            let body_txt =
-                std::fs::read_to_string(value).with_context(|| format!("failed to read {}", value.display()))?;
-            let body_value = serde_json::from_str::<types::AccessGroupUpdateParamsForApiPermissions>(&body_txt)
-                .with_context(|| format!("failed to parse {}", value.display()))?;
+            let body_txt = std::fs::read_to_string(value)
+                .with_context(|| format!("failed to read {}", value.display()))?;
+            let body_value =
+                serde_json::from_str::<types::AccessGroupUpdateParamsForApiPermissions>(&body_txt)
+                    .with_context(|| format!("failed to parse {}", value.display()))?;
             request = request.body(body_value);
         }
 
@@ -1891,10 +2015,11 @@ impl<T: CliConfig> Cli<T> {
         }
 
         if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
-            let body_txt =
-                std::fs::read_to_string(value).with_context(|| format!("failed to read {}", value.display()))?;
-            let body_value = serde_json::from_str::<types::AccessGroupUpdateParamsForApiPermissions>(&body_txt)
-                .with_context(|| format!("failed to parse {}", value.display()))?;
+            let body_txt = std::fs::read_to_string(value)
+                .with_context(|| format!("failed to read {}", value.display()))?;
+            let body_value =
+                serde_json::from_str::<types::AccessGroupUpdateParamsForApiPermissions>(&body_txt)
+                    .with_context(|| format!("failed to parse {}", value.display()))?;
             request = request.body(body_value);
         }
 
@@ -1932,13 +2057,17 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_get_group_members(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_get_group_members(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.get_group_members();
         if let Some(value) = matches.get_one::<types::TypedUuidForAccessGroupId>("group-id") {
             request = request.group_id(value.clone());
         }
 
-        self.config.execute_get_group_members(matches, &mut request)?;
+        self.config
+            .execute_get_group_members(matches, &mut request)?;
         let result = request.send().await;
         match result {
             Ok(r) => {
@@ -1952,9 +2081,13 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_magic_link_exchange(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_magic_link_exchange(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.magic_link_exchange();
-        if let Some(value) = matches.get_one::<types::TypedUuidForMagicLinkAttemptId>("attempt-id") {
+        if let Some(value) = matches.get_one::<types::TypedUuidForMagicLinkAttemptId>("attempt-id")
+        {
             request = request.body_map(|body| body.attempt_id(value.clone()))
         }
 
@@ -1971,14 +2104,15 @@ impl<T: CliConfig> Cli<T> {
         }
 
         if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
-            let body_txt =
-                std::fs::read_to_string(value).with_context(|| format!("failed to read {}", value.display()))?;
+            let body_txt = std::fs::read_to_string(value)
+                .with_context(|| format!("failed to read {}", value.display()))?;
             let body_value = serde_json::from_str::<types::MagicLinkExchangeRequest>(&body_txt)
                 .with_context(|| format!("failed to parse {}", value.display()))?;
             request = request.body(body_value);
         }
 
-        self.config.execute_magic_link_exchange(matches, &mut request)?;
+        self.config
+            .execute_magic_link_exchange(matches, &mut request)?;
         let result = request.send().await;
         match result {
             Ok(r) => {
@@ -1992,7 +2126,10 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_magic_link_send(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_magic_link_send(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.magic_link_send();
         if let Some(value) = matches.get_one::<::std::string::String>("channel") {
             request = request.channel(value.clone());
@@ -2023,8 +2160,8 @@ impl<T: CliConfig> Cli<T> {
         }
 
         if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
-            let body_txt =
-                std::fs::read_to_string(value).with_context(|| format!("failed to read {}", value.display()))?;
+            let body_txt = std::fs::read_to_string(value)
+                .with_context(|| format!("failed to read {}", value.display()))?;
             let body_value = serde_json::from_str::<types::MagicLinkSendRequest>(&body_txt)
                 .with_context(|| format!("failed to parse {}", value.display()))?;
             request = request.body(body_value);
@@ -2044,7 +2181,10 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_authz_code_redirect(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_authz_code_redirect(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.authz_code_redirect();
         if let Some(value) = matches.get_one::<types::TypedUuidForOAuthClientId>("client-id") {
             request = request.client_id(value.clone());
@@ -2070,7 +2210,8 @@ impl<T: CliConfig> Cli<T> {
             request = request.state(value.clone());
         }
 
-        self.config.execute_authz_code_redirect(matches, &mut request)?;
+        self.config
+            .execute_authz_code_redirect(matches, &mut request)?;
         let result = request.send().await;
         match result {
             Ok(r) => {
@@ -2083,7 +2224,10 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_authz_code_callback(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_authz_code_callback(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.authz_code_callback();
         if let Some(value) = matches.get_one::<::std::string::String>("code") {
             request = request.code(value.clone());
@@ -2101,7 +2245,8 @@ impl<T: CliConfig> Cli<T> {
             request = request.state(value.clone());
         }
 
-        self.config.execute_authz_code_callback(matches, &mut request)?;
+        self.config
+            .execute_authz_code_callback(matches, &mut request)?;
         let result = request.send().await;
         match result {
             Ok(r) => {
@@ -2114,7 +2259,10 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_authz_code_exchange(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_authz_code_exchange(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.authz_code_exchange();
         if let Some(value) = matches.get_one::<types::TypedUuidForOAuthClientId>("client-id") {
             request = request.body_map(|body| body.client_id(value.clone()))
@@ -2145,14 +2293,15 @@ impl<T: CliConfig> Cli<T> {
         }
 
         if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
-            let body_txt =
-                std::fs::read_to_string(value).with_context(|| format!("failed to read {}", value.display()))?;
+            let body_txt = std::fs::read_to_string(value)
+                .with_context(|| format!("failed to read {}", value.display()))?;
             let body_value = serde_json::from_str::<types::OAuthAuthzCodeExchangeBody>(&body_txt)
                 .with_context(|| format!("failed to parse {}", value.display()))?;
             request = request.body(body_value);
         }
 
-        self.config.execute_authz_code_exchange(matches, &mut request)?;
+        self.config
+            .execute_authz_code_exchange(matches, &mut request)?;
         let result = request.send().await;
         match result {
             Ok(r) => {
@@ -2166,13 +2315,17 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_get_device_provider(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_get_device_provider(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.get_device_provider();
         if let Some(value) = matches.get_one::<types::OAuthProviderName>("provider") {
             request = request.provider(*value);
         }
 
-        self.config.execute_get_device_provider(matches, &mut request)?;
+        self.config
+            .execute_get_device_provider(matches, &mut request)?;
         let result = request.send().await;
         match result {
             Ok(r) => {
@@ -2186,13 +2339,18 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_exchange_device_token(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_exchange_device_token(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.exchange_device_token();
         if let Some(value) = matches.get_one::<::std::string::String>("device-code") {
             request = request.body_map(|body| body.device_code(value.clone()))
         }
 
-        if let Some(value) = matches.get_one::<::chrono::DateTime<::chrono::offset::Utc>>("expires-at") {
+        if let Some(value) =
+            matches.get_one::<::chrono::DateTime<::chrono::offset::Utc>>("expires-at")
+        {
             request = request.body_map(|body| body.expires_at(*value))
         }
 
@@ -2205,14 +2363,15 @@ impl<T: CliConfig> Cli<T> {
         }
 
         if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
-            let body_txt =
-                std::fs::read_to_string(value).with_context(|| format!("failed to read {}", value.display()))?;
+            let body_txt = std::fs::read_to_string(value)
+                .with_context(|| format!("failed to read {}", value.display()))?;
             let body_value = serde_json::from_str::<types::AccessTokenExchangeRequest>(&body_txt)
                 .with_context(|| format!("failed to parse {}", value.display()))?;
             request = request.body(body_value);
         }
 
-        self.config.execute_exchange_device_token(matches, &mut request)?;
+        self.config
+            .execute_exchange_device_token(matches, &mut request)?;
         let result = request.send().await;
         match result {
             Ok(r) => {
@@ -2224,9 +2383,13 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_list_magic_links(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_list_magic_links(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.list_magic_links();
-        self.config.execute_list_magic_links(matches, &mut request)?;
+        self.config
+            .execute_list_magic_links(matches, &mut request)?;
         let result = request.send().await;
         match result {
             Ok(r) => {
@@ -2240,9 +2403,13 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_create_magic_link(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_create_magic_link(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.create_magic_link();
-        self.config.execute_create_magic_link(matches, &mut request)?;
+        self.config
+            .execute_create_magic_link(matches, &mut request)?;
         let result = request.send().await;
         match result {
             Ok(r) => {
@@ -2276,7 +2443,10 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_create_magic_link_redirect_uri(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_create_magic_link_redirect_uri(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.create_magic_link_redirect_uri();
         if let Some(value) = matches.get_one::<types::TypedUuidForMagicLinkId>("client-id") {
             request = request.client_id(value.clone());
@@ -2287,8 +2457,8 @@ impl<T: CliConfig> Cli<T> {
         }
 
         if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
-            let body_txt =
-                std::fs::read_to_string(value).with_context(|| format!("failed to read {}", value.display()))?;
+            let body_txt = std::fs::read_to_string(value)
+                .with_context(|| format!("failed to read {}", value.display()))?;
             let body_value = serde_json::from_str::<types::AddMagicLinkRedirectBody>(&body_txt)
                 .with_context(|| format!("failed to parse {}", value.display()))?;
             request = request.body(body_value);
@@ -2309,13 +2479,18 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_delete_magic_link_redirect_uri(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_delete_magic_link_redirect_uri(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.delete_magic_link_redirect_uri();
         if let Some(value) = matches.get_one::<types::TypedUuidForMagicLinkId>("client-id") {
             request = request.client_id(value.clone());
         }
 
-        if let Some(value) = matches.get_one::<types::TypedUuidForMagicLinkRedirectUriId>("redirect-uri-id") {
+        if let Some(value) =
+            matches.get_one::<types::TypedUuidForMagicLinkRedirectUriId>("redirect-uri-id")
+        {
             request = request.redirect_uri_id(value.clone());
         }
 
@@ -2334,13 +2509,17 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_create_magic_link_secret(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_create_magic_link_secret(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.create_magic_link_secret();
         if let Some(value) = matches.get_one::<types::TypedUuidForMagicLinkId>("client-id") {
             request = request.client_id(value.clone());
         }
 
-        self.config.execute_create_magic_link_secret(matches, &mut request)?;
+        self.config
+            .execute_create_magic_link_secret(matches, &mut request)?;
         let result = request.send().await;
         match result {
             Ok(r) => {
@@ -2354,7 +2533,10 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_delete_magic_link_secret(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_delete_magic_link_secret(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.delete_magic_link_secret();
         if let Some(value) = matches.get_one::<types::TypedUuidForMagicLinkId>("client-id") {
             request = request.client_id(value.clone());
@@ -2364,7 +2546,8 @@ impl<T: CliConfig> Cli<T> {
             request = request.secret_id(value.clone());
         }
 
-        self.config.execute_delete_magic_link_secret(matches, &mut request)?;
+        self.config
+            .execute_delete_magic_link_secret(matches, &mut request)?;
         let result = request.send().await;
         match result {
             Ok(r) => {
@@ -2409,8 +2592,8 @@ impl<T: CliConfig> Cli<T> {
         }
 
         if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
-            let body_txt =
-                std::fs::read_to_string(value).with_context(|| format!("failed to read {}", value.display()))?;
+            let body_txt = std::fs::read_to_string(value)
+                .with_context(|| format!("failed to read {}", value.display()))?;
             let body_value = serde_json::from_str::<types::CreateMapper>(&body_txt)
                 .with_context(|| format!("failed to parse {}", value.display()))?;
             request = request.body(body_value);
@@ -2450,9 +2633,13 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_list_oauth_clients(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_list_oauth_clients(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.list_oauth_clients();
-        self.config.execute_list_oauth_clients(matches, &mut request)?;
+        self.config
+            .execute_list_oauth_clients(matches, &mut request)?;
         let result = request.send().await;
         match result {
             Ok(r) => {
@@ -2466,9 +2653,13 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_create_oauth_client(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_create_oauth_client(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.create_oauth_client();
-        self.config.execute_create_oauth_client(matches, &mut request)?;
+        self.config
+            .execute_create_oauth_client(matches, &mut request)?;
         let result = request.send().await;
         match result {
             Ok(r) => {
@@ -2482,13 +2673,17 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_get_oauth_client(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_get_oauth_client(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.get_oauth_client();
         if let Some(value) = matches.get_one::<types::TypedUuidForOAuthClientId>("client-id") {
             request = request.client_id(value.clone());
         }
 
-        self.config.execute_get_oauth_client(matches, &mut request)?;
+        self.config
+            .execute_get_oauth_client(matches, &mut request)?;
         let result = request.send().await;
         match result {
             Ok(r) => {
@@ -2502,7 +2697,10 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_create_oauth_client_redirect_uri(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_create_oauth_client_redirect_uri(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.create_oauth_client_redirect_uri();
         if let Some(value) = matches.get_one::<types::TypedUuidForOAuthClientId>("client-id") {
             request = request.client_id(value.clone());
@@ -2513,8 +2711,8 @@ impl<T: CliConfig> Cli<T> {
         }
 
         if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
-            let body_txt =
-                std::fs::read_to_string(value).with_context(|| format!("failed to read {}", value.display()))?;
+            let body_txt = std::fs::read_to_string(value)
+                .with_context(|| format!("failed to read {}", value.display()))?;
             let body_value = serde_json::from_str::<types::AddOAuthClientRedirectBody>(&body_txt)
                 .with_context(|| format!("failed to parse {}", value.display()))?;
             request = request.body(body_value);
@@ -2535,13 +2733,18 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_delete_oauth_client_redirect_uri(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_delete_oauth_client_redirect_uri(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.delete_oauth_client_redirect_uri();
         if let Some(value) = matches.get_one::<types::TypedUuidForOAuthClientId>("client-id") {
             request = request.client_id(value.clone());
         }
 
-        if let Some(value) = matches.get_one::<types::TypedUuidForOAuthRedirectUriId>("redirect-uri-id") {
+        if let Some(value) =
+            matches.get_one::<types::TypedUuidForOAuthRedirectUriId>("redirect-uri-id")
+        {
             request = request.redirect_uri_id(value.clone());
         }
 
@@ -2560,13 +2763,17 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_create_oauth_client_secret(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_create_oauth_client_secret(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.create_oauth_client_secret();
         if let Some(value) = matches.get_one::<types::TypedUuidForOAuthClientId>("client-id") {
             request = request.client_id(value.clone());
         }
 
-        self.config.execute_create_oauth_client_secret(matches, &mut request)?;
+        self.config
+            .execute_create_oauth_client_secret(matches, &mut request)?;
         let result = request.send().await;
         match result {
             Ok(r) => {
@@ -2580,7 +2787,10 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_delete_oauth_client_secret(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_delete_oauth_client_secret(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.delete_oauth_client_secret();
         if let Some(value) = matches.get_one::<types::TypedUuidForOAuthClientId>("client-id") {
             request = request.client_id(value.clone());
@@ -2590,7 +2800,8 @@ impl<T: CliConfig> Cli<T> {
             request = request.secret_id(value.clone());
         }
 
-        self.config.execute_delete_oauth_client_secret(matches, &mut request)?;
+        self.config
+            .execute_delete_oauth_client_secret(matches, &mut request)?;
         let result = request.send().await;
         match result {
             Ok(r) => {
@@ -2655,8 +2866,8 @@ impl<T: CliConfig> Cli<T> {
         }
 
         if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
-            let body_txt =
-                std::fs::read_to_string(value).with_context(|| format!("failed to read {}", value.display()))?;
+            let body_txt = std::fs::read_to_string(value)
+                .with_context(|| format!("failed to read {}", value.display()))?;
             let body_value = serde_json::from_str::<types::RegisterBlobBody>(&body_txt)
                 .with_context(|| format!("failed to parse {}", value.display()))?;
             request = request.body(body_value);
@@ -2678,7 +2889,9 @@ impl<T: CliConfig> Cli<T> {
 
     pub async fn execute_checkin_server(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
         let mut request = self.client.checkin_server();
-        if let Some(value) = matches.get_one::<::chrono::DateTime<::chrono::offset::Utc>>("checked-in-at") {
+        if let Some(value) =
+            matches.get_one::<::chrono::DateTime<::chrono::offset::Utc>>("checked-in-at")
+        {
             request = request.body_map(|body| body.checked_in_at(*value))
         }
 
@@ -2687,8 +2900,8 @@ impl<T: CliConfig> Cli<T> {
         }
 
         if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
-            let body_txt =
-                std::fs::read_to_string(value).with_context(|| format!("failed to read {}", value.display()))?;
+            let body_txt = std::fs::read_to_string(value)
+                .with_context(|| format!("failed to read {}", value.display()))?;
             let body_value = serde_json::from_str::<types::CheckinBody>(&body_txt)
                 .with_context(|| format!("failed to parse {}", value.display()))?;
             request = request.body(body_value);
@@ -2708,13 +2921,17 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_register_oidc_token_request(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_register_oidc_token_request(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.register_oidc_token_request();
         if let Some(value) = matches.get_one::<types::TypedUuidForServerRegistrationId>("server") {
             request = request.server(value.clone());
         }
 
-        self.config.execute_register_oidc_token_request(matches, &mut request)?;
+        self.config
+            .execute_register_oidc_token_request(matches, &mut request)?;
         let result = request.send().await;
         match result {
             Ok(r) => {
@@ -2728,7 +2945,10 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_prove_oidc_token_request(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_prove_oidc_token_request(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.prove_oidc_token_request();
         if let Some(value) = matches.get_one::<types::TypedUuidForTokenRequestId>("request") {
             request = request.body_map(|body| body.request(value.clone()))
@@ -2739,14 +2959,15 @@ impl<T: CliConfig> Cli<T> {
         }
 
         if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
-            let body_txt =
-                std::fs::read_to_string(value).with_context(|| format!("failed to read {}", value.display()))?;
+            let body_txt = std::fs::read_to_string(value)
+                .with_context(|| format!("failed to read {}", value.display()))?;
             let body_value = serde_json::from_str::<types::ServerAttestation>(&body_txt)
                 .with_context(|| format!("failed to parse {}", value.display()))?;
             request = request.body(body_value);
         }
 
-        self.config.execute_prove_oidc_token_request(matches, &mut request)?;
+        self.config
+            .execute_prove_oidc_token_request(matches, &mut request)?;
         let result = request.send().await;
         match result {
             Ok(r) => {
@@ -2767,8 +2988,8 @@ impl<T: CliConfig> Cli<T> {
         }
 
         if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
-            let body_txt =
-                std::fs::read_to_string(value).with_context(|| format!("failed to read {}", value.display()))?;
+            let body_txt = std::fs::read_to_string(value)
+                .with_context(|| format!("failed to read {}", value.display()))?;
             let body_value = serde_json::from_str::<types::ServerAttestation2>(&body_txt)
                 .with_context(|| format!("failed to parse {}", value.display()))?;
             request = request.body(body_value);
@@ -2808,13 +3029,17 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_terminate_server(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_terminate_server(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.terminate_server();
         if let Some(value) = matches.get_one::<types::TypedUuidForServerRegistrationId>("server") {
             request = request.server(value.clone());
         }
 
-        self.config.execute_terminate_server(matches, &mut request)?;
+        self.config
+            .execute_terminate_server(matches, &mut request)?;
         let result = request.send().await;
         match result {
             Ok(r) => {
@@ -2835,8 +3060,8 @@ impl<T: CliConfig> Cli<T> {
         }
 
         if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
-            let body_txt =
-                std::fs::read_to_string(value).with_context(|| format!("failed to read {}", value.display()))?;
+            let body_txt = std::fs::read_to_string(value)
+                .with_context(|| format!("failed to read {}", value.display()))?;
             let body_value = serde_json::from_str::<types::CreateService>(&body_txt)
                 .with_context(|| format!("failed to parse {}", value.display()))?;
             request = request.body(body_value);
@@ -2876,9 +3101,14 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_register_server(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_register_server(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.register_server();
-        if let Some(value) = matches.get_one::<types::TypedUuidForServerRegistrationInstanceId>("instance") {
+        if let Some(value) =
+            matches.get_one::<types::TypedUuidForServerRegistrationInstanceId>("instance")
+        {
             request = request.body_map(|body| body.instance(value.clone()))
         }
 
@@ -2887,8 +3117,8 @@ impl<T: CliConfig> Cli<T> {
         }
 
         if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
-            let body_txt =
-                std::fs::read_to_string(value).with_context(|| format!("failed to read {}", value.display()))?;
+            let body_txt = std::fs::read_to_string(value)
+                .with_context(|| format!("failed to read {}", value.display()))?;
             let body_value = serde_json::from_str::<types::RegisterServerBody>(&body_txt)
                 .with_context(|| format!("failed to parse {}", value.display()))?;
             request = request.body(body_value);
@@ -2908,13 +3138,17 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_get_service_servers(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+    pub async fn execute_get_service_servers(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
         let mut request = self.client.get_service_servers();
         if let Some(value) = matches.get_one::<types::TypedUuidForServiceId>("service") {
             request = request.service(value.clone());
         }
 
-        self.config.execute_get_service_servers(matches, &mut request)?;
+        self.config
+            .execute_get_service_servers(matches, &mut request)?;
         let result = request.send().await;
         match result {
             Ok(r) => {
@@ -2949,7 +3183,11 @@ pub trait CliConfig {
     fn list_end_error<T>(&self, value: &Error<T>)
     where
         T: schemars::JsonSchema + serde::Serialize + std::fmt::Debug;
-    fn execute_jwks_json(&self, matches: &::clap::ArgMatches, request: &mut builder::JwksJson) -> anyhow::Result<()> {
+    fn execute_jwks_json(
+        &self,
+        matches: &::clap::ArgMatches,
+        request: &mut builder::JwksJson,
+    ) -> anyhow::Result<()> {
         Ok(())
     }
 
@@ -3097,7 +3335,11 @@ pub trait CliConfig {
         Ok(())
     }
 
-    fn execute_get_groups(&self, matches: &::clap::ArgMatches, request: &mut builder::GetGroups) -> anyhow::Result<()> {
+    fn execute_get_groups(
+        &self,
+        matches: &::clap::ArgMatches,
+        request: &mut builder::GetGroups,
+    ) -> anyhow::Result<()> {
         Ok(())
     }
 
@@ -3325,7 +3567,11 @@ pub trait CliConfig {
         Ok(())
     }
 
-    fn execute_get_self(&self, matches: &::clap::ArgMatches, request: &mut builder::GetSelf) -> anyhow::Result<()> {
+    fn execute_get_self(
+        &self,
+        matches: &::clap::ArgMatches,
+        request: &mut builder::GetSelf,
+    ) -> anyhow::Result<()> {
         Ok(())
     }
 

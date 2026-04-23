@@ -8,7 +8,7 @@ use anyhow::Result;
 use chrono::{Duration, NaiveDate, TimeDelta, Utc};
 use clap::{Parser, Subcommand, ValueEnum};
 use oauth2::TokenResponse;
-use sprue_sdk::types::{MagicLinkMedium, OAuthProviderName, ApiPermissions};
+use sprue_sdk::types::{ApiPermissions, MagicLinkMedium, OAuthProviderName};
 
 use crate::{cmd::auth::oauth, Context};
 

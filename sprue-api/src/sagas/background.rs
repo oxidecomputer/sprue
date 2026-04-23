@@ -146,15 +146,15 @@ impl SagaBackgroundSpawner {
                     let caller = self.caller.clone();
                     let ctx = self.api_ctx.clone();
                     tokio::spawn(async move {
-                        let start = ctx.v_ctx()
+                        let start = ctx
+                            .v_ctx()
                             .saga
                             .start_saga(&caller, id)
                             .await
                             .tap_err(|err| {
                                 tracing::error!(?err, "Failed to start generated saga");
                             });
-                        if start.is_ok()
-                        {
+                        if start.is_ok() {
                             handle.await;
                         } else {
                             tracing::error!(?id, "Failed to start saga");

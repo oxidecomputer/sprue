@@ -14,11 +14,11 @@ use printer::{CliOutput, Printer};
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use sprue_sdk::Client;
 use std::fmt::{Debug, Display};
 use std::time::Duration;
 use std::{collections::HashMap, error::Error};
 use store::CliConfig;
-use sprue_sdk::Client;
 use uuid::timestamp::context;
 
 mod cmd;

@@ -117,9 +117,10 @@ impl ProvideCredentials for WebIdentityCredentialProvider {
             {
                 let cache = self.cache.read().await;
                 if let Some(cached) = cache.as_ref()
-                    && !Self::is_expired(cached, self.refresh_buffer) {
-                        return Ok(cached.credentials.clone());
-                    }
+                    && !Self::is_expired(cached, self.refresh_buffer)
+                {
+                    return Ok(cached.credentials.clone());
+                }
             }
 
             let fresh = self.fetch_fresh_credentials().await.map_err(|e| {

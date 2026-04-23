@@ -13,23 +13,29 @@ use std::{
 use steno::ActionRegistry;
 use thiserror::Error;
 use tokio::select;
-use v_api::{VContextBuilder, VContextBuilderError, endpoints::login::oauth::{OAuthProviderName, google::GoogleOAuthProvider}};
+use v_api::{
+    VContextBuilder, VContextBuilderError,
+    endpoints::login::oauth::{OAuthProviderName, google::GoogleOAuthProvider},
+};
 use v_api_param::ParamResolutionError;
 use v_model::saga::view::SagaExecNodeId;
 use x509_cert::Certificate;
 
 use crate::{
-    backup_storage::{OidcTokenFetcher, create_backup_storage}, context::{
+    backup_storage::{OidcTokenFetcher, create_backup_storage},
+    context::{
         ApiContextBuilder, ApiContextBuilderError,
         blob::BlobContext,
         idempotency::IdempotencyContext,
         oidc::{OidcContext, OidcContextError},
         server_identity::ServerIdentityContext,
         service::ServiceContext,
-    }, initial_data::{InitError, InitialData}, sagas::{
+    },
+    initial_data::{InitError, InitialData},
+    sagas::{
         actions::{load_actions, push_backup::PushBackup},
         background::{SagaBackgroundConfig, SagaBackgroundSpawner},
-    }
+    },
 };
 
 mod backup_storage;
@@ -81,13 +87,13 @@ pub async fn run_server(
     let storage = Arc::new(PostgresStorage::create(database_url_secret.expose_secret()).unwrap());
 
     let mut v_ctx = VContextBuilder::new()
-            .with_public_url(config.public_url.clone())
-            .with_jwt_expiration(config.jwt.default_expiration)
-            .with_storage_url(database_url_secret.expose_secret().to_string())
-            .with_keys(config.jwt.keys)
-            .with_saga_backend(node_id, None)
-            .build()
-            .await?;
+        .with_public_url(config.public_url.clone())
+        .with_jwt_expiration(config.jwt.default_expiration)
+        .with_storage_url(database_url_secret.expose_secret().to_string())
+        .with_keys(config.jwt.keys)
+        .with_saga_backend(node_id, None)
+        .build()
+        .await?;
 
     // Install OAuth provider
     if let Some(google) = config.authn.oauth.google {
@@ -95,7 +101,10 @@ pub async fn run_server(
             .device
             .client_secret
             .resolve(config.param_base_path.clone())?;
-        let web_secret = google.web.client_secret.resolve(config.param_base_path.clone())?;
+        let web_secret = google
+            .web
+            .client_secret
+            .resolve(config.param_base_path.clone())?;
         v_ctx.insert_oauth_provider(
             OAuthProviderName::Google,
             Box::new(move || {

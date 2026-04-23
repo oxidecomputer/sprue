@@ -29,16 +29,12 @@ impl Printer {
     where
         T: Serialize,
     {
-        let json_value = serde_json::to_value(value).unwrap_or_else(|e| {
-            serde_json::Value::String(format!("<serialization error: {}>", e))
-        });
+        let json_value = serde_json::to_value(value)
+            .unwrap_or_else(|e| serde_json::Value::String(format!("<serialization error: {}>", e)));
 
         match self {
             Printer::Json => {
-                println!(
-                    "{}",
-                    serde_json::to_string(&json_value).unwrap_or_default()
-                );
+                println!("{}", serde_json::to_string(&json_value).unwrap_or_default());
             }
             Printer::Tab => {
                 let styles = TabStyles::default();
@@ -63,9 +59,7 @@ impl Printer {
         // Check for 401 Unauthorized up-front, regardless of output format.
         if let Some(status) = value.status() {
             if status == reqwest::StatusCode::UNAUTHORIZED {
-                eprintln!(
-                    "Authentication required. Please run `sprue auth login` first."
-                );
+                eprintln!("Authentication required. Please run `sprue auth login` first.");
                 return;
             }
         }
@@ -80,10 +74,7 @@ impl Printer {
                     }
                     _ => None,
                 };
-                eprintln!(
-                    "{}",
-                    msg.unwrap_or_else(|| format!("{:?}", value))
-                );
+                eprintln!("{}", msg.unwrap_or_else(|| format!("{:?}", value)));
             }
             Printer::Tab => {
                 eprintln!("{}", value);
@@ -143,11 +134,7 @@ fn pretty_print_value(
         serde_json::Value::Array(arr) => {
             for (i, val) in arr.iter().enumerate() {
                 indent(tw, depth);
-                let _ = writeln!(
-                    tw,
-                    "{}",
-                    format!("[{}]", i).style(styles.label),
-                );
+                let _ = writeln!(tw, "{}", format!("[{}]", i).style(styles.label),);
                 pretty_print_value(tw, val, depth + 1, styles);
             }
         }
@@ -202,11 +189,7 @@ fn pretty_print_field(
             let _ = writeln!(tw, "{}:", key.style(styles.label));
             for (i, val) in arr.iter().enumerate() {
                 indent(tw, depth + 1);
-                let _ = writeln!(
-                    tw,
-                    "{}",
-                    format!("[{}]", i).style(styles.label),
-                );
+                let _ = writeln!(tw, "{}", format!("[{}]", i).style(styles.label),);
                 pretty_print_value(tw, val, depth + 2, styles);
             }
         }

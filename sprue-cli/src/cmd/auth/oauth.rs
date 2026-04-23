@@ -45,10 +45,11 @@ impl DeviceOAuth {
 
         Ok(Self {
             client,
-            http: oauth2_reqwest::ReqwestClient::from(reqwest::ClientBuilder::new()
-                .redirect(reqwest::redirect::Policy::none())
-                .build()
-                .unwrap()
+            http: oauth2_reqwest::ReqwestClient::from(
+                reqwest::ClientBuilder::new()
+                    .redirect(reqwest::redirect::Policy::none())
+                    .build()
+                    .unwrap(),
             ),
             scopes: provider.scopes,
         })

@@ -6,6 +6,7 @@ use clap::{Parser, ValueEnum};
 use newline_converter::dos2unix;
 use progenitor::{GenerationSettings, Generator, TagStyle};
 use regex::Regex;
+use rustfmt_wrapper::config::Edition;
 use semver::{Prerelease, Version};
 use similar::{Algorithm, ChangeTag, TextDiff};
 use std::{
@@ -234,6 +235,7 @@ fn format_code(code: String) -> String {
     );
     let contents = rustfmt_wrapper::rustfmt_config(
         rustfmt_wrapper::config::Config {
+            edition: Some(Edition::Edition2024),
             max_width: Some(100),
             format_strings: Some(true),
             normalize_doc_attributes: Some(true),

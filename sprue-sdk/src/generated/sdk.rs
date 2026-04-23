@@ -1,9 +1,9 @@
 // The contents of this file are generated; do not modify them.
 
 #[allow(unused_imports)]
-use progenitor_client::{encode_path, ClientHooks, OperationInfo, RequestBuilderExt};
-#[allow(unused_imports)]
 pub use progenitor_client::{ByteStream, ClientInfo, Error, ResponseValue};
+#[allow(unused_imports)]
+use progenitor_client::{ClientHooks, OperationInfo, RequestBuilderExt, encode_path};
 /// Types used as operation parameters and responses.
 #[allow(clippy::all)]
 pub mod types {
@@ -5825,8 +5825,8 @@ pub mod types {
             pub fn deleted_at<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<
-                    ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
-                >,
+                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                    >,
                 T::Error: ::std::fmt::Display,
             {
                 self.deleted_at = value
@@ -6003,8 +6003,8 @@ pub mod types {
             pub fn expires_at<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<
-                    ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
-                >,
+                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                    >,
                 T::Error: ::std::fmt::Display,
             {
                 self.expires_at = value
@@ -6218,8 +6218,8 @@ pub mod types {
             pub fn permissions<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<
-                    ::std::option::Option<super::PermissionsForApiPermissions>,
-                >,
+                        ::std::option::Option<super::PermissionsForApiPermissions>,
+                    >,
                 T::Error: ::std::fmt::Display,
             {
                 self.permissions = value
@@ -6301,8 +6301,8 @@ pub mod types {
             pub fn permissions<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<
-                    ::std::option::Option<super::PermissionsForApiPermissions>,
-                >,
+                        ::std::option::Option<super::PermissionsForApiPermissions>,
+                    >,
                 T::Error: ::std::fmt::Display,
             {
                 self.permissions = value
@@ -6385,8 +6385,8 @@ pub mod types {
             pub fn deleted_at<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<
-                    ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
-                >,
+                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                    >,
                 T::Error: ::std::fmt::Display,
             {
                 self.deleted_at = value
@@ -6558,8 +6558,8 @@ pub mod types {
             pub fn deleted_at<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<
-                    ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
-                >,
+                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                    >,
                 T::Error: ::std::fmt::Display,
             {
                 self.deleted_at = value
@@ -6786,8 +6786,8 @@ pub mod types {
             pub fn deleted_at<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<
-                    ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
-                >,
+                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                    >,
                 T::Error: ::std::fmt::Display,
             {
                 self.deleted_at = value
@@ -7628,8 +7628,8 @@ pub mod types {
             pub fn permissions<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<
-                    ::std::option::Option<super::PermissionsForApiPermissions>,
-                >,
+                        ::std::option::Option<super::PermissionsForApiPermissions>,
+                    >,
                 T::Error: ::std::fmt::Display,
             {
                 self.permissions = value
@@ -8015,8 +8015,8 @@ pub mod types {
             pub fn deleted_at<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<
-                    ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
-                >,
+                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                    >,
                 T::Error: ::std::fmt::Display,
             {
                 self.deleted_at = value
@@ -8277,8 +8277,8 @@ pub mod types {
             pub fn deleted_at<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<
-                    ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
-                >,
+                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                    >,
                 T::Error: ::std::fmt::Display,
             {
                 self.deleted_at = value
@@ -8389,8 +8389,8 @@ pub mod types {
             pub fn deleted_at<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<
-                    ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
-                >,
+                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                    >,
                 T::Error: ::std::fmt::Display,
             {
                 self.deleted_at = value
@@ -8687,8 +8687,8 @@ pub mod types {
             pub fn deleted_at<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<
-                    ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
-                >,
+                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                    >,
                 T::Error: ::std::fmt::Display,
             {
                 self.deleted_at = value
@@ -8699,8 +8699,8 @@ pub mod types {
             pub fn depleted_at<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<
-                    ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
-                >,
+                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                    >,
                 T::Error: ::std::fmt::Display,
             {
                 self.depleted_at = value
@@ -9043,8 +9043,8 @@ pub mod types {
             pub fn deleted_at<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<
-                    ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
-                >,
+                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                    >,
                 T::Error: ::std::fmt::Display,
             {
                 self.deleted_at = value
@@ -9153,8 +9153,8 @@ pub mod types {
             pub fn deleted_at<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<
-                    ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
-                >,
+                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                    >,
                 T::Error: ::std::fmt::Display,
             {
                 self.deleted_at = value
@@ -9263,8 +9263,8 @@ pub mod types {
             pub fn deleted_at<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<
-                    ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
-                >,
+                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                    >,
                 T::Error: ::std::fmt::Display,
             {
                 self.deleted_at = value
@@ -9904,8 +9904,8 @@ pub mod types {
             pub fn expires_at<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<
-                    ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
-                >,
+                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                    >,
                 T::Error: ::std::fmt::Display,
             {
                 self.expires_at = value
@@ -10140,8 +10140,8 @@ pub mod types {
             pub fn expires_at<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<
-                    ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
-                >,
+                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                    >,
                 T::Error: ::std::fmt::Display,
             {
                 self.expires_at = value
@@ -11211,8 +11211,8 @@ pub mod builder {
     use super::types;
     #[allow(unused_imports)]
     use super::{
-        encode_path, ByteStream, ClientHooks, ClientInfo, Error, OperationInfo, RequestBuilderExt,
-        ResponseValue,
+        ByteStream, ClientHooks, ClientInfo, Error, OperationInfo, RequestBuilderExt,
+        ResponseValue, encode_path,
     };
     /// Builder for [`Client::jwks_json`]
     ///
@@ -11412,9 +11412,9 @@ pub mod builder {
         pub fn body_map<F>(mut self, f: F) -> Self
         where
             F: std::ops::FnOnce(
-                types::builder::ApiUserUpdateParamsForApiPermissions,
-            )
-                -> types::builder::ApiUserUpdateParamsForApiPermissions,
+                    types::builder::ApiUserUpdateParamsForApiPermissions,
+                )
+                    -> types::builder::ApiUserUpdateParamsForApiPermissions,
         {
             self.body = self.body.map(f);
             self
@@ -11590,9 +11590,9 @@ pub mod builder {
         pub fn body_map<F>(mut self, f: F) -> Self
         where
             F: std::ops::FnOnce(
-                types::builder::ApiUserUpdateParamsForApiPermissions,
-            )
-                -> types::builder::ApiUserUpdateParamsForApiPermissions,
+                    types::builder::ApiUserUpdateParamsForApiPermissions,
+                )
+                    -> types::builder::ApiUserUpdateParamsForApiPermissions,
         {
             self.body = self.body.map(f);
             self
@@ -11702,8 +11702,8 @@ pub mod builder {
         pub fn body_map<F>(mut self, f: F) -> Self
         where
             F: std::ops::FnOnce(
-                types::builder::ApiUserEmailUpdateParams,
-            ) -> types::builder::ApiUserEmailUpdateParams,
+                    types::builder::ApiUserEmailUpdateParams,
+                ) -> types::builder::ApiUserEmailUpdateParams,
         {
             self.body = self.body.map(f);
             self
@@ -12008,8 +12008,8 @@ pub mod builder {
         pub fn body_map<F>(mut self, f: F) -> Self
         where
             F: std::ops::FnOnce(
-                types::builder::ApiUserProviderLinkPayload,
-            ) -> types::builder::ApiUserProviderLinkPayload,
+                    types::builder::ApiUserProviderLinkPayload,
+                ) -> types::builder::ApiUserProviderLinkPayload,
         {
             self.body = self.body.map(f);
             self
@@ -12192,8 +12192,9 @@ pub mod builder {
         pub fn body_map<F>(mut self, f: F) -> Self
         where
             F: std::ops::FnOnce(
-                types::builder::ApiKeyCreateParamsForApiPermissions,
-            ) -> types::builder::ApiKeyCreateParamsForApiPermissions,
+                    types::builder::ApiKeyCreateParamsForApiPermissions,
+                )
+                    -> types::builder::ApiKeyCreateParamsForApiPermissions,
         {
             self.body = self.body.map(f);
             self
@@ -12488,8 +12489,8 @@ pub mod builder {
         pub fn body_map<F>(mut self, f: F) -> Self
         where
             F: std::ops::FnOnce(
-                types::builder::ApiUserLinkRequestPayload,
-            ) -> types::builder::ApiUserLinkRequestPayload,
+                    types::builder::ApiUserLinkRequestPayload,
+                ) -> types::builder::ApiUserLinkRequestPayload,
         {
             self.body = self.body.map(f);
             self
@@ -12946,9 +12947,9 @@ pub mod builder {
         pub fn body_map<F>(mut self, f: F) -> Self
         where
             F: std::ops::FnOnce(
-                types::builder::AccessGroupUpdateParamsForApiPermissions,
-            )
-                -> types::builder::AccessGroupUpdateParamsForApiPermissions,
+                    types::builder::AccessGroupUpdateParamsForApiPermissions,
+                )
+                    -> types::builder::AccessGroupUpdateParamsForApiPermissions,
         {
             self.body = self.body.map(f);
             self
@@ -13050,9 +13051,9 @@ pub mod builder {
         pub fn body_map<F>(mut self, f: F) -> Self
         where
             F: std::ops::FnOnce(
-                types::builder::AccessGroupUpdateParamsForApiPermissions,
-            )
-                -> types::builder::AccessGroupUpdateParamsForApiPermissions,
+                    types::builder::AccessGroupUpdateParamsForApiPermissions,
+                )
+                    -> types::builder::AccessGroupUpdateParamsForApiPermissions,
         {
             self.body = self.body.map(f);
             self
@@ -13312,8 +13313,8 @@ pub mod builder {
         pub fn body_map<F>(mut self, f: F) -> Self
         where
             F: std::ops::FnOnce(
-                types::builder::MagicLinkExchangeRequest,
-            ) -> types::builder::MagicLinkExchangeRequest,
+                    types::builder::MagicLinkExchangeRequest,
+                ) -> types::builder::MagicLinkExchangeRequest,
         {
             self.body = self.body.map(f);
             self
@@ -13421,8 +13422,8 @@ pub mod builder {
         pub fn body_map<F>(mut self, f: F) -> Self
         where
             F: std::ops::FnOnce(
-                types::builder::MagicLinkSendRequest,
-            ) -> types::builder::MagicLinkSendRequest,
+                    types::builder::MagicLinkSendRequest,
+                ) -> types::builder::MagicLinkSendRequest,
         {
             self.body = self.body.map(f);
             self
@@ -13795,8 +13796,8 @@ pub mod builder {
         pub fn body_map<F>(mut self, f: F) -> Self
         where
             F: std::ops::FnOnce(
-                types::builder::OAuthAuthzCodeExchangeBody,
-            ) -> types::builder::OAuthAuthzCodeExchangeBody,
+                    types::builder::OAuthAuthzCodeExchangeBody,
+                ) -> types::builder::OAuthAuthzCodeExchangeBody,
         {
             self.body = self.body.map(f);
             self
@@ -13979,8 +13980,8 @@ pub mod builder {
         pub fn body_map<F>(mut self, f: F) -> Self
         where
             F: std::ops::FnOnce(
-                types::builder::AccessTokenExchangeRequest,
-            ) -> types::builder::AccessTokenExchangeRequest,
+                    types::builder::AccessTokenExchangeRequest,
+                ) -> types::builder::AccessTokenExchangeRequest,
         {
             self.body = self.body.map(f);
             self
@@ -14253,8 +14254,8 @@ pub mod builder {
         pub fn body_map<F>(mut self, f: F) -> Self
         where
             F: std::ops::FnOnce(
-                types::builder::AddMagicLinkRedirectBody,
-            ) -> types::builder::AddMagicLinkRedirectBody,
+                    types::builder::AddMagicLinkRedirectBody,
+                ) -> types::builder::AddMagicLinkRedirectBody,
         {
             self.body = self.body.map(f);
             self
@@ -15028,8 +15029,8 @@ pub mod builder {
         pub fn body_map<F>(mut self, f: F) -> Self
         where
             F: std::ops::FnOnce(
-                types::builder::AddOAuthClientRedirectBody,
-            ) -> types::builder::AddOAuthClientRedirectBody,
+                    types::builder::AddOAuthClientRedirectBody,
+                ) -> types::builder::AddOAuthClientRedirectBody,
         {
             self.body = self.body.map(f);
             self
@@ -15520,8 +15521,8 @@ pub mod builder {
         pub fn body_map<F>(mut self, f: F) -> Self
         where
             F: std::ops::FnOnce(
-                types::builder::RegisterBlobBody,
-            ) -> types::builder::RegisterBlobBody,
+                    types::builder::RegisterBlobBody,
+                ) -> types::builder::RegisterBlobBody,
         {
             self.body = self.body.map(f);
             self
@@ -15797,8 +15798,8 @@ pub mod builder {
         pub fn body_map<F>(mut self, f: F) -> Self
         where
             F: std::ops::FnOnce(
-                types::builder::ServerAttestation,
-            ) -> types::builder::ServerAttestation,
+                    types::builder::ServerAttestation,
+                ) -> types::builder::ServerAttestation,
         {
             self.body = self.body.map(f);
             self
@@ -15902,8 +15903,8 @@ pub mod builder {
         pub fn body_map<F>(mut self, f: F) -> Self
         where
             F: std::ops::FnOnce(
-                types::builder::ServerAttestation2,
-            ) -> types::builder::ServerAttestation2,
+                    types::builder::ServerAttestation2,
+                ) -> types::builder::ServerAttestation2,
         {
             self.body = self.body.map(f);
             self
@@ -16298,8 +16299,8 @@ pub mod builder {
         pub fn body_map<F>(mut self, f: F) -> Self
         where
             F: std::ops::FnOnce(
-                types::builder::RegisterServerBody,
-            ) -> types::builder::RegisterServerBody,
+                    types::builder::RegisterServerBody,
+                ) -> types::builder::RegisterServerBody,
         {
             self.body = self.body.map(f);
             self

@@ -50,7 +50,7 @@ fn main() -> Result<(), String> {
 }
 
 fn bump_package_versions(place: &VersionPlace) -> Result<(), String> {
-    let packages = vec!["agent", "oxvm-sdk", "server"];
+    let packages = vec!["sprue-agent", "sprue-api", "sprue-cli", "sprue-sdk"];
 
     let crate_version_pattern = Regex::new(r#"(?m)^version = "(.*)"$"#).unwrap();
 
@@ -120,7 +120,7 @@ fn generate(check: bool, verbose: bool) -> Result<(), String> {
     let xtask_path = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
     let root_path = xtask_path.parent().unwrap().to_path_buf();
     let mut spec_path = root_path.clone();
-    spec_path.push("oxvm-api-spec.json");
+    spec_path.push("sprue-api-spec.json");
 
     let file = File::open(spec_path).unwrap();
     let spec = serde_json::from_reader(file).unwrap();
@@ -144,7 +144,7 @@ fn generate(check: bool, verbose: bool) -> Result<(), String> {
     let contents = format_code(code);
 
     let mut out_path = root_path.clone();
-    out_path.push("oxvm-sdk");
+    out_path.push("sprue-sdk");
     out_path.push("src");
     out_path.push("generated");
     out_path.push("sdk.rs");
@@ -169,37 +169,37 @@ fn generate(check: bool, verbose: bool) -> Result<(), String> {
         println!("done.");
     }
 
-    // // CLI
-    // print!("generating cli ... ");
-    // std::io::stdout().flush().unwrap();
-    // let code = generator.cli(&spec, "oxvm_sdk").unwrap().to_string();
-    // let contents = format_code(format!("{}\n\n{}", "use oxvm_sdk::*;", code));
+    // CLI
+    print!("generating cli ... ");
+    std::io::stdout().flush().unwrap();
+    let code = generator.cli(&spec, "sprue_sdk").unwrap().to_string();
+    let contents = format_code(format!("{}\n\n{}", "use sprue_sdk::*;", code));
 
-    // let mut out_path = root_path;
-    // out_path.push("oxvm-cli");
-    // out_path.push("src");
-    // out_path.push("generated");
-    // out_path.push("cli.rs");
+    let mut out_path = root_path;
+    out_path.push("sprue-cli");
+    out_path.push("src");
+    out_path.push("generated");
+    out_path.push("cli.rs");
 
-    // if check {
-    //     let checked_in = std::fs::read_to_string(out_path.clone()).unwrap();
-    //     let checked_in = dos2unix(&checked_in);
-    //     if checked_in != contents {
-    //         println!("❌");
-    //         if verbose {
-    //             show_diff(&checked_in, &contents);
-    //         }
-    //         result = Err(format!(
-    //             "{} is out of date relative to oxvm-api-spec.json",
-    //             out_path.to_string_lossy(),
-    //         ));
-    //     } else {
-    //         println!("👍");
-    //     }
-    // } else {
-    //     std::fs::write(out_path, contents).unwrap();
-    //     println!("done.");
-    // }
+    if check {
+        let checked_in = std::fs::read_to_string(out_path.clone()).unwrap();
+        let checked_in = dos2unix(&checked_in);
+        if checked_in != contents {
+            println!("❌");
+            if verbose {
+                show_diff(&checked_in, &contents);
+            }
+            result = Err(format!(
+                "{} is out of date relative to sprue-api-spec.json",
+                out_path.to_string_lossy(),
+            ));
+        } else {
+            println!("👍");
+        }
+    } else {
+        std::fs::write(out_path, contents).unwrap();
+        println!("done.");
+    }
 
     result
 }

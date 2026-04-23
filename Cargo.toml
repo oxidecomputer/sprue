@@ -1,32 +1,47 @@
 [workspace]
-members = ["agent", "model", "oxvm-sdk", "server", "xtask"]
+members = ["sprue-agent", "sprue-api", "sprue-cli", "sprue-model", "sprue-sdk", "xtask"]
 resolver = "2"
 
 [workspace.dependencies]
 anyhow = "1.0"
 async-trait = "0.1"
 attest-data = { git = "https://github.com/oxidecomputer/dice-util" }
+aws-config = { version = "1.8.15", features = ["behavior-version-latest"] }
+aws-credential-types = "1.2.14"
+aws-sdk-s3 = "1.129.0"
+aws-sdk-sts = "1.101.0"
+aws-smithy-types = "1.4.7"
 base64 = "0.22"
+btreemultimap = "0.1.1"
 bytes = "1.11.1"
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4.5.60", features = ["derive", "string"] }
+clap_complete = "4.5"
 config = { version = "0.15", features = ["toml"] }
 const-oid = { version = "0.9.5", features = ["db"] }
+ctrlc = "3.5"
 derive_builder = "0.20.2"
 dice-verifier = { git = "https://github.com/oxidecomputer/dice-util" }
+dirs = "6.0.0"
 dropshot = "0.17"
 futures = "0.3"
 hex = "0.4.3"
 http = "1.4.0"
 hubpack = "0.1.2"
+itertools = "0.14.0"
 jsonwebtoken = "10.3.0"
+lazy_static = "1.4"
+multimap = "0.10.1"
 newline-converter = "0.3.0"
 newtype-uuid = { version = "1.3.2", features = ["schemars08", "v4", "serde"] }
+oauth2 = { version = "5.0.0", default-features = false }
+oauth2-reqwest = "0.1.0-alpha.3"
+owo-colors = "4.2.3"
 partial-struct = { git = "https://github.com/oxidecomputer/partial-struct" }
 progenitor = { version = "0.13" }
 progenitor-client = { version = "0.13" }
 regex = "1.12.3"
-reqwest = "0.13"
+reqwest = { version = "0.13", default-features = false, features = ["json", "form", "rustls"] }
 rsa = "0.9.10"
 rustls = { version = "0.23.37", default-features = false, features = ["ring"] }
 rustfmt-wrapper = "0.2.1"
@@ -39,20 +54,23 @@ sha2 = "0.10.9"
 similar = "2.7.0"
 slog = "2.8.2"
 slog-async = "2.8.0"
+steno = { git = "https://github.com/oxidecomputer/steno" }
 sqlx = { version = "0.8", features = ["chrono", "json", "uuid", "postgres", "runtime-tokio", "tls-rustls", "migrate"] }
+tabwriter = "1.4.1"
 tap = "1.0.1"
 thiserror = "2"
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+toml = "0.9.12"
 tracing = "0.1.44"
 tracing-appender = "0.2.4"
 tracing-slog = { git = "https://github.com/oxidecomputer/tracing-slog", default-features = false }
 tracing-subscriber = { version = "0.3.22", features = ["env-filter", "json"] }
 uuid = { version = "1", features = ["serde"] }
-v-api = { git = "https://github.com/oxidecomputer/v-api", tag = "v0.3.0-alpha.6" }
-v-api-installer = { git = "https://github.com/oxidecomputer/v-api", tag = "v0.3.0-alpha.6" }
-v-api-param = { git = "https://github.com/oxidecomputer/v-api", tag = "v0.3.0-alpha.6" }
-v-api-permission-derive = { git = "https://github.com/oxidecomputer/v-api", tag = "v0.3.0-alpha.6" }
-v-model = { git = "https://github.com/oxidecomputer/v-api", tag = "v0.3.0-alpha.6" }
+v-api = { git = "https://github.com/oxidecomputer/v-api", branch = "main" }
+v-api-installer = { git = "https://github.com/oxidecomputer/v-api", branch = "main" }
+v-api-param = { git = "https://github.com/oxidecomputer/v-api", branch = "main" }
+v-api-permission-derive = { git = "https://github.com/oxidecomputer/v-api", branch = "main" }
+v-model = { git = "https://github.com/oxidecomputer/v-api", branch = "main" }
 vm-attest = { git = "https://github.com/oxidecomputer/vm-attest" }
 lib-vsock = { package = "vsock", version = "0.5.3" }
 x509-cert = "0.2.5"

@@ -1,0 +1,37 @@
+[package]
+name = "sprue-cli"
+version = "0.9.7"
+edition = "2021"
+license = "MPL-2.0"
+homepage = "https://github.com/oxidecomputer/sprue"
+repository = "https://github.com/oxidecomputer/sprue"
+description = "Oxide Hiring CLI"
+
+[package.metadata.dist]
+dist = true
+
+[dependencies]
+anyhow = { workspace = true }
+btreemultimap = { workspace = true }
+chrono = { workspace = true }
+clap = { workspace = true }
+clap_complete = { workspace = true }
+config = { workspace = true }
+dirs = { workspace = true }
+futures = { workspace = true }
+itertools = { workspace = true }
+jsonwebtoken = { workspace = true }
+multimap = { workspace = true }
+oauth2 = { workspace = true }
+oauth2-reqwest = { workspace = true }
+owo-colors = { workspace = true }
+progenitor-client = { workspace = true }
+reqwest = { workspace = true }
+schemars = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sprue-sdk = { path = "../sprue-sdk" }
+tabwriter = { workspace = true }
+tokio = { workspace = true }
+toml = { workspace = true }
+uuid = { workspace = true }

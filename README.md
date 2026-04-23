@@ -1,3 +1,3 @@
-# unnamed
+# sprue
 
-A proof of concept implementation of JWT issurance for Oxide based VMs
+Support structures for running VMs on Oxide hardware

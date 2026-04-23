@@ -1,0 +1,22 @@
+[package]
+name = "sprue-agent"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = { workspace = true }
+clap = { workspace = true }
+hex = { workspace = true }
+sprue-sdk = { path = "../sprue-sdk"}
+reqwest = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+vm-attest = { workspace = true }
+lib-vsock = { workspace = true }
+x509-cert = { workspace = true }
+jsonwebtoken = { workspace = true }
+base64 = { workspace = true }
+serde = { workspace = true }

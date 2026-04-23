@@ -1,0 +1,68 @@
+[package]
+name = "sprue-api"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "sprue_api"
+path = "src/lib.rs"
+
+[[bin]]
+name = "sprue-api"
+path = "src/main.rs"
+
+[features]
+local-dev = ["v-api/local-dev"]
+
+[dependencies]
+anyhow = { workspace = true }
+attest-data = { workspace = true }
+aws-config = { workspace = true }
+aws-credential-types = { workspace = true }
+aws-sdk-s3 = { workspace = true }
+aws-sdk-sts = { workspace = true }
+aws-smithy-types = { workspace = true }
+base64 = { workspace = true }
+bytes = { workspace = true }
+chrono = { workspace = true }
+clap = { workspace = true }
+const-oid = { workspace = true }
+config = { workspace = true }
+ctrlc = { workspace = true }
+derive_builder = { workspace = true }
+dice-verifier = { workspace = true }
+dropshot = { workspace = true }
+futures = { workspace = true }
+hex = { workspace = true }
+http = { workspace = true }
+hubpack = { workspace = true }
+lazy_static = { workspace = true }
+jsonwebtoken = { workspace = true }
+sprue-model = { path = "../sprue-model" }
+newtype-uuid = { workspace = true }
+rsa = { workspace = true }
+rustls = { workspace = true }
+schemars = { workspace = true }
+secrecy = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+slog = { workspace = true }
+slog-async = { workspace = true }
+sqlx = { workspace = true }
+steno = { workspace = true }
+tap = { workspace = true }
+tracing = { workspace = true }
+tracing-appender = { workspace = true }
+tracing-slog = { workspace = true }
+tracing-subscriber = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+uuid = { workspace = true }
+v-api = { workspace = true }
+v-api-installer = { workspace = true }
+v-api-param = { workspace = true }
+v-api-permission-derive = { workspace = true }
+v-model = { workspace = true }
+vm-attest = { workspace = true }
+x509-cert = { workspace = true }

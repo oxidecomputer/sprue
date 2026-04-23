@@ -63,3 +63,6 @@ v-api-permission-derive = { workspace = true }
 v-model = { workspace = true }
 vm-attest = { workspace = true }
 x509-cert = { workspace = true }
+
+[package.metadata.cargo-machete]
+ignored = ["http"]

@@ -123,7 +123,9 @@ impl OidcContext {
     }
 
     fn create_claims(&self, server: &ServerRegistration) -> VmClaims {
-        let claims = VmClaims {
+        
+
+        VmClaims {
             iss: self.oidc.token.issuer.to_string(),
             aud: self.oidc.token.audience.to_string(),
             sub: server.id,
@@ -136,8 +138,6 @@ impl OidcContext {
                 prj: None,
                 slo: None,
             },
-        };
-
-        claims
+        }
     }
 }

@@ -52,11 +52,11 @@ impl WebIdentityCredentialProvider {
         token_fetcher: OidcTokenFetcher,
     ) -> Self {
         Self {
-            role_arn: role_arn.into(),
-            session_name: session_name.into(),
+            role_arn,
+            session_name,
             token_fetcher,
             cache: Arc::new(RwLock::new(None)),
-            refresh_buffer: refresh_buffer,
+            refresh_buffer,
         }
     }
 
@@ -79,12 +79,12 @@ impl WebIdentityCredentialProvider {
             .web_identity_token(token)
             .send()
             .await
-            .map_err(|err| aws_sdk_sts::Error::from(err))?;
+            .map_err(aws_sdk_sts::Error::from)?;
 
         let creds = resp
             .credentials()
             .ok_or(WebIdentityCredentialProviderError::NoTokenReturned)?;
-        let expiry: SystemTime = creds.expiration().clone().try_into()?;
+        let expiry: SystemTime = (*creds.expiration()).try_into()?;
 
         let credentials = Credentials::new(
             creds.access_key_id(),
@@ -116,11 +116,10 @@ impl ProvideCredentials for WebIdentityCredentialProvider {
         aws_credential_types::provider::future::ProvideCredentials::new(async move {
             {
                 let cache = self.cache.read().await;
-                if let Some(cached) = cache.as_ref() {
-                    if !Self::is_expired(cached, self.refresh_buffer) {
+                if let Some(cached) = cache.as_ref()
+                    && !Self::is_expired(cached, self.refresh_buffer) {
                         return Ok(cached.credentials.clone());
                     }
-                }
             }
 
             let fresh = self.fetch_fresh_credentials().await.map_err(|e| {

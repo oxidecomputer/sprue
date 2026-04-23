@@ -180,7 +180,7 @@ fn pretty_print_field(
                 "[]".style(styles.null),
             );
         }
-        serde_json::Value::Array(arr) if arr.iter().all(|v| is_scalar(v)) => {
+        serde_json::Value::Array(arr) if arr.iter().all(is_scalar) => {
             // Print simple arrays inline, one value per line with the key on
             // the first line only (mimics the existing TabDisplay list style).
             for (i, val) in arr.iter().enumerate() {

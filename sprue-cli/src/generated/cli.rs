@@ -1647,7 +1647,7 @@ impl<T: CliConfig> Cli<T> {
     pub async fn execute_create_api_user_token(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
         let mut request = self.client.create_api_user_token();
         if let Some(value) = matches.get_one::<::chrono::DateTime<::chrono::offset::Utc>>("expires-at") {
-            request = request.body_map(|body| body.expires_at(value.clone()))
+            request = request.body_map(|body| body.expires_at(*value))
         }
 
         if let Some(value) = matches.get_one::<types::TypedUuidForUserId>("user-id") {
@@ -1999,11 +1999,11 @@ impl<T: CliConfig> Cli<T> {
         }
 
         if let Some(value) = matches.get_one::<i64>("expires-in") {
-            request = request.body_map(|body| body.expires_in(value.clone()))
+            request = request.body_map(|body| body.expires_in(*value))
         }
 
         if let Some(value) = matches.get_one::<types::MagicLinkMedium>("medium") {
-            request = request.body_map(|body| body.medium(value.clone()))
+            request = request.body_map(|body| body.medium(*value))
         }
 
         if let Some(value) = matches.get_one::<::std::string::String>("recipient") {
@@ -2051,7 +2051,7 @@ impl<T: CliConfig> Cli<T> {
         }
 
         if let Some(value) = matches.get_one::<types::OAuthProviderName>("provider") {
-            request = request.provider(value.clone());
+            request = request.provider(*value);
         }
 
         if let Some(value) = matches.get_one::<::std::string::String>("redirect-uri") {
@@ -2094,7 +2094,7 @@ impl<T: CliConfig> Cli<T> {
         }
 
         if let Some(value) = matches.get_one::<types::OAuthProviderName>("provider") {
-            request = request.provider(value.clone());
+            request = request.provider(*value);
         }
 
         if let Some(value) = matches.get_one::<::std::string::String>("state") {
@@ -2137,7 +2137,7 @@ impl<T: CliConfig> Cli<T> {
         }
 
         if let Some(value) = matches.get_one::<types::OAuthProviderName>("provider") {
-            request = request.provider(value.clone());
+            request = request.provider(*value);
         }
 
         if let Some(value) = matches.get_one::<::std::string::String>("redirect-uri") {
@@ -2169,7 +2169,7 @@ impl<T: CliConfig> Cli<T> {
     pub async fn execute_get_device_provider(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
         let mut request = self.client.get_device_provider();
         if let Some(value) = matches.get_one::<types::OAuthProviderName>("provider") {
-            request = request.provider(value.clone());
+            request = request.provider(*value);
         }
 
         self.config.execute_get_device_provider(matches, &mut request)?;
@@ -2193,7 +2193,7 @@ impl<T: CliConfig> Cli<T> {
         }
 
         if let Some(value) = matches.get_one::<::chrono::DateTime<::chrono::offset::Utc>>("expires-at") {
-            request = request.body_map(|body| body.expires_at(value.clone()))
+            request = request.body_map(|body| body.expires_at(*value))
         }
 
         if let Some(value) = matches.get_one::<::std::string::String>("grant-type") {
@@ -2201,7 +2201,7 @@ impl<T: CliConfig> Cli<T> {
         }
 
         if let Some(value) = matches.get_one::<types::OAuthProviderName>("provider") {
-            request = request.provider(value.clone());
+            request = request.provider(*value);
         }
 
         if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
@@ -2381,7 +2381,7 @@ impl<T: CliConfig> Cli<T> {
     pub async fn execute_get_mappers(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
         let mut request = self.client.get_mappers();
         if let Some(value) = matches.get_one::<bool>("include-depleted") {
-            request = request.include_depleted(value.clone());
+            request = request.include_depleted(*value);
         }
 
         self.config.execute_get_mappers(matches, &mut request)?;
@@ -2401,7 +2401,7 @@ impl<T: CliConfig> Cli<T> {
     pub async fn execute_create_mapper(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
         let mut request = self.client.create_mapper();
         if let Some(value) = matches.get_one::<i32>("max-activations") {
-            request = request.body_map(|body| body.max_activations(value.clone()))
+            request = request.body_map(|body| body.max_activations(*value))
         }
 
         if let Some(value) = matches.get_one::<::std::string::String>("name") {
@@ -2651,7 +2651,7 @@ impl<T: CliConfig> Cli<T> {
         }
 
         if let Some(value) = matches.get_one::<i64>("size") {
-            request = request.body_map(|body| body.size(value.clone()))
+            request = request.body_map(|body| body.size(*value))
         }
 
         if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
@@ -2679,7 +2679,7 @@ impl<T: CliConfig> Cli<T> {
     pub async fn execute_checkin_server(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
         let mut request = self.client.checkin_server();
         if let Some(value) = matches.get_one::<::chrono::DateTime<::chrono::offset::Utc>>("checked-in-at") {
-            request = request.body_map(|body| body.checked_in_at(value.clone()))
+            request = request.body_map(|body| body.checked_in_at(*value))
         }
 
         if let Some(value) = matches.get_one::<types::TypedUuidForServerRegistrationId>("server") {

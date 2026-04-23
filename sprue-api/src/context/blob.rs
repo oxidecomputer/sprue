@@ -490,7 +490,7 @@ impl BackupStorageOps for S3BackupStorage {
             .key(&key)
             .send()
             .await
-            .map_err(|err| aws_sdk_s3::Error::from(err))?;
+            .map_err(aws_sdk_s3::Error::from)?;
 
         tracing::info!(?blob, ?create_resp, "Created multipart upload");
 
@@ -519,7 +519,7 @@ impl BackupStorageOps for S3BackupStorage {
                 .body(ByteStream::from(buf))
                 .send()
                 .await
-                .map_err(|err| aws_sdk_s3::Error::from(err))?;
+                .map_err(aws_sdk_s3::Error::from)?;
 
             completed_parts.push(
                 aws_sdk_s3::types::CompletedPart::builder()
@@ -543,7 +543,7 @@ impl BackupStorageOps for S3BackupStorage {
             )
             .send()
             .await
-            .map_err(|err| aws_sdk_s3::Error::from(err))?;
+            .map_err(aws_sdk_s3::Error::from)?;
 
         Ok(())
     }

@@ -94,11 +94,11 @@ async fn main() -> anyhow::Result<()> {
             let claims = validate_jwt(&token, &jwks)?;
 
             println!("Token validated successfully!");
-            println!("");
+            println!();
             println!("  Subject (VM ID): {}", claims.sub);
             println!("  Issuer: {}", claims.iss);
             println!("  Audience: {}", claims.aud);
-            println!("");
+            println!();
             println!("  Token: {}", token);
         }
         Commands::RegisterServer { id, service } => {

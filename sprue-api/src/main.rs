@@ -57,7 +57,7 @@ async fn main() -> anyhow::Result<()> {
         }
         ServerCommand::Migrate => {
             let config = ServerConfig::new(args.config.map(|path| vec![path]))?;
-            migrations::run_migrations(&config.database_url.resolve(config.param_base_path)?.expose_secret()).await?;
+            migrations::run_migrations(config.database_url.resolve(config.param_base_path)?.expose_secret()).await?;
             println!("Migrations completed successfully");
         }
         ServerCommand::Run => {

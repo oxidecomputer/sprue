@@ -24,7 +24,7 @@ pub async fn register_oidc_token_request(
     let path = path.into_inner();
     let server = ctx
         .service
-        .get_server(&ctx.system_caller(), path.server)
+        .get_server(ctx.system_caller(), path.server)
         .await?;
     let nonce = ctx.server_identity.generate_nonce()?;
 
@@ -61,7 +61,7 @@ pub async fn prove_oidc_token_request(
     let body = body.into_inner();
     let server = ctx
         .service
-        .get_server(&ctx.system_caller(), path.server)
+        .get_server(ctx.system_caller(), path.server)
         .await?;
     let attestation: VmInstanceAttestation =
         serde_json::from_value(body.attestation).map_err(|err| {

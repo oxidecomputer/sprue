@@ -154,7 +154,7 @@ pub async fn prove_server(
         .map_err(|_| HttpError::for_internal_error("Failed to verify attestation".to_string()))?;
 
     // The server has proven its identity and we can mark it as proven
-    let _ = ctx
+    ctx
         .service
         .prove_server(ctx.system_caller(), &server)
         .await

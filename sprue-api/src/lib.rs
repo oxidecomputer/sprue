@@ -190,7 +190,7 @@ pub async fn run_server(
         v = saga_spawner_task => v.map_err(|e| ServerError::TaskFailed(e.to_string())),
     };
 
-    Ok(error?)
+    error
 }
 
 pub fn set_ctrlc_handler<F>(f: F) -> Result<(), ctrlc::Error>

@@ -50,7 +50,7 @@ impl CliConfig {
     }
 
     pub fn host(&self) -> Result<&str> {
-        self.host.as_ref().map(|s| &**s).ok_or_else(|| {
+        self.host.as_deref().ok_or_else(|| {
             anyhow!("Host must either be configured via a configuration file or the environment")
         })
     }
@@ -60,7 +60,7 @@ impl CliConfig {
     }
 
     pub fn token(&self) -> Result<&str> {
-        self.token.as_ref().map(|s| &**s).ok_or_else(|| {
+        self.token.as_deref().ok_or_else(|| {
             anyhow!("Token must either be configured via a configuration file or the environment")
         })
     }
@@ -81,7 +81,7 @@ impl CliConfig {
     }
 
     pub fn mlink_redirect(&self) -> Result<&str> {
-        self.mlink_redirect.as_ref().map(|s| &**s).ok_or_else(|| {
+        self.mlink_redirect.as_deref().ok_or_else(|| {
             anyhow!("Magic link redirect uri must either be configured via a configuration file or the environment")
         })
     }
@@ -91,7 +91,7 @@ impl CliConfig {
     }
 
     pub fn mlink_secret(&self) -> Result<&str> {
-        self.mlink_secret.as_ref().map(|s| &**s).ok_or_else(|| {
+        self.mlink_secret.as_deref().ok_or_else(|| {
             anyhow!("Magic link secret must either be configured via a configuration file or the environment")
         })
     }
@@ -102,7 +102,7 @@ impl CliConfig {
 
     pub fn save(&self) -> Result<()> {
         let (filename, mut file) = Self::file(true)?;
-        let _ = file.write_all(toml::to_string(&self)?.as_bytes())?;
+        file.write_all(toml::to_string(&self)?.as_bytes())?;
 
         println!("Configuration updated. Wrote to: {}", filename.display());
         Ok(())

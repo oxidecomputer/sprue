@@ -96,7 +96,7 @@ impl IdempotencyContext {
     where
         T: DeserializeOwned,
     {
-        Ok(self
+        self
             .storage
             .create_request(&NewIdempotentRequestModel {
                 server_registration_id,
@@ -108,7 +108,7 @@ impl IdempotencyContext {
             .inner_err_into()?
             .try_into()
             .map_err(ResourceError::InternalError)
-            .inner_err_into()?)
+            .inner_err_into()
     }
 
     /// Get an idempotent request by server registration ID and idempotency key
@@ -155,7 +155,7 @@ impl IdempotencyContext {
     where
         T: Serialize,
     {
-        Ok(self
+        self
             .storage
             .complete_request(
                 id,
@@ -168,16 +168,16 @@ impl IdempotencyContext {
                     .transpose()?,
             )
             .await
-            .optional()?)
+            .optional()
     }
 
     /// Delete all expired idempotent requests
     pub async fn cleanup_expired(&self) -> ResourceResult<u64, IdempotencyError> {
-        Ok(self
+        self
             .storage
             .delete_expired_requests()
             .await
             .map_err(ResourceError::InternalError)
-            .inner_err_into()?)
+            .inner_err_into()
     }
 }

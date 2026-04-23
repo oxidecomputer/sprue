@@ -103,7 +103,7 @@ impl ServerIdentityContext {
             return Err(ServerIdentityError::NoNonce);
         }
 
-        let nonce: [u8; 32] = hex::decode(&server.nonce.as_ref().unwrap())
+        let nonce: [u8; 32] = hex::decode(server.nonce.as_ref().unwrap())
             .map_err(ServerIdentityError::NonceFormat)?
             .try_into()
             .map_err(|_| ServerIdentityError::NonceInvalid)?;

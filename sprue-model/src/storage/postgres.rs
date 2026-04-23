@@ -172,7 +172,7 @@ impl ServerRegistrationStorage for PostgresStorage {
     ) -> StorageResult<ServerRegistrationModel> {
         let now = Utc::now();
         let pending_state = ServerRegistrationState::Pending;
-        let state_json = serde_json::to_value(&pending_state).map_err(|e| {
+        let state_json = serde_json::to_value(pending_state).map_err(|e| {
             StorageError::Internal(format!(
                 "Failed to serialize server registration state: {}",
                 e
@@ -199,11 +199,10 @@ impl ServerRegistrationStorage for PostgresStorage {
         .await
         .map_err(|e| {
             // Check for unique constraint violation on instance_id
-            if let sqlx::Error::Database(ref db_err) = e {
-                if db_err.constraint() == Some("server_registration_instance_id_key") {
+            if let sqlx::Error::Database(ref db_err) = e
+                && db_err.constraint() == Some("server_registration_instance_id_key") {
                     return StorageError::ServerRegistrationAlreadyExists(registration.instance_id);
                 }
-            }
             StorageError::Database(e)
         })?;
 
@@ -387,10 +386,10 @@ impl ServerRegistrationStorage for PostgresStorage {
         from_state: ServerRegistrationState,
         to_state: ServerRegistrationState,
     ) -> StorageResult<Option<()>> {
-        let from_state_json = serde_json::to_value(&from_state).map_err(|e| {
+        let from_state_json = serde_json::to_value(from_state).map_err(|e| {
             StorageError::Internal(format!("Failed to serialize from_state: {}", e))
         })?;
-        let to_state_json = serde_json::to_value(&to_state)
+        let to_state_json = serde_json::to_value(to_state)
             .map_err(|e| StorageError::Internal(format!("Failed to serialize to_state: {}", e)))?;
 
         let mut tx = self.pool.begin().await?;
@@ -543,7 +542,7 @@ impl BlobStorage for PostgresStorage {
     async fn create_blob(&self, blob: &NewBlobModel) -> StorageResult<BlobModel> {
         let now = Utc::now();
         let pending_state = BlobState::Pending;
-        let state_json = serde_json::to_value(&pending_state).map_err(|e| {
+        let state_json = serde_json::to_value(pending_state).map_err(|e| {
             StorageError::Internal(format!("Failed to serialize blob state: {}", e))
         })?;
 
@@ -722,10 +721,10 @@ impl BlobStorage for PostgresStorage {
         to_state: BlobState,
     ) -> StorageResult<Option<()>> {
         let now = Utc::now();
-        let from_state_json = serde_json::to_value(&from_state).map_err(|e| {
+        let from_state_json = serde_json::to_value(from_state).map_err(|e| {
             StorageError::Internal(format!("Failed to serialize from_state: {}", e))
         })?;
-        let to_state_json = serde_json::to_value(&to_state)
+        let to_state_json = serde_json::to_value(to_state)
             .map_err(|e| StorageError::Internal(format!("Failed to serialize to_state: {}", e)))?;
 
         let mut tx = self.pool.begin().await?;
@@ -1013,13 +1012,12 @@ impl IdempotentRequestStorage for PostgresStorage {
         .await
         .map_err(|e| {
             // Check for unique constraint violation on idempotency_key
-            if let sqlx::Error::Database(ref db_err) = e {
-                if db_err.constraint() == Some("idempotent_request_unique_key") {
+            if let sqlx::Error::Database(ref db_err) = e
+                && db_err.constraint() == Some("idempotent_request_unique_key") {
                     return StorageError::IdempotentRequestAlreadyExists(
                         request.idempotency_key.clone(),
                     );
                 }
-            }
             StorageError::Database(e)
         })?;
 
@@ -1218,7 +1216,7 @@ impl TokenRequestStorage for PostgresStorage {
     ) -> StorageResult<TokenRequestModel> {
         let now = Utc::now();
         let pending_state = TokenRequestState::Pending;
-        let state_json = serde_json::to_value(&pending_state).map_err(|e| {
+        let state_json = serde_json::to_value(pending_state).map_err(|e| {
             StorageError::Internal(format!("Failed to serialize token request state: {}", e))
         })?;
 
@@ -1373,10 +1371,10 @@ impl TokenRequestStorage for PostgresStorage {
         to_state: TokenRequestState,
     ) -> StorageResult<Option<()>> {
         let now = Utc::now();
-        let from_state_json = serde_json::to_value(&from_state).map_err(|e| {
+        let from_state_json = serde_json::to_value(from_state).map_err(|e| {
             StorageError::Internal(format!("Failed to serialize from_state: {}", e))
         })?;
-        let to_state_json = serde_json::to_value(&to_state)
+        let to_state_json = serde_json::to_value(to_state)
             .map_err(|e| StorageError::Internal(format!("Failed to serialize to_state: {}", e)))?;
 
         let mut tx = self.pool.begin().await?;

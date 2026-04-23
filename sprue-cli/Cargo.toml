@@ -12,16 +12,11 @@ dist = true
 
 [dependencies]
 anyhow = { workspace = true }
-btreemultimap = { workspace = true }
 chrono = { workspace = true }
 clap = { workspace = true }
 clap_complete = { workspace = true }
 config = { workspace = true }
 dirs = { workspace = true }
-futures = { workspace = true }
-itertools = { workspace = true }
-jsonwebtoken = { workspace = true }
-multimap = { workspace = true }
 oauth2 = { workspace = true }
 oauth2-reqwest = { workspace = true }
 owo-colors = { workspace = true }

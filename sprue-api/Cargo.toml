@@ -22,8 +22,6 @@ aws-credential-types = { workspace = true }
 aws-sdk-s3 = { workspace = true }
 aws-sdk-sts = { workspace = true }
 aws-smithy-types = { workspace = true }
-base64 = { workspace = true }
-bytes = { workspace = true }
 chrono = { workspace = true }
 clap = { workspace = true }
 const-oid = { workspace = true }
@@ -40,7 +38,6 @@ lazy_static = { workspace = true }
 jsonwebtoken = { workspace = true }
 sprue-model = { path = "../sprue-model" }
 newtype-uuid = { workspace = true }
-rsa = { workspace = true }
 rustls = { workspace = true }
 schemars = { workspace = true }
 secrecy = { workspace = true }

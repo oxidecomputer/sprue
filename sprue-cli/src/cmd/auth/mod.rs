@@ -9,7 +9,7 @@ use oauth2::TokenResponse;
 use sprue_sdk::types::OAuthProviderName;
 use std::ops::Add;
 
-use crate::{err::format_api_err, Context};
+use crate::{Context, err::format_api_err};
 
 mod login;
 mod oauth;

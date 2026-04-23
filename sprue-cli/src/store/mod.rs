@@ -3,12 +3,12 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 use std::{
-    fs::{create_dir_all, File as StdFile, OpenOptions},
+    fs::{File as StdFile, OpenOptions, create_dir_all},
     io::Write,
     path::PathBuf,
 };
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use config::{Config, Environment, File};
 use serde::{Deserialize, Serialize};
 

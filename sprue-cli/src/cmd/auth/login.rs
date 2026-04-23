@@ -10,7 +10,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 use oauth2::TokenResponse;
 use sprue_sdk::types::{ApiPermissions, MagicLinkMedium, OAuthProviderName};
 
-use crate::{cmd::auth::oauth, Context};
+use crate::{Context, cmd::auth::oauth};
 
 // One week in seconds
 static MAGIC_LINK_SESSION_LENGTH: i64 = 604800;

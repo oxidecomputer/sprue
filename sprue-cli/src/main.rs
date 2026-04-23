@@ -4,14 +4,14 @@
 
 #![allow(unused)]
 
-use anyhow::{anyhow, Result};
-use clap::{value_parser, Arg, ArgAction, Command, CommandFactory, FromArgMatches, ValueEnum};
-use clap_complete::{generate, Shell};
+use anyhow::{Result, anyhow};
+use clap::{Arg, ArgAction, Command, CommandFactory, FromArgMatches, ValueEnum, value_parser};
+use clap_complete::{Shell, generate};
 use generated::cli::{CliConfig as ProgenitorCliConfig, *};
-use owo_colors::colors::xterm::DarkGreen;
 use owo_colors::OwoColorize;
+use owo_colors::colors::xterm::DarkGreen;
 use printer::{CliOutput, Printer};
-use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
+use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderValue};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use sprue_sdk::Client;

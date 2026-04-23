@@ -2,8 +2,8 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use anyhow::{anyhow, Error};
-use sprue_sdk::{types::Error as ApiError, ProgenitorClientError};
+use anyhow::{Error, anyhow};
+use sprue_sdk::{ProgenitorClientError, types::Error as ApiError};
 
 use crate::{Context, VerbosityLevel};
 

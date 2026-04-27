@@ -633,3 +633,188 @@ impl BackupStorageOps for S3BackupStorage {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use aws_sdk_s3::Client;
+    use aws_sdk_s3::operation::abort_multipart_upload::AbortMultipartUploadOutput;
+    use aws_sdk_s3::operation::complete_multipart_upload::CompleteMultipartUploadOutput;
+    use aws_sdk_s3::operation::create_multipart_upload::CreateMultipartUploadOutput;
+    use aws_sdk_s3::operation::put_object::PutObjectOutput;
+    use aws_sdk_s3::operation::upload_part::UploadPartOutput;
+    use aws_smithy_mocks::{RuleMode, mock, mock_client};
+
+    /// Wrapper around a temporary file that cleans up on drop.
+    struct TempFile(PathBuf);
+
+    impl TempFile {
+        fn new(name: &str, content: &[u8]) -> Self {
+            let dir = std::env::temp_dir().join("sprue-blob-tests");
+            std::fs::create_dir_all(&dir).unwrap();
+            let id = TypedUuid::<BlobId>::new_v4();
+            let path = dir.join(format!("{}-{}", name, id));
+            std::fs::write(&path, content).unwrap();
+            Self(path)
+        }
+
+        fn path(&self) -> PathBuf {
+            self.0.clone()
+        }
+    }
+
+    impl Drop for TempFile {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_file(&self.0);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_s3_multipart_upload() {
+        let create_rule = mock!(Client::create_multipart_upload).then_output(|| {
+            CreateMultipartUploadOutput::builder()
+                .upload_id("test-upload-id")
+                .build()
+        });
+
+        let upload_rule = mock!(Client::upload_part)
+            .then_output(|| UploadPartOutput::builder().e_tag("\"test-etag\"").build());
+
+        let complete_rule = mock!(Client::complete_multipart_upload)
+            .then_output(|| CompleteMultipartUploadOutput::builder().build());
+
+        let client = mock_client!(
+            aws_sdk_s3,
+            RuleMode::MatchAny,
+            [&create_rule, &upload_rule, &complete_rule]
+        );
+
+        let storage = S3BackupStorage::new(client, "test-bucket".into());
+        let file = TempFile::new("multipart", &[0u8; 1024]);
+
+        storage
+            .upload_blob(TypedUuid::new_v4(), file.path())
+            .await
+            .expect("multipart upload should succeed");
+
+        assert_eq!(create_rule.num_calls(), 1);
+        assert_eq!(upload_rule.num_calls(), 1);
+        assert_eq!(complete_rule.num_calls(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_s3_empty_file_uses_put_object() {
+        let put_rule = mock!(Client::put_object).then_output(|| PutObjectOutput::builder().build());
+
+        let client = mock_client!(aws_sdk_s3, [&put_rule]);
+
+        let storage = S3BackupStorage::new(client, "test-bucket".into());
+        let file = TempFile::new("empty", &[]);
+
+        storage
+            .upload_blob(TypedUuid::new_v4(), file.path())
+            .await
+            .expect("empty file upload should succeed");
+
+        assert_eq!(put_rule.num_calls(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_s3_upload_part_failure_triggers_abort() {
+        let create_rule = mock!(Client::create_multipart_upload).then_output(|| {
+            CreateMultipartUploadOutput::builder()
+                .upload_id("test-upload-id")
+                .build()
+        });
+
+        let upload_rule = mock!(Client::upload_part)
+            .sequence()
+            .http_status(400, None)
+            .build();
+
+        let abort_rule = mock!(Client::abort_multipart_upload)
+            .then_output(|| AbortMultipartUploadOutput::builder().build());
+
+        let client = mock_client!(
+            aws_sdk_s3,
+            RuleMode::MatchAny,
+            [&create_rule, &upload_rule, &abort_rule],
+            |conf| conf.retry_config(aws_sdk_s3::config::retry::RetryConfig::disabled())
+        );
+
+        let storage = S3BackupStorage::new(client, "test-bucket".into());
+        let file = TempFile::new("fail-part", &[0u8; 1024]);
+
+        let result = storage.upload_blob(TypedUuid::new_v4(), file.path()).await;
+
+        assert!(result.is_err());
+        assert_eq!(create_rule.num_calls(), 1);
+        assert_eq!(abort_rule.num_calls(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_s3_complete_failure_triggers_abort() {
+        let create_rule = mock!(Client::create_multipart_upload).then_output(|| {
+            CreateMultipartUploadOutput::builder()
+                .upload_id("test-upload-id")
+                .build()
+        });
+
+        let upload_rule = mock!(Client::upload_part)
+            .then_output(|| UploadPartOutput::builder().e_tag("\"test-etag\"").build());
+
+        let complete_rule = mock!(Client::complete_multipart_upload)
+            .sequence()
+            .http_status(400, None)
+            .build();
+
+        let abort_rule = mock!(Client::abort_multipart_upload)
+            .then_output(|| AbortMultipartUploadOutput::builder().build());
+
+        let client = mock_client!(
+            aws_sdk_s3,
+            RuleMode::MatchAny,
+            [&create_rule, &upload_rule, &complete_rule, &abort_rule],
+            |conf| conf.retry_config(aws_sdk_s3::config::retry::RetryConfig::disabled())
+        );
+
+        let storage = S3BackupStorage::new(client, "test-bucket".into());
+        let file = TempFile::new("fail-complete", &[0u8; 1024]);
+
+        let result = storage.upload_blob(TypedUuid::new_v4(), file.path()).await;
+
+        assert!(result.is_err());
+        assert_eq!(upload_rule.num_calls(), 1);
+        assert_eq!(abort_rule.num_calls(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_s3_missing_etag_returns_error_and_aborts() {
+        let create_rule = mock!(Client::create_multipart_upload).then_output(|| {
+            CreateMultipartUploadOutput::builder()
+                .upload_id("test-upload-id")
+                .build()
+        });
+
+        // Return a successful response but with no e_tag set
+        let upload_rule =
+            mock!(Client::upload_part).then_output(|| UploadPartOutput::builder().build());
+
+        let abort_rule = mock!(Client::abort_multipart_upload)
+            .then_output(|| AbortMultipartUploadOutput::builder().build());
+
+        let client = mock_client!(
+            aws_sdk_s3,
+            RuleMode::MatchAny,
+            [&create_rule, &upload_rule, &abort_rule]
+        );
+
+        let storage = S3BackupStorage::new(client, "test-bucket".into());
+        let file = TempFile::new("missing-etag", &[0u8; 1024]);
+
+        let result = storage.upload_blob(TypedUuid::new_v4(), file.path()).await;
+
+        assert!(matches!(result, Err(BlobError::S3MissingETag)));
+        assert_eq!(abort_rule.num_calls(), 1);
+    }
+}

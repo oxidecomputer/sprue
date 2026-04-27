@@ -6,6 +6,7 @@ use aws_sdk_s3::primitives::ByteStream;
 use chrono::{DateTime, Utc};
 use newtype_uuid::TypedUuid;
 use std::{path::PathBuf, sync::Arc};
+use tap::TapFallible;
 use thiserror::Error;
 use tokio::{
     fs::{File, OpenOptions},
@@ -39,6 +40,8 @@ pub enum BlobError {
     InvalidStateTransition(#[from] InvalidBlobStateTransition),
     #[error("S3 client error")]
     S3(#[from] aws_sdk_s3::Error),
+    #[error("S3 upload part response missing ETag")]
+    S3MissingETag,
     #[error(transparent)]
     Storage(#[from] StorageError),
 }
@@ -437,9 +440,137 @@ pub struct S3BackupStorage {
     client: aws_sdk_s3::Client,
     bucket: String,
 }
+
 impl S3BackupStorage {
+    const MAX_S3_PARTS: u64 = 10_000;
+    const DEFAULT_CHUNK_SIZE: u64 = 8 * 1024 * 1024;
+
     pub fn new(client: aws_sdk_s3::Client, bucket: String) -> Self {
         Self { client, bucket }
+    }
+
+    /// Choose a chunk size that keeps the upload within S3's 10,000-part limit.
+    fn chunk_size(file_size: u64) -> usize {
+        let min_chunk = file_size.div_ceil(Self::MAX_S3_PARTS);
+        std::cmp::max(Self::DEFAULT_CHUNK_SIZE, min_chunk) as usize
+    }
+
+    async fn put_object(&self, key: &str) -> Result<(), BlobError> {
+        self.client
+            .put_object()
+            .bucket(&self.bucket)
+            .key(key)
+            .body(ByteStream::from(vec![]))
+            .send()
+            .await
+            .map_err(aws_sdk_s3::Error::from)?;
+        Ok(())
+    }
+
+    async fn multipart_upload(
+        &self,
+        blob: TypedUuid<BlobId>,
+        key: &str,
+        local: &PathBuf,
+        file_size: u64,
+    ) -> Result<(), BlobError> {
+        let create_resp = self
+            .client
+            .create_multipart_upload()
+            .bucket(&self.bucket)
+            .key(key)
+            .send()
+            .await
+            .map_err(aws_sdk_s3::Error::from)?;
+
+        tracing::info!(?blob, ?create_resp, "Created multipart upload");
+
+        let upload_id = create_resp
+            .upload_id()
+            .expect("AWS create must return an upload ID");
+
+        let result = self.upload_parts(key, upload_id, local, file_size).await;
+
+        if result.is_err() {
+            self.abort_upload(key, upload_id).await;
+        }
+
+        result
+    }
+
+    async fn upload_parts(
+        &self,
+        key: &str,
+        upload_id: &str,
+        local: &PathBuf,
+        file_size: u64,
+    ) -> Result<(), BlobError> {
+        let chunk_size = Self::chunk_size(file_size);
+        let mut file = File::open(local).await?;
+        let mut part_number: i32 = 1;
+        let mut completed_parts = vec![];
+
+        loop {
+            let mut buf = Vec::with_capacity(chunk_size);
+            let n = (&mut file)
+                .take(chunk_size as u64)
+                .read_to_end(&mut buf)
+                .await?;
+            if n == 0 {
+                break;
+            }
+
+            let response = self
+                .client
+                .upload_part()
+                .bucket(&self.bucket)
+                .key(key)
+                .upload_id(upload_id)
+                .part_number(part_number)
+                .body(ByteStream::from(buf))
+                .send()
+                .await
+                .map_err(aws_sdk_s3::Error::from)?;
+
+            completed_parts.push(
+                aws_sdk_s3::types::CompletedPart::builder()
+                    .part_number(part_number)
+                    .e_tag(response.e_tag().ok_or(BlobError::S3MissingETag)?)
+                    .build(),
+            );
+
+            part_number += 1;
+        }
+
+        self.client
+            .complete_multipart_upload()
+            .bucket(&self.bucket)
+            .key(key)
+            .upload_id(upload_id)
+            .multipart_upload(
+                aws_sdk_s3::types::CompletedMultipartUpload::builder()
+                    .set_parts(Some(completed_parts))
+                    .build(),
+            )
+            .send()
+            .await
+            .map_err(aws_sdk_s3::Error::from)?;
+
+        Ok(())
+    }
+
+    async fn abort_upload(&self, key: &str, upload_id: &str) {
+        let _ = self
+            .client
+            .abort_multipart_upload()
+            .bucket(&self.bucket)
+            .key(key)
+            .upload_id(upload_id)
+            .send()
+            .await
+            .tap_err(|err| {
+                tracing::error!(?err, "Failed to abort multipart upload");
+            });
     }
 }
 
@@ -458,12 +589,12 @@ impl BackupStorageOps for LocalBackupStorage {
                 .ok_or(BlobError::FileHasInvalidName)?,
         );
 
-        tokio::fs::create_dir_all(&dst).await?;
+        tokio::fs::create_dir_all(dst.parent().ok_or(BlobError::FileHasInvalidName)?).await?;
 
         let mut src_file = File::open(&local).await?;
         let mut dst_file = File::create(&dst).await?;
 
-        let mut buf = vec![0u8; S3BackupStorage::CHUNK_SIZE];
+        let mut buf = vec![0u8; Self::CHUNK_SIZE];
 
         loop {
             let n = src_file.read(&mut buf).await?;
@@ -491,68 +622,14 @@ impl BackupStorageOps for S3BackupStorage {
                 .ok_or(BlobError::FileHasInvalidName)?
         );
 
-        let create_resp = self
-            .client
-            .create_multipart_upload()
-            .bucket(&self.bucket)
-            .key(&key)
-            .send()
-            .await
-            .map_err(aws_sdk_s3::Error::from)?;
+        let metadata = tokio::fs::metadata(&local).await?;
 
-        tracing::info!(?blob, ?create_resp, "Created multipart upload");
-
-        let upload_id = create_resp
-            .upload_id()
-            .expect("AWS create must return an upload ID");
-        let mut file = File::open(&local).await?;
-        let mut part_number = 1;
-        let mut completed_parts = vec![];
-
-        loop {
-            let mut buf = vec![0u8; S3BackupStorage::CHUNK_SIZE];
-            let n = file.read(&mut buf).await?;
-            if n == 0 {
-                break; // EOF
-            }
-            buf.truncate(n);
-
-            let part_resp = self
-                .client
-                .upload_part()
-                .bucket(&self.bucket)
-                .key(&key)
-                .upload_id(upload_id)
-                .part_number(part_number)
-                .body(ByteStream::from(buf))
-                .send()
+        // Empty files cannot use multipart upload (S3 requires at least one part).
+        if metadata.len() == 0 {
+            self.put_object(&key).await
+        } else {
+            self.multipart_upload(blob, &key, &local, metadata.len())
                 .await
-                .map_err(aws_sdk_s3::Error::from)?;
-
-            completed_parts.push(
-                aws_sdk_s3::types::CompletedPart::builder()
-                    .part_number(part_number)
-                    .e_tag(part_resp.e_tag().unwrap_or_default())
-                    .build(),
-            );
-
-            part_number += 1;
         }
-
-        self.client
-            .complete_multipart_upload()
-            .bucket(&self.bucket)
-            .key(key)
-            .upload_id(upload_id)
-            .multipart_upload(
-                aws_sdk_s3::types::CompletedMultipartUpload::builder()
-                    .set_parts(Some(completed_parts))
-                    .build(),
-            )
-            .send()
-            .await
-            .map_err(aws_sdk_s3::Error::from)?;
-
-        Ok(())
     }
 }

@@ -3,9 +3,14 @@ name = "sprue-model"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+test-util = ["nanoid", "tokio"]
+
 [dependencies]
+anyhow = { workspace = true }
 async-trait = { workspace = true }
 chrono = { workspace = true }
+nanoid = { workspace = true, optional = true }
 newtype-uuid = { workspace = true }
 partial-struct = { workspace = true }
 schemars = { workspace = true }
@@ -13,6 +18,6 @@ serde = { workspace = true }
 serde_json = "1.0"
 sqlx = { workspace = true }
 thiserror = { workspace = true }
-
-[dev-dependencies]
-tokio = { workspace = true }
+tokio = { workspace = true, optional = true }
+tracing = { workspace = true }
+v-api-installer = { workspace = true }

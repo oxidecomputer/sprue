@@ -39,17 +39,16 @@ use crate::{
 };
 
 mod backup_storage;
-mod config;
+pub mod config;
 pub mod context;
 mod endpoints;
 mod initial_data;
-pub mod migrations;
-mod permissions;
+pub mod permissions;
 mod sagas;
 mod server;
 
 pub use config::ServerConfig;
-pub use server::describe;
+pub use server::{describe, create_server};
 
 #[derive(Debug, Error)]
 pub enum ServerError {
@@ -148,7 +147,7 @@ pub async fn run_server(
             create_backup_storage(config.backup.remote, token_fetcher).await,
         ))
         .idempotency(IdempotencyContext::new(storage.clone()))
-        .oidc(OidcContext::new(config.oidc, storage.clone())?)
+        .oidc(OidcContext::new(v_ctx.issuer(), config.oidc, storage.clone())?)
         .server_identity(ServerIdentityContext::new(
             config.vm_identity.organization,
             Certificate::load_pem_chain(config.vm_identity.root_cert_chain.as_bytes())?,
@@ -191,7 +190,7 @@ pub async fn run_server(
     })
     .expect("Failed to install ctrl+c handler");
 
-    let starter = server::server(ctx, logger)?;
+    let starter = create_server(ctx, logger, config.port.unwrap_or(8080)).build_starter()?;
     let server_task = starter.start();
 
     let error = select! {

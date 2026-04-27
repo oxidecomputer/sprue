@@ -392,63 +392,75 @@ impl ServerRegistrationStorage for PostgresStorage {
         let to_state_json = serde_json::to_value(to_state)
             .map_err(|e| StorageError::Internal(format!("Failed to serialize to_state: {}", e)))?;
 
-        let mut tx = self.pool.begin().await?;
+        let now = Utc::now();
 
-        // Check current state matches from_state
-        let current_state_row = sqlx::query(
+        // Use a CTE to atomically check the current state, insert the new state
+        // transition, and update the registration in a single query.
+        //
+        // Any update to a server registration will mean blanking out the nonce. The only cases
+        // where a value will be present are when the previous state is Pending and we are
+        // transitioning to Proven, Rejected, or Terminated. In each of those cases we no longer
+        // want to be storing the nonce. Once a request has been proven, rejected, or terminated,
+        // the request is no longer active and we can also clear out the expiration time.
+        let row = sqlx::query(
             r#"
-            SELECT state FROM server_registration_state
-            WHERE server_registration_id = $1
-            ORDER BY created_at DESC
-            LIMIT 1
-            "#,
-        )
-        .bind(id.as_untyped_uuid())
-        .fetch_optional(&mut *tx)
-        .await?;
-
-        match current_state_row {
-            Some(row) => {
-                let current_state_json: serde_json::Value = row.try_get("state")?;
-                if current_state_json != from_state_json {
-                    return Err(StorageError::InvalidServerRegistrationStateTransition {
-                        server_registration_id: id,
-                        expected: from_state,
-                    });
-                }
-            }
-            None => return Ok(None),
-        }
-
-        // Insert new state
-        sqlx::query(
-            r#"
-            INSERT INTO server_registration_state (server_registration_id, state, created_at)
-            VALUES ($1, $2, $3)
+            WITH current_state AS (
+                SELECT state
+                FROM server_registration_state
+                WHERE server_registration_id = $1
+                ORDER BY created_at DESC
+                LIMIT 1
+            ),
+            insert_new_state AS (
+                INSERT INTO server_registration_state (server_registration_id, state, created_at)
+                SELECT $1, $2, $3
+                FROM current_state
+                WHERE current_state.state = $4
+                RETURNING server_registration_id
+            ),
+            update_registration AS (
+                UPDATE server_registration
+                SET nonce = null, expires_at = null, updated_at = $3
+                WHERE id = $1
+                AND EXISTS (SELECT 1 FROM insert_new_state)
+                RETURNING id
+            )
+            SELECT
+                EXISTS (SELECT 1 FROM current_state) AS has_current_state,
+                EXISTS (SELECT 1 FROM insert_new_state) AS was_inserted,
+                (SELECT state FROM current_state) AS actual_state
             "#,
         )
         .bind(id.as_untyped_uuid())
         .bind(&to_state_json)
-        .bind(Utc::now())
-        .execute(&mut *tx)
+        .bind(now)
+        .bind(&from_state_json)
+        .fetch_one(&self.pool)
         .await?;
 
-        // Any update to a server registration will mean blanking out the nonce. The only cases
-        // where a value will be present are when the the previous state is Pending and we are
-        // transitioning to Proven, Rejected, or Terminated. In each of those cases we no longer
-        // want to be storing the nonce. Once a request has been proven, rejected, or terminated,
-        // the request is no longer active and we can also clear out the expiration time.
-        sqlx::query(
-            r#"
-            UPDATE server_registration SET nonce = null, expires_at = null, updated_at = $1 WHERE id = $2
-            "#,
-        )
-        .bind(Utc::now())
-        .bind(id.as_untyped_uuid())
-        .execute(&mut *tx)
-        .await?;
+        let has_current_state: bool = row.try_get("has_current_state")?;
+        let was_inserted: bool = row.try_get("was_inserted")?;
 
-        tx.commit().await?;
+        if !has_current_state {
+            return Ok(None);
+        }
+
+        if !was_inserted {
+            let actual_state_json: serde_json::Value = row.try_get("actual_state")?;
+            let actual: ServerRegistrationState =
+                serde_json::from_value(actual_state_json).map_err(|e| {
+                    StorageError::Internal(format!(
+                        "Failed to deserialize actual server registration state: {}",
+                        e
+                    ))
+                })?;
+            return Err(StorageError::InvalidServerRegistrationStateTransition {
+                server_registration_id: id,
+                expected: from_state,
+                actual,
+                to: to_state,
+            });
+        }
 
         Ok(Some(()))
     }
@@ -558,6 +570,7 @@ impl BlobStorage for PostgresStorage {
         )
         .bind(blob.service_id.as_untyped_uuid())
         .bind(blob.server_registration_id.as_untyped_uuid())
+        .bind(blob.blob_time)
         .bind(0i64) // Initial size is 0
         .bind(blob.total_size)
         .bind(now)
@@ -590,6 +603,7 @@ impl BlobStorage for PostgresStorage {
             id: blob_id,
             service_id: TypedUuid::from_untyped_uuid(service_id_uuid),
             server_registration_id: TypedUuid::from_untyped_uuid(server_registration_id_uuid),
+            blob_time: row.try_get("blob_time")?,
             size: row.try_get("size")?,
             total_size: row.try_get("total_size")?,
             state: pending_state,
@@ -631,6 +645,7 @@ impl BlobStorage for PostgresStorage {
                     server_registration_id: TypedUuid::from_untyped_uuid(
                         server_registration_id_uuid,
                     ),
+                    blob_time: row.try_get("blob_time")?,
                     size: row.try_get("size")?,
                     total_size: row.try_get("total_size")?,
                     state,
@@ -676,6 +691,7 @@ impl BlobStorage for PostgresStorage {
                     server_registration_id: TypedUuid::from_untyped_uuid(
                         server_registration_id_uuid,
                     ),
+                    blob_time: row.try_get("blob_time")?,
                     size: row.try_get("size")?,
                     total_size: row.try_get("total_size")?,
                     state,
@@ -727,59 +743,67 @@ impl BlobStorage for PostgresStorage {
         let to_state_json = serde_json::to_value(to_state)
             .map_err(|e| StorageError::Internal(format!("Failed to serialize to_state: {}", e)))?;
 
-        let mut tx = self.pool.begin().await?;
-
-        // Check current state matches from_state
-        let current_state_row = sqlx::query(
+        // Use a CTE to atomically check the current state, insert the new state
+        // transition, and update the blob in a single query.
+        let row = sqlx::query(
             r#"
-            SELECT state FROM blob_state
-            WHERE blob_id = $1
-            ORDER BY created_at DESC
-            LIMIT 1
-            "#,
-        )
-        .bind(id.as_untyped_uuid())
-        .fetch_optional(&mut *tx)
-        .await?;
-
-        match current_state_row {
-            Some(row) => {
-                let current_state_json: serde_json::Value = row.try_get("state")?;
-                if current_state_json != from_state_json {
-                    return Err(StorageError::InvalidBlobStateTransition {
-                        blob_id: id,
-                        expected: from_state,
-                    });
-                }
-            }
-            None => return Ok(None),
-        }
-
-        // Insert new state
-        sqlx::query(
-            r#"
-            INSERT INTO blob_state (blob_id, state, created_at)
-            VALUES ($1, $2, $3)
+            WITH current_state AS (
+                SELECT state
+                FROM blob_state
+                WHERE blob_id = $1
+                ORDER BY created_at DESC
+                LIMIT 1
+            ),
+            insert_new_state AS (
+                INSERT INTO blob_state (blob_id, state, created_at)
+                SELECT $1, $2, $3
+                FROM current_state
+                WHERE current_state.state = $4
+                RETURNING blob_id
+            ),
+            update_blob AS (
+                UPDATE blob
+                SET updated_at = $3
+                WHERE id = $1
+                AND EXISTS (SELECT 1 FROM insert_new_state)
+                RETURNING id
+            )
+            SELECT
+                EXISTS (SELECT 1 FROM current_state) AS has_current_state,
+                EXISTS (SELECT 1 FROM insert_new_state) AS was_inserted,
+                (SELECT state FROM current_state) AS actual_state
             "#,
         )
         .bind(id.as_untyped_uuid())
         .bind(&to_state_json)
         .bind(now)
-        .execute(&mut *tx)
+        .bind(&from_state_json)
+        .fetch_one(&self.pool)
         .await?;
 
-        // Update blob updated_at
-        sqlx::query(
-            r#"
-            UPDATE blob SET updated_at = $1 WHERE id = $2
-            "#,
-        )
-        .bind(now)
-        .bind(id.as_untyped_uuid())
-        .execute(&mut *tx)
-        .await?;
+        let has_current_state: bool = row.try_get("has_current_state")?;
+        let was_inserted: bool = row.try_get("was_inserted")?;
 
-        tx.commit().await?;
+        if !has_current_state {
+            return Ok(None);
+        }
+
+        if !was_inserted {
+            let actual_state_json: serde_json::Value = row.try_get("actual_state")?;
+            let actual: BlobState =
+                serde_json::from_value(actual_state_json).map_err(|e| {
+                    StorageError::Internal(format!(
+                        "Failed to deserialize actual blob state: {}",
+                        e
+                    ))
+                })?;
+            return Err(StorageError::InvalidBlobStateTransition {
+                blob_id: id,
+                expected: from_state,
+                actual,
+                to: to_state,
+            });
+        }
 
         Ok(Some(()))
     }
@@ -863,6 +887,7 @@ impl BlobStorage for PostgresStorage {
                     server_registration_id: TypedUuid::from_untyped_uuid(
                         server_registration_id_uuid,
                     ),
+                    blob_time: row.try_get("blob_time")?,
                     size: row.try_get("size")?,
                     total_size: row.try_get("total_size")?,
                     state,
@@ -1377,63 +1402,74 @@ impl TokenRequestStorage for PostgresStorage {
         let to_state_json = serde_json::to_value(to_state)
             .map_err(|e| StorageError::Internal(format!("Failed to serialize to_state: {}", e)))?;
 
-        let mut tx = self.pool.begin().await?;
-
-        // Check current state matches from_state
-        let current_state_row = sqlx::query(
+        // Use a CTE to atomically check the current state, insert the new state
+        // transition, and update the token request in a single query.
+        //
+        // Any update to a token request will mean blanking out the nonce. The only cases
+        // where a value will be present are when the previous state is Pending and we are
+        // transitioning to Consumed, or Terminated. In each of those cases we no longer
+        // want to be storing the nonce. Once a request has been consumed, terminated, or
+        // expired, the request is no longer active and we can also clear out the expiration
+        // time.
+        let row = sqlx::query(
             r#"
-            SELECT state FROM token_request_state
-            WHERE token_request_id = $1
-            ORDER BY created_at DESC
-            LIMIT 1
-            "#,
-        )
-        .bind(id.as_untyped_uuid())
-        .fetch_optional(&mut *tx)
-        .await?;
-
-        match current_state_row {
-            Some(row) => {
-                let current_state_json: serde_json::Value = row.try_get("state")?;
-                if current_state_json != from_state_json {
-                    return Err(StorageError::InvalidTokenRequestStateTransition {
-                        token_request_id: id,
-                        expected: from_state,
-                    });
-                }
-            }
-            None => return Ok(None),
-        }
-
-        // Insert new state
-        sqlx::query(
-            r#"
-            INSERT INTO token_request_state (token_request_id, state, created_at)
-            VALUES ($1, $2, $3)
+            WITH current_state AS (
+                SELECT state
+                FROM token_request_state
+                WHERE token_request_id = $1
+                ORDER BY created_at DESC
+                LIMIT 1
+            ),
+            insert_new_state AS (
+                INSERT INTO token_request_state (token_request_id, state, created_at)
+                SELECT $1, $2, $3
+                FROM current_state
+                WHERE current_state.state = $4
+                RETURNING token_request_id
+            ),
+            update_token_request AS (
+                UPDATE token_request
+                SET nonce = null, expires_at = null, updated_at = $3
+                WHERE id = $1
+                AND EXISTS (SELECT 1 FROM insert_new_state)
+                RETURNING id
+            )
+            SELECT
+                EXISTS (SELECT 1 FROM current_state) AS has_current_state,
+                EXISTS (SELECT 1 FROM insert_new_state) AS was_inserted,
+                (SELECT state FROM current_state) AS actual_state
             "#,
         )
         .bind(id.as_untyped_uuid())
         .bind(&to_state_json)
         .bind(now)
-        .execute(&mut *tx)
+        .bind(&from_state_json)
+        .fetch_one(&self.pool)
         .await?;
 
-        // Any update to a token request will mean blanking out the nonce. The only cases
-        // where a value will be present are when the previous state is Pending and we are
-        // transitioning to Proven, Rejected, or Terminated. In each of those cases we no longer
-        // want to be storing the nonce. Once a request has been proven, rejected, or terminated,
-        // the request is no longer active and we can also clear out the expiration time.
-        sqlx::query(
-            r#"
-            UPDATE token_request SET nonce = null, expires_at = null, updated_at = $1 WHERE id = $2
-            "#,
-        )
-        .bind(now)
-        .bind(id.as_untyped_uuid())
-        .execute(&mut *tx)
-        .await?;
+        let has_current_state: bool = row.try_get("has_current_state")?;
+        let was_inserted: bool = row.try_get("was_inserted")?;
 
-        tx.commit().await?;
+        if !has_current_state {
+            return Ok(None);
+        }
+
+        if !was_inserted {
+            let actual_state_json: serde_json::Value = row.try_get("actual_state")?;
+            let actual: TokenRequestState =
+                serde_json::from_value(actual_state_json).map_err(|e| {
+                    StorageError::Internal(format!(
+                        "Failed to deserialize actual token request state: {}",
+                        e
+                    ))
+                })?;
+            return Err(StorageError::InvalidTokenRequestStateTransition {
+                token_request_id: id,
+                expected: from_state,
+                actual,
+                to: to_state,
+            });
+        }
 
         Ok(Some(()))
     }

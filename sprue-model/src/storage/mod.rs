@@ -23,18 +23,22 @@ pub enum StorageError {
     #[error("Server registration already exists for instance_id: {0}")]
     ServerRegistrationAlreadyExists(TypedUuid<ServerRegistrationInstanceId>),
 
-    #[error("Invalid state transition for blob {blob_id}: expected state {expected:?}")]
+    #[error("Invalid state transition for blob {blob_id}: expected state {expected:?}, found {actual:?}, transitioning to {to:?}")]
     InvalidBlobStateTransition {
         blob_id: TypedUuid<BlobId>,
         expected: BlobState,
+        actual: BlobState,
+        to: BlobState,
     },
 
     #[error(
-        "Invalid state transition for server registration {server_registration_id}: expected state {expected:?}"
+        "Invalid state transition for server registration {server_registration_id}: expected state {expected:?}, found {actual:?}, transitioning to {to:?}"
     )]
     InvalidServerRegistrationStateTransition {
         server_registration_id: TypedUuid<ServerRegistrationId>,
         expected: ServerRegistrationState,
+        actual: ServerRegistrationState,
+        to: ServerRegistrationState,
     },
 
     #[error("Idempotent request already exists for key: {0}")]
@@ -49,11 +53,13 @@ pub enum StorageError {
     },
 
     #[error(
-        "Invalid state transition for token request {token_request_id}: expected state {expected:?}"
+        "Invalid state transition for token request {token_request_id}: expected state {expected:?}, found {actual:?}, transitioning to {to:?}"
     )]
     InvalidTokenRequestStateTransition {
         token_request_id: TypedUuid<TokenRequestId>,
         expected: TokenRequestState,
+        actual: TokenRequestState,
+        to: TokenRequestState,
     },
 
     #[error("Internal error: {0}")]

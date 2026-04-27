@@ -28,10 +28,10 @@ pub enum ApiPermissions {
     #[v_api(scope(to = "service:r", from = "service:r"))]
     GetServicesAll,
 
-    #[v_api(scope(to = "service:w", from = "services:w"))]
+    #[v_api(scope(to = "service:w", from = "service:w"))]
     CreateService,
     #[v_api(
-        contract(kind = append, variant = GetServices),
+        contract(kind = append, variant = ManageServices),
         scope(to = "service:w")
     )]
     ManageService(TypedUuid<ServiceId>),
@@ -47,7 +47,7 @@ pub enum ApiPermissions {
     )]
     ManageServicesAssigned,
     #[v_api(scope(to = "service:w", from = "service:w"))]
-    ManageServersAll,
+    ManageServicesAll,
 
     #[v_api(
         contract(kind = append, variant = GetBlobs),

@@ -10,6 +10,7 @@ use v_api_param::StringParam;
 pub struct ServerConfig {
     pub log_format: ServerLogFormat,
     pub log_directory: Option<PathBuf>,
+    pub port: Option<u16>,
     pub param_base_path: Option<PathBuf>,
     pub initial_mappers: Option<String>,
     pub spec: Option<SpecConfig>,
@@ -43,7 +44,6 @@ pub struct OidcConfig {
 
 #[derive(Debug, Deserialize)]
 pub struct OidcTokenConfig {
-    pub issuer: String,
     pub audience: String,
     pub token_lifetime: u32,
     pub token_request_duration: u64,

@@ -6,7 +6,7 @@ use v_model::permissions::Caller;
 
 use sprue_model::{
     HealthCheck, InvalidStateTransition, ServerRegistration, ServerRegistrationId,
-    ServerRegistrationInstanceId, ServerRegistrationState, Service, ServiceId,
+    ServerRegistrationInstanceId, Service, ServiceId,
     db::{NewHealthCheckModel, NewServerRegistrationModel, NewServiceModel},
     storage::{HealthCheckStorage, ServerRegistrationStorage, ServiceStorage, StorageError},
 };
@@ -157,7 +157,7 @@ impl ServiceContext {
         if caller.any(
             [
                 ApiPermissions::ManageService(service.id),
-                ApiPermissions::ManageServersAll,
+                ApiPermissions::ManageServicesAll,
             ]
             .iter(),
         ) {
@@ -196,7 +196,7 @@ impl ServiceContext {
         if caller.any(
             [
                 ApiPermissions::ManageService(server.service_id),
-                ApiPermissions::ManageServersAll,
+                ApiPermissions::ManageServicesAll,
             ]
             .iter(),
         ) {
@@ -204,7 +204,7 @@ impl ServiceContext {
                 .storage
                 .update_server_registration_state(
                     server.id,
-                    ServerRegistrationState::Pending,
+                    server.state,
                     server
                         .state
                         .accept()
@@ -226,7 +226,7 @@ impl ServiceContext {
         if caller.any(
             [
                 ApiPermissions::ManageService(server.service_id),
-                ApiPermissions::ManageServersAll,
+                ApiPermissions::ManageServicesAll,
             ]
             .iter(),
         ) {
@@ -234,7 +234,7 @@ impl ServiceContext {
                 .storage
                 .update_server_registration_state(
                     server.id,
-                    ServerRegistrationState::Pending,
+                    server.state,
                     server
                         .state
                         .prove()
@@ -256,7 +256,7 @@ impl ServiceContext {
         if caller.any(
             [
                 ApiPermissions::ManageService(server.service_id),
-                ApiPermissions::ManageServersAll,
+                ApiPermissions::ManageServicesAll,
             ]
             .iter(),
         ) {
@@ -264,7 +264,7 @@ impl ServiceContext {
                 .storage
                 .update_server_registration_state(
                     server.id,
-                    ServerRegistrationState::Pending,
+                    server.state,
                     server
                         .state
                         .reject()
@@ -286,7 +286,7 @@ impl ServiceContext {
         if caller.any(
             [
                 ApiPermissions::ManageService(server.service_id),
-                ApiPermissions::ManageServersAll,
+                ApiPermissions::ManageServicesAll,
             ]
             .iter(),
         ) {
@@ -294,7 +294,7 @@ impl ServiceContext {
                 .storage
                 .update_server_registration_state(
                     server.id,
-                    ServerRegistrationState::Accepted,
+                    server.state,
                     server
                         .state
                         .terminate()

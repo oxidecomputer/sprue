@@ -68,13 +68,18 @@ pub async fn prove_oidc_token_request(
             tracing::info!(?err, "Unable to deserialize attestation");
             HttpError::for_bad_request(None, "Failed to deserialize attestation".to_string())
         })?;
+    let token_request = ctx.oidc.get_token_request(body.request).await?;
 
     // Verify the attestation
     ctx.server_identity
-        .verify_attestation(&server, &attestation)
-        .map_err(|_| HttpError::for_internal_error("Failed to verify attestation".to_string()))?;
+        .verify_instance_attestation(server.instance_id, &token_request.nonce.as_deref().ok_or_else(|| {
+            HttpError::for_bad_request(None, "Request is not in a state that can be proven".to_string())
+        })?, &attestation)
+        .map_err(|err| {
+            tracing::info!(?err, "Failed to verify attestation");
+            HttpError::for_bad_request(None, "Invalid attestation".to_string())
+        })?;
 
-    let token_request = ctx.oidc.get_token_request(body.request).await?;
     let claims = ctx.oidc.generate_claims(&server, token_request).await?;
     let token = ctx.v_ctx().sign_jwt(&claims).await.map_err(|err| {
         tracing::error!(?err, "Unable to sign claims");

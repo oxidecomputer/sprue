@@ -4,7 +4,7 @@ use newtype_uuid::TypedUuid;
 use rustls::crypto;
 use secrecy::ExposeSecret;
 use slog::Drain;
-use sprue_api::{ServerConfig, describe, migrations};
+use sprue_api::{ServerConfig, describe};
 use std::{
     fs::File,
     path::{Path, PathBuf},
@@ -57,7 +57,7 @@ async fn main() -> anyhow::Result<()> {
         }
         ServerCommand::Migrate => {
             let config = ServerConfig::new(args.config.map(|path| vec![path]))?;
-            migrations::run_migrations(
+            sprue_model::migration::run_migrations(
                 config
                     .database_url
                     .resolve(config.param_base_path)?

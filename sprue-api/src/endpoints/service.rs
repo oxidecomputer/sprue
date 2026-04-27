@@ -14,7 +14,7 @@ use sprue_model::{
 use v_api::ApiContext as VApiContext;
 use vm_attest::VmInstanceAttestation;
 
-use crate::context::ApiContext;
+use crate::{context::ApiContext, permissions::ApiPermissions};
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ServicePath {
@@ -56,6 +56,16 @@ pub async fn create_service(
     let caller = rqctx.v_ctx().get_caller(&rqctx).await?;
     let path = path.into_inner();
     let service = ctx.service.create_service(&caller, &path.name).await?;
+
+    // Once the service has been created, grant the caller permission to manage it
+    let manage_service_permissions = vec![
+        ApiPermissions::GetService(service.id.clone()),
+        ApiPermissions::ManageService(service.id.clone()),
+    ];
+    ctx.v_ctx().user.add_permissions_to_user(ctx.system_caller(), &caller.id, manage_service_permissions.into()).await.map_err(|err| {
+      tracing::error!(?err, system = ?ctx.system_caller(), ?caller, "Failed to assign manage service permission");
+      HttpError::for_internal_error("Failed to assign permission".to_string())
+    })?;
 
     Ok(HttpResponseOk(service))
 }
@@ -150,8 +160,13 @@ pub async fn prove_server(
 
     // Verify the attestation
     ctx.server_identity
-        .verify_attestation(&server, &attestation)
-        .map_err(|_| HttpError::for_internal_error("Failed to verify attestation".to_string()))?;
+        .verify_instance_attestation(server.instance_id, &server.nonce.as_deref().ok_or_else(|| {
+            HttpError::for_bad_request(None, "Registration is not in a state that can be proven".to_string())
+        })?, &attestation)
+        .map_err(|err| {
+            tracing::info!(?err, "Failed to verify attestation");
+            HttpError::for_bad_request(None, "Invalid attestation".to_string())
+        })?;
 
     // The server has proven its identity and we can mark it as proven
     ctx.service
@@ -249,6 +264,7 @@ pub async fn checkin_server(
 struct RegisterBlobBody {
     size: i64,
     idempotency_key: Option<String>,
+    blob_time: Option<DateTime<Utc>>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
@@ -277,7 +293,7 @@ pub async fn register_blob(
         .execute_idempotent_request(path.server, body.idempotency_key, |_| async move {
             let blob = ctx
                 .blob
-                .create_blob(caller.id, caller.service, body.size)
+                .create_blob(caller.id, caller.service, body.size, body.blob_time)
                 .await?;
             let response = RegisterBlobResponse { blob };
             Ok(response)

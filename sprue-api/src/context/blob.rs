@@ -1,4 +1,5 @@
 use aws_sdk_s3::primitives::ByteStream;
+use chrono::{DateTime, Utc};
 use newtype_uuid::TypedUuid;
 use std::{path::PathBuf, sync::Arc};
 use thiserror::Error;
@@ -132,6 +133,7 @@ impl BlobContext {
     ) -> ResourceResult<Box<dyn AsyncWrite + Send + Unpin>, BlobError> {
         if caller.can_manage(&blob) {
             let mut options = OpenOptions::new();
+            options.create(true);
             options.write(true);
             let resource = self.local_resource(caller, blob, Some(options)).await?;
             Ok(Box::new(resource))
@@ -171,12 +173,14 @@ impl BlobContext {
         server: TypedUuid<ServerRegistrationId>,
         service: TypedUuid<ServiceId>,
         size: i64,
+        blob_time: Option<DateTime<Utc>>,
     ) -> ResourceResult<Blob, BlobError> {
         let blob = self
             .storage
             .create_blob(&NewBlobModel {
                 service_id: service,
                 server_registration_id: server,
+                blob_time: blob_time.unwrap_or_else(|| Utc::now()),
                 total_size: size,
             })
             .await

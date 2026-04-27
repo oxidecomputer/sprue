@@ -9,7 +9,7 @@ use v_api::{
     ApiContext as VApiContext, VContext,
     authn::jwt::{Jwt, JwtError},
 };
-use v_model::{Permissions, permissions::Caller};
+use v_model::permissions::Caller;
 
 use crate::{
     context::{
@@ -62,7 +62,12 @@ impl ApiContextBuilder {
     fn default_system_caller(&self) -> Caller<ApiPermissions> {
         Caller {
             id: TypedUuid::new_v4(),
-            permissions: Permissions::default(),
+            permissions: vec![
+                ApiPermissions::GetApiUsersAll,
+                ApiPermissions::ManageApiUsersAll,
+                ApiPermissions::GetServicesAll,
+                ApiPermissions::ManageServicesAll,
+            ].into(),
             extensions: HashMap::default(),
         }
     }

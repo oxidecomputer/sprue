@@ -40,6 +40,7 @@ impl<T: TokenRequestStorage> OidcContextStorage for T {}
 
 #[derive(Clone)]
 pub struct OidcContext {
+    issuer: String,
     storage: Arc<dyn OidcContextStorage>,
     oidc: Arc<OidcConfig>,
 }
@@ -65,10 +66,12 @@ pub struct OxideVmClaims {
 
 impl OidcContext {
     pub fn new(
+        issuer: String,
         oidc: OidcConfig,
         storage: Arc<dyn OidcContextStorage>,
     ) -> Result<Self, OidcContextError> {
         Ok(Self {
+            issuer,
             storage,
             oidc: Arc::new(oidc),
         })
@@ -124,7 +127,7 @@ impl OidcContext {
 
     fn create_claims(&self, server: &ServerRegistration) -> VmClaims {
         VmClaims {
-            iss: self.oidc.token.issuer.to_string(),
+            iss: self.issuer.to_string(),
             aud: self.oidc.token.audience.to_string(),
             sub: server.id,
             exp: Utc::now().timestamp() + (self.oidc.token.token_lifetime as i64),

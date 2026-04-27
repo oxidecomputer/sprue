@@ -54,6 +54,7 @@ pub struct BlobModel {
     pub id: TypedUuid<BlobId>,
     pub service_id: TypedUuid<ServiceId>,
     pub server_registration_id: TypedUuid<ServerRegistrationId>,
+    pub blob_time: DateTime<Utc>,
     #[partial(NewBlobModel(skip))]
     pub size: i64,
     pub total_size: i64,

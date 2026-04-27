@@ -188,25 +188,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "attest-data"
-version = "0.5.0"
-source = "git+https://github.com/oxidecomputer/dice-util#d7472bfa91aee859c3fe0bdc1dbb1e320285228e"
-dependencies = [
- "const-oid 0.9.6",
- "der 0.7.10",
- "getrandom 0.3.4",
- "hex",
- "hubpack",
- "rats-corim",
- "salty",
- "serde",
- "serde_with",
- "sha3",
- "static_assertions",
- "thiserror 2.0.18",
-]
-
-[[package]]
 name = "autocfg"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1445,30 +1426,7 @@ version = "0.3.0-pre0"
 source = "git+https://github.com/oxidecomputer/dice-util?rev=d7472bfa91aee859c3fe0bdc1dbb1e320285228e#d7472bfa91aee859c3fe0bdc1dbb1e320285228e"
 dependencies = [
  "async-trait",
- "attest-data 0.5.0 (git+https://github.com/oxidecomputer/dice-util?rev=d7472bfa91aee859c3fe0bdc1dbb1e320285228e)",
- "const-oid 0.9.6",
- "ed25519-dalek",
- "env_logger",
- "hex",
- "hubpack",
- "log",
- "p384",
- "rats-corim",
- "sha3",
- "slog",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "x509-cert",
-]
-
-[[package]]
-name = "dice-verifier"
-version = "0.3.0-pre0"
-source = "git+https://github.com/oxidecomputer/dice-util#d7472bfa91aee859c3fe0bdc1dbb1e320285228e"
-dependencies = [
- "async-trait",
- "attest-data 0.5.0 (git+https://github.com/oxidecomputer/dice-util)",
+ "attest-data",
  "const-oid 0.9.6",
  "ed25519-dalek",
  "env_logger",
@@ -3123,6 +3081,15 @@ dependencies = [
  "mime",
  "spin 0.9.8",
  "version_check",
+]
+
+[[package]]
+name = "nanoid"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3ffa00dec017b5b1a8b7cf5e2c008bfda1aa7e0697ac1508b491fdf2622fb4d8"
+dependencies = [
+ "rand 0.8.6",
 ]
 
 [[package]]
@@ -4963,19 +4930,21 @@ name = "sprue-api"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "attest-data 0.5.0 (git+https://github.com/oxidecomputer/dice-util)",
+ "async-trait",
+ "attest-data",
  "aws-config",
  "aws-credential-types",
  "aws-sdk-s3",
  "aws-sdk-sts",
  "aws-smithy-types",
+ "bytes",
  "chrono",
  "clap",
  "config",
  "const-oid 0.9.6",
  "ctrlc",
  "derive_builder",
- "dice-verifier 0.3.0-pre0 (git+https://github.com/oxidecomputer/dice-util)",
+ "dice-verifier",
  "dropshot",
  "futures",
  "hex",
@@ -4984,6 +4953,8 @@ dependencies = [
  "jsonwebtoken",
  "lazy_static",
  "newtype-uuid",
+ "rand 0.10.1",
+ "reqwest 0.13.2",
  "rustls 0.23.39",
  "schemars 0.8.22",
  "secrecy",
@@ -4993,6 +4964,7 @@ dependencies = [
  "slog",
  "slog-async",
  "sprue-model",
+ "sprue-sdk",
  "sqlx",
  "steno",
  "tap",
@@ -5004,7 +4976,6 @@ dependencies = [
  "tracing-subscriber",
  "uuid",
  "v-api",
- "v-api-installer",
  "v-api-param",
  "v-api-permission-derive",
  "v-model",
@@ -5041,8 +5012,10 @@ dependencies = [
 name = "sprue-model"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "async-trait",
  "chrono",
+ "nanoid",
  "newtype-uuid",
  "partial-struct",
  "schemars 0.8.22",
@@ -5051,6 +5024,8 @@ dependencies = [
  "sqlx",
  "thiserror 2.0.18",
  "tokio",
+ "tracing",
+ "v-api-installer",
 ]
 
 [[package]]
@@ -6240,9 +6215,9 @@ version = "0.1.0"
 source = "git+https://github.com/oxidecomputer/vm-attest#eb9e80d22866a3714cdf36a0133371f1d4b24433"
 dependencies = [
  "anyhow",
- "attest-data 0.5.0 (git+https://github.com/oxidecomputer/dice-util?rev=d7472bfa91aee859c3fe0bdc1dbb1e320285228e)",
+ "attest-data",
  "const-oid 0.9.6",
- "dice-verifier 0.3.0-pre0 (git+https://github.com/oxidecomputer/dice-util?rev=d7472bfa91aee859c3fe0bdc1dbb1e320285228e)",
+ "dice-verifier",
  "ed25519-dalek",
  "getrandom 0.3.4",
  "hex",

@@ -11,6 +11,9 @@ use crate::db::{
 
 pub mod db;
 pub mod storage;
+pub mod migration;
+#[cfg(feature = "test-util")]
+pub mod test_util;
 
 #[derive(JsonSchema)]
 pub enum ServiceId {}
@@ -314,6 +317,7 @@ pub struct Blob {
     pub id: TypedUuid<BlobId>,
     pub service_id: TypedUuid<ServiceId>,
     pub server_registration_id: TypedUuid<ServerRegistrationId>,
+    pub blob_time: DateTime<Utc>,
     pub size: i64,
     pub total_size: i64,
     pub state: BlobState,
@@ -423,6 +427,7 @@ impl From<BlobModel> for Blob {
             id: model.id,
             service_id: model.service_id,
             server_registration_id: model.server_registration_id,
+            blob_time: model.blob_time,
             size: model.size,
             total_size: model.total_size,
             state: model.state,

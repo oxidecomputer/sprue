@@ -3,9 +3,9 @@ use dice_verifier::{
     MeasurementSet, MeasurementSetError, PkiPathSignatureVerifierError, ReferenceMeasurements,
     VerifyAttestationError, VerifyMeasurementsError,
 };
-use newtype_uuid::GenericUuid;
+use newtype_uuid::{GenericUuid, TypedUuid};
 use sha2::{Digest, Sha256};
-use sprue_model::{ServerRegistration, ServerRegistrationState};
+use sprue_model::ServerRegistrationInstanceId;
 use std::{str::Utf8Error, sync::Arc};
 use tap::TapFallible;
 use thiserror::Error;
@@ -23,8 +23,6 @@ pub enum ServerIdentityError {
     Hubpack(#[from] hubpack::Error),
     #[error("Failed to verify instance data")]
     FailedToVerifyInstanceData,
-    #[error("Failed to verify RoT")]
-    FailedToVerifyRot,
     #[error("Certificate chain has the wrong organization")]
     IncorrectOrganization,
     #[error("Failed to verify measurements")]
@@ -90,20 +88,14 @@ impl ServerIdentityContext {
         Ok(encoded_nonce)
     }
 
-    #[instrument(skip(self), fields(server_id = ?server.id, instance_id = ?server.instance_id))]
-    pub fn verify_attestation(
+    #[instrument(skip(self, attestation), fields(instance))]
+    pub fn verify_instance_attestation(
         &self,
-        server: &ServerRegistration,
+        instance: TypedUuid<ServerRegistrationInstanceId>,
+        nonce: &str,
         attestation: &VmInstanceAttestation,
     ) -> Result<(), ServerIdentityError> {
-        if server.state != ServerRegistrationState::Pending {
-            return Err(ServerIdentityError::NotPending);
-        }
-        if server.nonce.is_none() {
-            return Err(ServerIdentityError::NoNonce);
-        }
-
-        let nonce: [u8; 32] = hex::decode(server.nonce.as_ref().unwrap())
+        let nonce: [u8; 32] = hex::decode(nonce)
             .map_err(ServerIdentityError::NonceFormat)?
             .try_into()
             .map_err(|_| ServerIdentityError::NonceInvalid)?;
@@ -120,8 +112,6 @@ impl ServerIdentityContext {
         let cert_chain_pem = cert_chain_pem;
         let verified_root =
             dice_verifier::verify_cert_chain(&cert_chain_pem, Some(&self.root_certs))?;
-
-        tracing::info!(?verified_root, "Verified cert chain");
 
         let organization =
             get_cert_organization(verified_root).ok_or(ServerIdentityError::MissingOrganization)?;
@@ -183,8 +173,10 @@ impl ServerIdentityContext {
                     // log from the OxidePlatform RoT
                     let (log, _): (Log, _) = hubpack::deserialize(&log.data)?;
                     let measurements = MeasurementSet::from_artifacts(&cert_chain_pem, &log)?;
-                    dice_verifier::verify_measurements(&measurements, &self.ref_measurements)?;
-                    return Err(ServerIdentityError::FailedToVerifyRot);
+                    dice_verifier::verify_measurements(&measurements, &self.ref_measurements)
+                        .tap_err(|err| {
+                            tracing::info!(?err, "Failed to verify RoT measurements");
+                        })?;
                 }
                 RotType::OxideInstance => {
                     // Compare the server identity to the instance id config from the attestation
@@ -195,7 +187,7 @@ impl ServerIdentityContext {
 
                     // Verify that the uuid of the instance in the attestation matches the uuid of
                     // the instance requesting the token
-                    if instance_cfg.uuid != server.instance_id.into_untyped_uuid() {
+                    if instance_cfg.uuid != instance.into_untyped_uuid() {
                         return Err(ServerIdentityError::WrongInstanceId);
                     }
 
@@ -212,11 +204,12 @@ impl ServerIdentityContext {
 
 // utility function to get common name from cert subject
 fn get_cert_organization(cert: &Certificate) -> Option<Utf8StringRef<'_>> {
-    use const_oid::db::rfc4519::ORGANIZATION;
+    use const_oid::db::rfc4519::ORGANIZATION_NAME;
 
-    for elm in cert.tbs_certificate.subject.0.iter() {
+    for elm in cert.tbs_certificate.issuer.0.iter() {
+        tracing::info!(?elm, "Issuer element");
         for atav in elm.0.iter() {
-            if atav.oid == ORGANIZATION {
+            if atav.oid == ORGANIZATION_NAME {
                 return Some(
                     Utf8StringRef::try_from(&atav.value)
                         .expect("Decode name attribute value to UTF8 string"),

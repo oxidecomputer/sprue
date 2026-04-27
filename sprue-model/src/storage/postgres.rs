@@ -1,3 +1,7 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 use async_trait::async_trait;
 use chrono::Utc;
 use newtype_uuid::{GenericUuid, TypedUuid};
@@ -447,8 +451,8 @@ impl ServerRegistrationStorage for PostgresStorage {
 
         if !was_inserted {
             let actual_state_json: serde_json::Value = row.try_get("actual_state")?;
-            let actual: ServerRegistrationState =
-                serde_json::from_value(actual_state_json).map_err(|e| {
+            let actual: ServerRegistrationState = serde_json::from_value(actual_state_json)
+                .map_err(|e| {
                     StorageError::Internal(format!(
                         "Failed to deserialize actual server registration state: {}",
                         e
@@ -790,13 +794,9 @@ impl BlobStorage for PostgresStorage {
 
         if !was_inserted {
             let actual_state_json: serde_json::Value = row.try_get("actual_state")?;
-            let actual: BlobState =
-                serde_json::from_value(actual_state_json).map_err(|e| {
-                    StorageError::Internal(format!(
-                        "Failed to deserialize actual blob state: {}",
-                        e
-                    ))
-                })?;
+            let actual: BlobState = serde_json::from_value(actual_state_json).map_err(|e| {
+                StorageError::Internal(format!("Failed to deserialize actual blob state: {}", e))
+            })?;
             return Err(StorageError::InvalidBlobStateTransition {
                 blob_id: id,
                 expected: from_state,

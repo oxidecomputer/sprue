@@ -1,3 +1,7 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 use dice_verifier::{Corim, CorimError, ReferenceMeasurementsError};
 use dropshot::BuildError as DropshotError;
 use newtype_uuid::TypedUuid;
@@ -48,7 +52,7 @@ mod sagas;
 mod server;
 
 pub use config::ServerConfig;
-pub use server::{describe, create_server};
+pub use server::{create_server, describe};
 
 #[derive(Debug, Error)]
 pub enum ServerError {
@@ -147,7 +151,11 @@ pub async fn run_server(
             create_backup_storage(config.backup.remote, token_fetcher).await,
         ))
         .idempotency(IdempotencyContext::new(storage.clone()))
-        .oidc(OidcContext::new(v_ctx.issuer(), config.oidc, storage.clone())?)
+        .oidc(OidcContext::new(
+            v_ctx.issuer(),
+            config.oidc,
+            storage.clone(),
+        )?)
         .server_identity(ServerIdentityContext::new(
             config.vm_identity.organization,
             Certificate::load_pem_chain(config.vm_identity.root_cert_chain.as_bytes())?,

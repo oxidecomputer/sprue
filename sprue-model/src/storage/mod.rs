@@ -1,3 +1,7 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use newtype_uuid::TypedUuid;
@@ -23,7 +27,9 @@ pub enum StorageError {
     #[error("Server registration already exists for instance_id: {0}")]
     ServerRegistrationAlreadyExists(TypedUuid<ServerRegistrationInstanceId>),
 
-    #[error("Invalid state transition for blob {blob_id}: expected state {expected:?}, found {actual:?}, transitioning to {to:?}")]
+    #[error(
+        "Invalid state transition for blob {blob_id}: expected state {expected:?}, found {actual:?}, transitioning to {to:?}"
+    )]
     InvalidBlobStateTransition {
         blob_id: TypedUuid<BlobId>,
         expected: BlobState,

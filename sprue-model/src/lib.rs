@@ -1,3 +1,7 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 use chrono::{DateTime, Utc};
 use newtype_uuid::{TypedUuid, TypedUuidKind, TypedUuidTag};
 use schemars::JsonSchema;
@@ -10,8 +14,8 @@ use crate::db::{
 };
 
 pub mod db;
-pub mod storage;
 pub mod migration;
+pub mod storage;
 #[cfg(feature = "test-util")]
 pub mod test_util;
 

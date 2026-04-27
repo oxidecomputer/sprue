@@ -8,19 +8,39 @@ use dropshot::ServerBuilder;
 use newtype_uuid::TypedUuid;
 use rand::RngExt;
 use slog::{Discard, Logger, o};
-use sprue_api::{config::{OidcConfig, OidcTokenConfig}, context::{ApiContext, ApiContextBuilder, blob::{BackupStorage, BlobContext, LocalBackupStorage}, idempotency::IdempotencyContext, oidc::OidcContext, server_identity::ServerIdentityContext, service::ServiceContext}, create_server, permissions::ApiPermissions};
+use sprue_api::{
+    config::{OidcConfig, OidcTokenConfig},
+    context::{
+        ApiContext, ApiContextBuilder,
+        blob::{BackupStorage, BlobContext, LocalBackupStorage},
+        idempotency::IdempotencyContext,
+        oidc::OidcContext,
+        server_identity::ServerIdentityContext,
+        service::ServiceContext,
+    },
+    create_server,
+    permissions::ApiPermissions,
+};
+use sprue_model::{storage::postgres::PostgresStorage, test_util::TestDb};
+use std::{
+    collections::HashMap,
+    fs,
+    path::{PathBuf, absolute},
+    sync::Arc,
+    time::Duration,
+};
 use steno::ActionRegistry;
 use tokio::task::JoinHandle;
-use vm_attest::{QualifyingData, VmInstanceConf};
-use x509_cert::Certificate;
-use std::{collections::HashMap, fs, path::{PathBuf, absolute}, sync::Arc, time::Duration};
-use sprue_model::{storage::postgres::PostgresStorage, test_util::TestDb};
 use v_api::{
-    ApiContext as VApiContext, MagicLinkMessage, MagicLinkTarget, VContextBuilder, config::AsymmetricKey, messenger::{Message, Messenger, MessengerError}
+    ApiContext as VApiContext, MagicLinkMessage, MagicLinkTarget, VContextBuilder,
+    config::AsymmetricKey,
+    messenger::{Message, Messenger, MessengerError},
 };
 use v_model::{
-    AccessGroupId, MagicLink, NewAccessGroup, permissions::Caller, schema_ext::MagicLinkMedium
+    AccessGroupId, MagicLink, NewAccessGroup, permissions::Caller, schema_ext::MagicLinkMedium,
 };
+use vm_attest::{QualifyingData, VmInstanceConf};
+use x509_cert::Certificate;
 
 use crate::common::actors::{MockUser, MockVm};
 
@@ -91,11 +111,15 @@ impl SeededContext {
             .with_keys(vec![
                 AsymmetricKey::LocalVerifier {
                     kid: "test-key".to_string(),
-                    public: include_str!("../../test-data/api/cert.pem").to_string().into(),
+                    public: include_str!("../../test-data/api/cert.pem")
+                        .to_string()
+                        .into(),
                 },
                 AsymmetricKey::LocalSigner {
                     kid: "test-key".to_string(),
-                    private: include_str!("../../test-data/api/key.pem").to_string().into(),
+                    private: include_str!("../../test-data/api/key.pem")
+                        .to_string()
+                        .into(),
                 },
             ])
             .with_saga_backend(test_id, None)
@@ -143,28 +167,36 @@ impl SeededContext {
 
         let context = ApiContextBuilder::default()
             .public_url(url(port, ""))
-            .blob(BlobContext::new(local_storage, storage.clone(), BackupStorage::Local(LocalBackupStorage::new(remote_storage))))
+            .blob(BlobContext::new(
+                local_storage,
+                storage.clone(),
+                BackupStorage::Local(LocalBackupStorage::new(remote_storage)),
+            ))
             .idempotency(IdempotencyContext::new(storage.clone()))
-            .oidc(OidcContext::new(v_ctx.issuer(), OidcConfig {
-                token: OidcTokenConfig {
-                    audience: v_ctx.issuer(),
-                    token_lifetime: 30,
-                    token_request_duration: 10,
-                },
-            }, storage.clone()).unwrap())
+            .oidc(
+                OidcContext::new(
+                    v_ctx.issuer(),
+                    OidcConfig {
+                        token: OidcTokenConfig {
+                            audience: v_ctx.issuer(),
+                            token_lifetime: 30,
+                            token_request_duration: 10,
+                        },
+                    },
+                    storage.clone(),
+                )
+                .unwrap(),
+            )
             .server_identity(ServerIdentityContext::new(
                 "Oxide Computer Company".to_string(),
-                Certificate::load_pem_chain(include_bytes!("../../test-data/attestation/root.crt"))?,
-                Arc::new(
-                    ReferenceMeasurements::try_from(
-                        std::slice::from_ref(&Corim::from_bytes(include_bytes!("../../test-data/attestation/corim.cbor"))?),
-                    )?,
-                ),
+                Certificate::load_pem_chain(include_bytes!(
+                    "../../test-data/attestation/root.crt"
+                ))?,
+                Arc::new(ReferenceMeasurements::try_from(std::slice::from_ref(
+                    &Corim::from_bytes(include_bytes!("../../test-data/attestation/corim.cbor"))?,
+                ))?),
             ))
-            .service(ServiceContext::new(
-                storage,
-                Duration::from_secs(10),
-            ))
+            .service(ServiceContext::new(storage, Duration::from_secs(10)))
             .saga_action_registry(Arc::new(ActionRegistry::new()))
             .v_ctx(v_ctx)
             .build()?;
@@ -186,32 +218,36 @@ impl SeededContext {
 
     pub async fn group(&self, permissions: Vec<ApiPermissions>) -> TypedUuid<AccessGroupId> {
         let group_id = TypedUuid::new_v4();
-        let group = self.ctx.v_ctx().group.create_group(&self.system_caller, NewAccessGroup { id: group_id, name: group_id.to_string(), permissions: permissions.into() }).await.unwrap();
+        let group = self
+            .ctx
+            .v_ctx()
+            .group
+            .create_group(
+                &self.system_caller,
+                NewAccessGroup {
+                    id: group_id,
+                    name: group_id.to_string(),
+                    permissions: permissions.into(),
+                },
+            )
+            .await
+            .unwrap();
         group.id
     }
 
     pub async fn user(&self, scope: &str, groups: Vec<TypedUuid<AccessGroupId>>) -> MockUser {
-        MockUser::create(
-            &self.service,
-            groups,
-            scope,
-            &self.magic_link,
-            &self.ctx,
-        )
-        .await
-        .unwrap()
+        MockUser::create(&self.service, groups, scope, &self.magic_link, &self.ctx)
+            .await
+            .unwrap()
     }
 
-    pub fn vm(
-        &self,
-        conf: VmInstanceConf,
-    ) -> MockVm {
+    pub fn vm(&self, conf: VmInstanceConf) -> MockVm {
         MockVm::create(&self.service, conf)
     }
 
     pub fn server(&self) -> MockServer {
         MockServer {
-            inner: create_server(self.ctx.clone(), Logger::root(Discard, o!{}), self.port),
+            inner: create_server(self.ctx.clone(), Logger::root(Discard, o! {}), self.port),
         }
     }
 }

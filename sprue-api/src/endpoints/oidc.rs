@@ -1,3 +1,7 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 use dropshot::{HttpError, HttpResponseOk, Path, RequestContext, TypedBody, endpoint};
 use newtype_uuid::TypedUuid;
 use schemars::JsonSchema;
@@ -72,9 +76,16 @@ pub async fn prove_oidc_token_request(
 
     // Verify the attestation
     ctx.server_identity
-        .verify_instance_attestation(server.instance_id, &token_request.nonce.as_deref().ok_or_else(|| {
-            HttpError::for_bad_request(None, "Request is not in a state that can be proven".to_string())
-        })?, &attestation)
+        .verify_instance_attestation(
+            server.instance_id,
+            &token_request.nonce.as_deref().ok_or_else(|| {
+                HttpError::for_bad_request(
+                    None,
+                    "Request is not in a state that can be proven".to_string(),
+                )
+            })?,
+            &attestation,
+        )
         .map_err(|err| {
             tracing::info!(?err, "Failed to verify attestation");
             HttpError::for_bad_request(None, "Invalid attestation".to_string())

@@ -4,19 +4,22 @@
 
 use chrono::{Duration, Utc};
 use dice_verifier::AttestMock;
-use http::{header::AUTHORIZATION, HeaderValue};
+use http::{HeaderValue, header::AUTHORIZATION};
 use newtype_uuid::{GenericUuid, TypedUuid};
-use vm_attest::{VmInstanceConf, VmInstanceRot};
-use std::{ops::Add, path::{PathBuf, absolute}};
 use sprue_api::{context::ApiContext, permissions::ApiPermissions};
 use sprue_sdk::Client as SprueClient;
+use std::{
+    ops::Add,
+    path::{PathBuf, absolute},
+};
 use uuid::Uuid;
-use v_api::{authn::key::RawKey, ApiContext as VApiContext};
+use v_api::{ApiContext as VApiContext, authn::key::RawKey};
 use v_model::{
+    AccessGroupId, ApiUserInfo, Permissions,
     schema_ext::MagicLinkMedium as Medium,
     storage::{ApiUserFilter, ListPagination},
-    AccessGroupId, ApiUserInfo, Permissions,
 };
+use vm_attest::{VmInstanceConf, VmInstanceRot};
 
 use super::SeededMagicLink;
 
@@ -127,10 +130,7 @@ impl MockUser {
         let user = ctx
             .v_ctx()
             .user
-            .get_api_user(
-                &ctx.v_ctx().builtin_registration_user(),
-                &user.user.id,
-            )
+            .get_api_user(&ctx.v_ctx().builtin_registration_user(), &user.user.id)
             .await?;
 
         Ok(MockUser {
@@ -149,10 +149,7 @@ pub struct MockVm {
 }
 
 impl MockVm {
-    pub fn create(
-        server: &str,
-        conf: VmInstanceConf,
-    ) -> Self {
+    pub fn create(server: &str, conf: VmInstanceConf) -> Self {
         Self {
             server: server.to_string(),
             conf: conf.clone(),
@@ -186,7 +183,8 @@ impl MockVm {
                 absolute(PathBuf::from("test-data/attestation/cert-chain.pem")).unwrap(),
                 absolute(PathBuf::from("test-data/attestation/log.bin")).unwrap(),
                 absolute(PathBuf::from("test-data/attestation/alias.key")).unwrap(),
-            ).unwrap()
+            )
+            .unwrap(),
         );
         VmInstanceRot::new(attest)
     }

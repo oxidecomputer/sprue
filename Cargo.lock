@@ -5107,7 +5107,6 @@ dependencies = [
  "slog-async",
  "sprue-model",
  "sprue-sdk",
- "sqlx",
  "steno",
  "tap",
  "thiserror 2.0.18",

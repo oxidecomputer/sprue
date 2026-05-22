@@ -24,6 +24,7 @@ aws-credential-types = { workspace = true }
 aws-sdk-s3 = { workspace = true }
 aws-sdk-sts = { workspace = true }
 aws-smithy-types = { workspace = true }
+cedar-policy = { workspace = true }
 chrono = { workspace = true }
 clap = { workspace = true }
 const-oid = { workspace = true }

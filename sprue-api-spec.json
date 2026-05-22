@@ -150,7 +150,8 @@
         }
       },
       "post": {
-        "summary": "Update the permissions assigned to a given user",
+        "summary": "Update the permissions assigned to a given user. These replace any existing",
+        "description": "permissions.",
         "operationId": "update_api_user",
         "parameters": [
           {
@@ -349,6 +350,92 @@
         "responses": {
           "204": {
             "description": "resource updated"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api-user/{user_id}/permission": {
+      "post": {
+        "summary": "Add a single permission to a user",
+        "operationId": "add_api_user_permission",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TypedUuidForUserId"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiUserPermissionParams_for_ApiPermissions"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetUserResponse_for_ApiPermissions"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove a single permission from a user",
+        "operationId": "remove_api_user_permission",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TypedUuidForUserId"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiUserPermissionParams_for_ApiPermissions"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetUserResponse_for_ApiPermissions"
+                }
+              }
+            }
           },
           "4XX": {
             "$ref": "#/components/responses/Error"
@@ -971,6 +1058,24 @@
           },
           {
             "in": "query",
+            "name": "code_challenge",
+            "description": "PKCE code challenge (RFC 7636). Required for all authorization code flows.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "code_challenge_method",
+            "description": "PKCE code challenge method. Must be \"S256\".",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "redirect_uri",
             "required": true,
             "schema": {
@@ -1092,6 +1197,13 @@
         "operationId": "authz_code_exchange",
         "parameters": [
           {
+            "in": "query",
+            "name": "request_idp_token",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
             "in": "path",
             "name": "provider",
             "required": true,
@@ -1132,7 +1244,7 @@
     },
     "/login/oauth/{provider}/device": {
       "get": {
-        "summary": "Retrieve the metadata about an OAuth provider",
+        "summary": "Retrieve the metadata about an OAuth provider for device authorization flow",
         "operationId": "get_device_provider",
         "parameters": [
           {
@@ -1150,7 +1262,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OAuthProviderInfo"
+                  "$ref": "#/components/schemas/OAuthProviderDeviceInfo"
                 }
               }
             }
@@ -1162,11 +1274,47 @@
             "$ref": "#/components/responses/Error"
           }
         }
+      },
+      "post": {
+        "summary": "Initiate a device authorization flow by proxying the request to the",
+        "description": "upstream OAuth provider. Creates a login attempt and returns the upstream device authorization response.",
+        "operationId": "device_authz",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/OAuthProviderName"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceAuthorizationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "default": {
+            "description": "",
+            "content": {
+              "*/*": {
+                "schema": {}
+              }
+            }
+          }
+        }
       }
     },
     "/login/oauth/{provider}/device/exchange": {
       "post": {
-        "summary": "Exchange an OAuth device code request for an access token",
+        "summary": "Exchange an OAuth device code for an access token. The client polls",
+        "description": "this endpoint until the user completes authorization.",
         "operationId": "exchange_device_token",
         "parameters": [
           {
@@ -1182,7 +1330,7 @@
           "content": {
             "application/x-www-form-urlencoded": {
               "schema": {
-                "$ref": "#/components/schemas/AccessTokenExchangeRequest"
+                "$ref": "#/components/schemas/DeviceTokenExchangeRequest"
               }
             }
           },
@@ -1196,6 +1344,40 @@
                 "schema": {}
               }
             }
+          }
+        }
+      }
+    },
+    "/login/oauth/{provider}/public-pkce": {
+      "get": {
+        "summary": "Retrieve the metadata about an OAuth provider for public PKCE authorization code flow",
+        "operationId": "get_web_pkce_provider",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/OAuthProviderName"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OAuthProviderAuthorizationCodePkceInfo"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
           }
         }
       }
@@ -2176,6 +2358,162 @@
         }
       }
     },
+    "/service/{service}/deployment": {
+      "get": {
+        "summary": "List all deployments for a service",
+        "operationId": "list_deployments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "service",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TypedUuidForServiceId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Array_of_Deployment",
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Deployment"
+                  }
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new deployment for a service",
+        "description": "A deployment represents a project/silo pair where the service is deployed.",
+        "operationId": "create_deployment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "service",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TypedUuidForServiceId"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDeploymentBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Deployment"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/service/{service}/deployment/{deployment}": {
+      "get": {
+        "summary": "Get a deployment by its id",
+        "operationId": "get_deployment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "deployment",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TypedUuidForDeploymentId"
+            }
+          },
+          {
+            "in": "path",
+            "name": "service",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TypedUuidForServiceId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Deployment"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a deployment from a service",
+        "operationId": "delete_deployment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "deployment",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TypedUuidForDeploymentId"
+            }
+          },
+          {
+            "in": "path",
+            "name": "service",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TypedUuidForServiceId"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "resource updated"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
     "/service/{service}/register": {
       "post": {
         "summary": "Request a server be registered as a representative instance of a service",
@@ -2314,26 +2652,6 @@
           "updated_at"
         ]
       },
-      "AccessTokenExchangeRequest": {
-        "type": "object",
-        "properties": {
-          "device_code": {
-            "type": "string"
-          },
-          "expires_at": {
-            "nullable": true,
-            "type": "string",
-            "format": "date-time"
-          },
-          "grant_type": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "device_code",
-          "grant_type"
-        ]
-      },
       "AddGroupBody": {
         "type": "object",
         "properties": {
@@ -2423,7 +2741,7 @@
               "GetServicesAll",
               "CreateService",
               "ManageServicesAssigned",
-              "ManageServersAll",
+              "ManageServicesAll",
               "GetBlobsAssigned",
               "GetBlobsAll",
               "CreateApiUser",
@@ -2462,6 +2780,7 @@
               "ManageMagicLinkClientsAssigned",
               "ManageMagicLinkClientsAll",
               "CreateAccessToken",
+              "RetrieveRemoteAccessToken",
               "GetSagasAll",
               "ManageSagasAll"
             ]
@@ -2961,6 +3280,17 @@
           "token"
         ]
       },
+      "ApiUserPermissionParams_for_ApiPermissions": {
+        "type": "object",
+        "properties": {
+          "permission": {
+            "$ref": "#/components/schemas/ApiPermissions"
+          }
+        },
+        "required": [
+          "permission"
+        ]
+      },
       "ApiUserProvider": {
         "type": "object",
         "properties": {
@@ -3028,6 +3358,7 @@
         "type": "object",
         "properties": {
           "group_ids": {
+            "default": [],
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/TypedUuidForAccessGroupId"
@@ -3039,7 +3370,6 @@
           }
         },
         "required": [
-          "group_ids",
           "permissions"
         ]
       },
@@ -3084,6 +3414,10 @@
       "Blob": {
         "type": "object",
         "properties": {
+          "blob_time": {
+            "type": "string",
+            "format": "date-time"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -3114,6 +3448,7 @@
           }
         },
         "required": [
+          "blob_time",
           "created_at",
           "id",
           "server_registration_id",
@@ -3189,6 +3524,21 @@
           "checked_in_at"
         ]
       },
+      "CreateDeploymentBody": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "$ref": "#/components/schemas/TypedUuidForProjectId"
+          },
+          "silo_id": {
+            "$ref": "#/components/schemas/TypedUuidForSiloId"
+          }
+        },
+        "required": [
+          "project_id",
+          "silo_id"
+        ]
+      },
       "CreateMapper": {
         "type": "object",
         "properties": {
@@ -3216,6 +3566,73 @@
         },
         "required": [
           "name"
+        ]
+      },
+      "Deployment": {
+        "type": "object",
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "$ref": "#/components/schemas/TypedUuidForDeploymentId"
+          },
+          "project_id": {
+            "$ref": "#/components/schemas/TypedUuidForProjectId"
+          },
+          "service_id": {
+            "$ref": "#/components/schemas/TypedUuidForServiceId"
+          },
+          "silo_id": {
+            "$ref": "#/components/schemas/TypedUuidForSiloId"
+          }
+        },
+        "required": [
+          "created_at",
+          "id",
+          "project_id",
+          "service_id",
+          "silo_id"
+        ]
+      },
+      "DeploymentId": {
+        "not": {}
+      },
+      "DeviceAuthorizationRequest": {
+        "description": "Request body for initiating a device authorization flow. The client sends its `client_id` and an optional `scope`. The API server proxies the device authorization request to the upstream provider and tracks it as a login attempt.",
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "$ref": "#/components/schemas/TypedUuidForOAuthClientId"
+          },
+          "scope": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id"
+        ]
+      },
+      "DeviceTokenExchangeRequest": {
+        "description": "Request body for the device token exchange. The client polls this endpoint with the device_code received from the authorization step.",
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "$ref": "#/components/schemas/TypedUuidForOAuthClientId"
+          },
+          "device_code": {
+            "type": "string"
+          },
+          "grant_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id",
+          "device_code",
+          "grant_type"
         ]
       },
       "Error": {
@@ -3620,6 +4037,9 @@
             "type": "string"
           },
           "rule": {},
+          "source": {
+            "$ref": "#/components/schemas/MapperSource"
+          },
           "updated_at": {
             "type": "string",
             "format": "date-time"
@@ -3630,11 +4050,30 @@
           "id",
           "name",
           "rule",
+          "source",
           "updated_at"
         ]
       },
       "MapperId": {
         "not": {}
+      },
+      "MapperSource": {
+        "oneOf": [
+          {
+            "description": "Created via the API, persisted in the database, supports activation limits",
+            "type": "string",
+            "enum": [
+              "dynamic"
+            ]
+          },
+          {
+            "description": "Loaded from service configuration, in-memory only, no activation limits",
+            "type": "string",
+            "enum": [
+              "preset"
+            ]
+          }
+        ]
       },
       "OAuthAuthzCodeExchangeBody": {
         "type": "object",
@@ -3662,7 +4101,7 @@
             "type": "string"
           },
           "pkce_verifier": {
-            "nullable": true,
+            "description": "PKCE code verifier (RFC 7636). Required for all authorization code exchanges.",
             "type": "string"
           },
           "redirect_uri": {
@@ -3672,6 +4111,7 @@
         "required": [
           "code",
           "grant_type",
+          "pkce_verifier",
           "redirect_uri"
         ]
       },
@@ -3685,6 +4125,14 @@
             "type": "integer",
             "format": "int64"
           },
+          "idp_token": {
+            "nullable": true,
+            "type": "string"
+          },
+          "scope": {
+            "description": "The scope granted to the access token (RFC 6749 §5.1).",
+            "type": "string"
+          },
           "token_type": {
             "type": "string"
           }
@@ -3692,6 +4140,7 @@
         "required": [
           "access_token",
           "expires_in",
+          "scope",
           "token_type"
         ]
       },
@@ -3791,26 +4240,62 @@
           "secret_signature"
         ]
       },
-      "OAuthProviderInfo": {
+      "OAuthProviderAuthorizationCodeInfo": {
+        "type": "object",
+        "properties": {
+          "auth_url_endpoint": {
+            "type": "string"
+          },
+          "redirect_endpoint": {
+            "type": "string"
+          },
+          "token_endpoint": {
+            "type": "string"
+          },
+          "token_endpoint_content_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "auth_url_endpoint",
+          "redirect_endpoint",
+          "token_endpoint",
+          "token_endpoint_content_type"
+        ]
+      },
+      "OAuthProviderAuthorizationCodePkceInfo": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "$ref": "#/components/schemas/TypedUuidForOAuthClientId"
+          },
+          "proxy_port": {
+            "type": "integer",
+            "format": "uint16",
+            "minimum": 0
+          },
+          "redirect_endpoint": {
+            "type": "string"
+          },
+          "web": {
+            "$ref": "#/components/schemas/OAuthProviderAuthorizationCodeInfo"
+          }
+        },
+        "required": [
+          "client_id",
+          "proxy_port",
+          "redirect_endpoint",
+          "web"
+        ]
+      },
+      "OAuthProviderDeviceInfo": {
         "type": "object",
         "properties": {
           "auth_url_endpoint": {
             "type": "string"
           },
           "client_id": {
-            "type": "string"
-          },
-          "device_code_endpoint": {
-            "type": "string"
-          },
-          "provider": {
-            "$ref": "#/components/schemas/OAuthProviderName"
-          },
-          "scopes": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+            "$ref": "#/components/schemas/TypedUuidForOAuthClientId"
           },
           "token_endpoint": {
             "type": "string"
@@ -3819,17 +4304,7 @@
         "required": [
           "auth_url_endpoint",
           "client_id",
-          "device_code_endpoint",
-          "provider",
-          "scopes",
           "token_endpoint"
-        ]
-      },
-      "OAuthProviderName": {
-        "type": "string",
-        "enum": [
-          "github",
-          "google"
         ]
       },
       "OAuthRedirectUriId": {
@@ -3866,9 +4341,17 @@
           "$ref": "#/components/schemas/ApiPermissions"
         }
       },
+      "ProjectId": {
+        "not": {}
+      },
       "RegisterBlobBody": {
         "type": "object",
         "properties": {
+          "blob_time": {
+            "nullable": true,
+            "type": "string",
+            "format": "date-time"
+          },
           "idempotency_key": {
             "nullable": true,
             "type": "string"
@@ -3898,10 +4381,18 @@
         "properties": {
           "instance": {
             "$ref": "#/components/schemas/TypedUuidForServerRegistrationInstanceId"
+          },
+          "project_id": {
+            "$ref": "#/components/schemas/TypedUuidForProjectId"
+          },
+          "silo_id": {
+            "$ref": "#/components/schemas/TypedUuidForSiloId"
           }
         },
         "required": [
-          "instance"
+          "instance",
+          "project_id",
+          "silo_id"
         ]
       },
       "RegisterServerResponse": {
@@ -3962,8 +4453,14 @@
             "nullable": true,
             "type": "string"
           },
+          "project_id": {
+            "$ref": "#/components/schemas/TypedUuidForProjectId"
+          },
           "service_id": {
             "$ref": "#/components/schemas/TypedUuidForServiceId"
+          },
+          "silo_id": {
+            "$ref": "#/components/schemas/TypedUuidForSiloId"
           },
           "state": {
             "$ref": "#/components/schemas/ServerRegistrationState"
@@ -3977,7 +4474,9 @@
           "created_at",
           "id",
           "instance_id",
+          "project_id",
           "service_id",
+          "silo_id",
           "state",
           "updated_at"
         ]
@@ -4020,6 +4519,9 @@
         ]
       },
       "ServiceId": {
+        "not": {}
+      },
+      "SiloId": {
         "not": {}
       },
       "TokenRequest": {
@@ -4075,13 +4577,13 @@
       "TypedUuidForAccessGroupId": {
         "x-rust-type": {
           "crate": "newtype-uuid",
+          "version": "1",
+          "path": "newtype_uuid::TypedUuid",
           "parameters": [
             {
               "$ref": "#/components/schemas/AccessGroupId"
             }
-          ],
-          "path": "newtype_uuid::TypedUuid",
-          "version": "1"
+          ]
         },
         "type": "string",
         "format": "uuid"
@@ -4089,13 +4591,13 @@
       "TypedUuidForApiKeyId": {
         "x-rust-type": {
           "crate": "newtype-uuid",
+          "version": "1",
+          "path": "newtype_uuid::TypedUuid",
           "parameters": [
             {
               "$ref": "#/components/schemas/ApiKeyId"
             }
-          ],
-          "path": "newtype_uuid::TypedUuid",
-          "version": "1"
+          ]
         },
         "type": "string",
         "format": "uuid"
@@ -4103,13 +4605,27 @@
       "TypedUuidForBlobId": {
         "x-rust-type": {
           "crate": "newtype-uuid",
+          "version": "1",
+          "path": "newtype_uuid::TypedUuid",
           "parameters": [
             {
               "$ref": "#/components/schemas/BlobId"
             }
-          ],
+          ]
+        },
+        "type": "string",
+        "format": "uuid"
+      },
+      "TypedUuidForDeploymentId": {
+        "x-rust-type": {
+          "crate": "newtype-uuid",
+          "version": "1",
           "path": "newtype_uuid::TypedUuid",
-          "version": "1"
+          "parameters": [
+            {
+              "$ref": "#/components/schemas/DeploymentId"
+            }
+          ]
         },
         "type": "string",
         "format": "uuid"
@@ -4117,13 +4633,13 @@
       "TypedUuidForHealthCheckId": {
         "x-rust-type": {
           "crate": "newtype-uuid",
+          "version": "1",
+          "path": "newtype_uuid::TypedUuid",
           "parameters": [
             {
               "$ref": "#/components/schemas/HealthCheckId"
             }
-          ],
-          "path": "newtype_uuid::TypedUuid",
-          "version": "1"
+          ]
         },
         "type": "string",
         "format": "uuid"
@@ -4131,13 +4647,13 @@
       "TypedUuidForMagicLinkAttemptId": {
         "x-rust-type": {
           "crate": "newtype-uuid",
+          "version": "1",
+          "path": "newtype_uuid::TypedUuid",
           "parameters": [
             {
               "$ref": "#/components/schemas/MagicLinkAttemptId"
             }
-          ],
-          "path": "newtype_uuid::TypedUuid",
-          "version": "1"
+          ]
         },
         "type": "string",
         "format": "uuid"
@@ -4145,13 +4661,13 @@
       "TypedUuidForMagicLinkId": {
         "x-rust-type": {
           "crate": "newtype-uuid",
+          "version": "1",
+          "path": "newtype_uuid::TypedUuid",
           "parameters": [
             {
               "$ref": "#/components/schemas/MagicLinkId"
             }
-          ],
-          "path": "newtype_uuid::TypedUuid",
-          "version": "1"
+          ]
         },
         "type": "string",
         "format": "uuid"
@@ -4159,13 +4675,13 @@
       "TypedUuidForMagicLinkRedirectUriId": {
         "x-rust-type": {
           "crate": "newtype-uuid",
+          "version": "1",
+          "path": "newtype_uuid::TypedUuid",
           "parameters": [
             {
               "$ref": "#/components/schemas/MagicLinkRedirectUriId"
             }
-          ],
-          "path": "newtype_uuid::TypedUuid",
-          "version": "1"
+          ]
         },
         "type": "string",
         "format": "uuid"
@@ -4173,13 +4689,13 @@
       "TypedUuidForMagicLinkSecretId": {
         "x-rust-type": {
           "crate": "newtype-uuid",
+          "version": "1",
+          "path": "newtype_uuid::TypedUuid",
           "parameters": [
             {
               "$ref": "#/components/schemas/MagicLinkSecretId"
             }
-          ],
-          "path": "newtype_uuid::TypedUuid",
-          "version": "1"
+          ]
         },
         "type": "string",
         "format": "uuid"
@@ -4187,13 +4703,13 @@
       "TypedUuidForMapperId": {
         "x-rust-type": {
           "crate": "newtype-uuid",
+          "version": "1",
+          "path": "newtype_uuid::TypedUuid",
           "parameters": [
             {
               "$ref": "#/components/schemas/MapperId"
             }
-          ],
-          "path": "newtype_uuid::TypedUuid",
-          "version": "1"
+          ]
         },
         "type": "string",
         "format": "uuid"
@@ -4201,13 +4717,13 @@
       "TypedUuidForOAuthClientId": {
         "x-rust-type": {
           "crate": "newtype-uuid",
+          "version": "1",
+          "path": "newtype_uuid::TypedUuid",
           "parameters": [
             {
               "$ref": "#/components/schemas/OAuthClientId"
             }
-          ],
-          "path": "newtype_uuid::TypedUuid",
-          "version": "1"
+          ]
         },
         "type": "string",
         "format": "uuid"
@@ -4215,13 +4731,13 @@
       "TypedUuidForOAuthRedirectUriId": {
         "x-rust-type": {
           "crate": "newtype-uuid",
+          "version": "1",
+          "path": "newtype_uuid::TypedUuid",
           "parameters": [
             {
               "$ref": "#/components/schemas/OAuthRedirectUriId"
             }
-          ],
-          "path": "newtype_uuid::TypedUuid",
-          "version": "1"
+          ]
         },
         "type": "string",
         "format": "uuid"
@@ -4229,13 +4745,27 @@
       "TypedUuidForOAuthSecretId": {
         "x-rust-type": {
           "crate": "newtype-uuid",
+          "version": "1",
+          "path": "newtype_uuid::TypedUuid",
           "parameters": [
             {
               "$ref": "#/components/schemas/OAuthSecretId"
             }
-          ],
+          ]
+        },
+        "type": "string",
+        "format": "uuid"
+      },
+      "TypedUuidForProjectId": {
+        "x-rust-type": {
+          "crate": "newtype-uuid",
+          "version": "1",
           "path": "newtype_uuid::TypedUuid",
-          "version": "1"
+          "parameters": [
+            {
+              "$ref": "#/components/schemas/ProjectId"
+            }
+          ]
         },
         "type": "string",
         "format": "uuid"
@@ -4243,13 +4773,13 @@
       "TypedUuidForServerRegistrationId": {
         "x-rust-type": {
           "crate": "newtype-uuid",
+          "version": "1",
+          "path": "newtype_uuid::TypedUuid",
           "parameters": [
             {
               "$ref": "#/components/schemas/ServerRegistrationId"
             }
-          ],
-          "path": "newtype_uuid::TypedUuid",
-          "version": "1"
+          ]
         },
         "type": "string",
         "format": "uuid"
@@ -4257,13 +4787,13 @@
       "TypedUuidForServerRegistrationInstanceId": {
         "x-rust-type": {
           "crate": "newtype-uuid",
+          "version": "1",
+          "path": "newtype_uuid::TypedUuid",
           "parameters": [
             {
               "$ref": "#/components/schemas/ServerRegistrationInstanceId"
             }
-          ],
-          "path": "newtype_uuid::TypedUuid",
-          "version": "1"
+          ]
         },
         "type": "string",
         "format": "uuid"
@@ -4271,13 +4801,27 @@
       "TypedUuidForServiceId": {
         "x-rust-type": {
           "crate": "newtype-uuid",
+          "version": "1",
+          "path": "newtype_uuid::TypedUuid",
           "parameters": [
             {
               "$ref": "#/components/schemas/ServiceId"
             }
-          ],
+          ]
+        },
+        "type": "string",
+        "format": "uuid"
+      },
+      "TypedUuidForSiloId": {
+        "x-rust-type": {
+          "crate": "newtype-uuid",
+          "version": "1",
           "path": "newtype_uuid::TypedUuid",
-          "version": "1"
+          "parameters": [
+            {
+              "$ref": "#/components/schemas/SiloId"
+            }
+          ]
         },
         "type": "string",
         "format": "uuid"
@@ -4285,13 +4829,13 @@
       "TypedUuidForTokenRequestId": {
         "x-rust-type": {
           "crate": "newtype-uuid",
+          "version": "1",
+          "path": "newtype_uuid::TypedUuid",
           "parameters": [
             {
               "$ref": "#/components/schemas/TokenRequestId"
             }
-          ],
-          "path": "newtype_uuid::TypedUuid",
-          "version": "1"
+          ]
         },
         "type": "string",
         "format": "uuid"
@@ -4299,13 +4843,13 @@
       "TypedUuidForUserId": {
         "x-rust-type": {
           "crate": "newtype-uuid",
+          "version": "1",
+          "path": "newtype_uuid::TypedUuid",
           "parameters": [
             {
               "$ref": "#/components/schemas/UserId"
             }
-          ],
-          "path": "newtype_uuid::TypedUuid",
-          "version": "1"
+          ]
         },
         "type": "string",
         "format": "uuid"
@@ -4313,13 +4857,13 @@
       "TypedUuidForUserProviderId": {
         "x-rust-type": {
           "crate": "newtype-uuid",
+          "version": "1",
+          "path": "newtype_uuid::TypedUuid",
           "parameters": [
             {
               "$ref": "#/components/schemas/UserProviderId"
             }
-          ],
-          "path": "newtype_uuid::TypedUuid",
-          "version": "1"
+          ]
         },
         "type": "string",
         "format": "uuid"
@@ -4329,6 +4873,14 @@
       },
       "UserProviderId": {
         "not": {}
+      },
+      "OAuthProviderName": {
+        "type": "string",
+        "enum": [
+          "github",
+          "google",
+          "zendesk"
+        ]
       }
     },
     "responses": {

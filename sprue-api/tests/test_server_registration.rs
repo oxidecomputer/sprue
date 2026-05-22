@@ -46,7 +46,11 @@ async fn test_server_registration() {
         .client
         .register_server()
         .service(service.id.clone())
-        .body_map(|body| body.instance(vm.conf.uuid))
+        .body_map(|body| {
+            body.instance(vm.conf.uuid)
+                .project_id(vm.conf().project)
+                .silo_id(vm.conf().silo)
+        })
         .send()
         .await
         .unwrap()

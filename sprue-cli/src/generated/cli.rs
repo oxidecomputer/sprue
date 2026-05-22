@@ -26,6 +26,8 @@ impl<T: CliConfig> Cli<T> {
             CliCommand::AddApiUserToGroup => Self::cli_add_api_user_to_group(),
             CliCommand::RemoveApiUserFromGroup => Self::cli_remove_api_user_from_group(),
             CliCommand::LinkProvider => Self::cli_link_provider(),
+            CliCommand::AddApiUserPermission => Self::cli_add_api_user_permission(),
+            CliCommand::RemoveApiUserPermission => Self::cli_remove_api_user_permission(),
             CliCommand::ListApiUserTokens => Self::cli_list_api_user_tokens(),
             CliCommand::CreateApiUserToken => Self::cli_create_api_user_token(),
             CliCommand::GetApiUserToken => Self::cli_get_api_user_token(),
@@ -46,7 +48,9 @@ impl<T: CliConfig> Cli<T> {
             CliCommand::AuthzCodeCallback => Self::cli_authz_code_callback(),
             CliCommand::AuthzCodeExchange => Self::cli_authz_code_exchange(),
             CliCommand::GetDeviceProvider => Self::cli_get_device_provider(),
+            CliCommand::DeviceAuthz => Self::cli_device_authz(),
             CliCommand::ExchangeDeviceToken => Self::cli_exchange_device_token(),
+            CliCommand::GetWebPkceProvider => Self::cli_get_web_pkce_provider(),
             CliCommand::ListMagicLinks => Self::cli_list_magic_links(),
             CliCommand::CreateMagicLink => Self::cli_create_magic_link(),
             CliCommand::GetMagicLink => Self::cli_get_magic_link(),
@@ -79,6 +83,10 @@ impl<T: CliConfig> Cli<T> {
             CliCommand::TerminateServer => Self::cli_terminate_server(),
             CliCommand::CreateService => Self::cli_create_service(),
             CliCommand::GetService => Self::cli_get_service(),
+            CliCommand::ListDeployments => Self::cli_list_deployments(),
+            CliCommand::CreateDeployment => Self::cli_create_deployment(),
+            CliCommand::GetDeployment => Self::cli_get_deployment(),
+            CliCommand::DeleteDeployment => Self::cli_delete_deployment(),
             CliCommand::RegisterServer => Self::cli_register_server(),
             CliCommand::GetServiceServers => Self::cli_get_service_servers(),
         }
@@ -148,7 +156,8 @@ impl<T: CliConfig> Cli<T> {
                     .action(::clap::ArgAction::SetTrue)
                     .help("XXX"),
             )
-            .about("Update the permissions assigned to a given user")
+            .about("Update the permissions assigned to a given user. These replace any existing")
+            .long_about("permissions.")
     }
 
     pub fn cli_set_api_user_contact_email() -> ::clap::Command {
@@ -259,6 +268,56 @@ impl<T: CliConfig> Cli<T> {
                     .help("XXX"),
             )
             .about("Link an existing login provider to this user")
+    }
+
+    pub fn cli_add_api_user_permission() -> ::clap::Command {
+        ::clap::Command::new("")
+            .arg(
+                ::clap::Arg::new("user-id")
+                    .long("user-id")
+                    .value_parser(::clap::value_parser!(types::TypedUuidForUserId))
+                    .required(true),
+            )
+            .arg(
+                ::clap::Arg::new("json-body")
+                    .long("json-body")
+                    .value_name("JSON-FILE")
+                    .required(true)
+                    .value_parser(::clap::value_parser!(std::path::PathBuf))
+                    .help("Path to a file that contains the full json body."),
+            )
+            .arg(
+                ::clap::Arg::new("json-body-template")
+                    .long("json-body-template")
+                    .action(::clap::ArgAction::SetTrue)
+                    .help("XXX"),
+            )
+            .about("Add a single permission to a user")
+    }
+
+    pub fn cli_remove_api_user_permission() -> ::clap::Command {
+        ::clap::Command::new("")
+            .arg(
+                ::clap::Arg::new("user-id")
+                    .long("user-id")
+                    .value_parser(::clap::value_parser!(types::TypedUuidForUserId))
+                    .required(true),
+            )
+            .arg(
+                ::clap::Arg::new("json-body")
+                    .long("json-body")
+                    .value_name("JSON-FILE")
+                    .required(true)
+                    .value_parser(::clap::value_parser!(std::path::PathBuf))
+                    .help("Path to a file that contains the full json body."),
+            )
+            .arg(
+                ::clap::Arg::new("json-body-template")
+                    .long("json-body-template")
+                    .action(::clap::ArgAction::SetTrue)
+                    .help("XXX"),
+            )
+            .about("Remove a single permission from a user")
     }
 
     pub fn cli_list_api_user_tokens() -> ::clap::Command {
@@ -624,12 +683,30 @@ impl<T: CliConfig> Cli<T> {
                     .required(true),
             )
             .arg(
+                ::clap::Arg::new("code-challenge")
+                    .long("code-challenge")
+                    .value_parser(::clap::value_parser!(::std::string::String))
+                    .required(true)
+                    .help(
+                        "PKCE code challenge (RFC 7636). Required for all authorization code \
+                         flows.",
+                    ),
+            )
+            .arg(
+                ::clap::Arg::new("code-challenge-method")
+                    .long("code-challenge-method")
+                    .value_parser(::clap::value_parser!(::std::string::String))
+                    .required(true)
+                    .help("PKCE code challenge method. Must be \"S256\"."),
+            )
+            .arg(
                 ::clap::Arg::new("provider")
                     .long("provider")
                     .value_parser(::clap::builder::TypedValueParser::map(
                         ::clap::builder::PossibleValuesParser::new([
                             types::OAuthProviderName::Github.to_string(),
                             types::OAuthProviderName::Google.to_string(),
+                            types::OAuthProviderName::Zendesk.to_string(),
                         ]),
                         |s| types::OAuthProviderName::try_from(s).unwrap(),
                     ))
@@ -683,6 +760,7 @@ impl<T: CliConfig> Cli<T> {
                         ::clap::builder::PossibleValuesParser::new([
                             types::OAuthProviderName::Github.to_string(),
                             types::OAuthProviderName::Google.to_string(),
+                            types::OAuthProviderName::Zendesk.to_string(),
                         ]),
                         |s| types::OAuthProviderName::try_from(s).unwrap(),
                     ))
@@ -727,7 +805,11 @@ impl<T: CliConfig> Cli<T> {
                 ::clap::Arg::new("pkce-verifier")
                     .long("pkce-verifier")
                     .value_parser(::clap::value_parser!(::std::string::String))
-                    .required(false),
+                    .required_unless_present("json-body")
+                    .help(
+                        "PKCE code verifier (RFC 7636). Required for all authorization code \
+                         exchanges.",
+                    ),
             )
             .arg(
                 ::clap::Arg::new("provider")
@@ -736,6 +818,7 @@ impl<T: CliConfig> Cli<T> {
                         ::clap::builder::PossibleValuesParser::new([
                             types::OAuthProviderName::Github.to_string(),
                             types::OAuthProviderName::Google.to_string(),
+                            types::OAuthProviderName::Zendesk.to_string(),
                         ]),
                         |s| types::OAuthProviderName::try_from(s).unwrap(),
                     ))
@@ -746,6 +829,12 @@ impl<T: CliConfig> Cli<T> {
                     .long("redirect-uri")
                     .value_parser(::clap::value_parser!(::std::string::String))
                     .required_unless_present("json-body"),
+            )
+            .arg(
+                ::clap::Arg::new("request-idp-token")
+                    .long("request-idp-token")
+                    .value_parser(::clap::value_parser!(bool))
+                    .required(false),
             )
             .arg(
                 ::clap::Arg::new("json-body")
@@ -773,29 +862,76 @@ impl<T: CliConfig> Cli<T> {
                         ::clap::builder::PossibleValuesParser::new([
                             types::OAuthProviderName::Github.to_string(),
                             types::OAuthProviderName::Google.to_string(),
+                            types::OAuthProviderName::Zendesk.to_string(),
                         ]),
                         |s| types::OAuthProviderName::try_from(s).unwrap(),
                     ))
                     .required(true),
             )
-            .about("Retrieve the metadata about an OAuth provider")
+            .about("Retrieve the metadata about an OAuth provider for device authorization flow")
+    }
+
+    pub fn cli_device_authz() -> ::clap::Command {
+        ::clap::Command::new("")
+            .arg(
+                ::clap::Arg::new("client-id")
+                    .long("client-id")
+                    .value_parser(::clap::value_parser!(types::TypedUuidForOAuthClientId))
+                    .required_unless_present("json-body"),
+            )
+            .arg(
+                ::clap::Arg::new("provider")
+                    .long("provider")
+                    .value_parser(::clap::builder::TypedValueParser::map(
+                        ::clap::builder::PossibleValuesParser::new([
+                            types::OAuthProviderName::Github.to_string(),
+                            types::OAuthProviderName::Google.to_string(),
+                            types::OAuthProviderName::Zendesk.to_string(),
+                        ]),
+                        |s| types::OAuthProviderName::try_from(s).unwrap(),
+                    ))
+                    .required(true),
+            )
+            .arg(
+                ::clap::Arg::new("scope")
+                    .long("scope")
+                    .value_parser(::clap::value_parser!(::std::string::String))
+                    .required(false),
+            )
+            .arg(
+                ::clap::Arg::new("json-body")
+                    .long("json-body")
+                    .value_name("JSON-FILE")
+                    .required(false)
+                    .value_parser(::clap::value_parser!(std::path::PathBuf))
+                    .help("Path to a file that contains the full json body."),
+            )
+            .arg(
+                ::clap::Arg::new("json-body-template")
+                    .long("json-body-template")
+                    .action(::clap::ArgAction::SetTrue)
+                    .help("XXX"),
+            )
+            .about("Initiate a device authorization flow by proxying the request to the")
+            .long_about(
+                "upstream OAuth provider. Creates a login attempt and returns the upstream device \
+                 authorization response.",
+            )
     }
 
     pub fn cli_exchange_device_token() -> ::clap::Command {
         ::clap::Command::new("")
             .arg(
+                ::clap::Arg::new("client-id")
+                    .long("client-id")
+                    .value_parser(::clap::value_parser!(types::TypedUuidForOAuthClientId))
+                    .required_unless_present("json-body"),
+            )
+            .arg(
                 ::clap::Arg::new("device-code")
                     .long("device-code")
                     .value_parser(::clap::value_parser!(::std::string::String))
                     .required_unless_present("json-body"),
-            )
-            .arg(
-                ::clap::Arg::new("expires-at")
-                    .long("expires-at")
-                    .value_parser(::clap::value_parser!(
-                        ::chrono::DateTime<::chrono::offset::Utc>
-                    ))
-                    .required(false),
             )
             .arg(
                 ::clap::Arg::new("grant-type")
@@ -810,6 +946,7 @@ impl<T: CliConfig> Cli<T> {
                         ::clap::builder::PossibleValuesParser::new([
                             types::OAuthProviderName::Github.to_string(),
                             types::OAuthProviderName::Google.to_string(),
+                            types::OAuthProviderName::Zendesk.to_string(),
                         ]),
                         |s| types::OAuthProviderName::try_from(s).unwrap(),
                     ))
@@ -829,7 +966,29 @@ impl<T: CliConfig> Cli<T> {
                     .action(::clap::ArgAction::SetTrue)
                     .help("XXX"),
             )
-            .about("Exchange an OAuth device code request for an access token")
+            .about("Exchange an OAuth device code for an access token. The client polls")
+            .long_about("this endpoint until the user completes authorization.")
+    }
+
+    pub fn cli_get_web_pkce_provider() -> ::clap::Command {
+        ::clap::Command::new("")
+            .arg(
+                ::clap::Arg::new("provider")
+                    .long("provider")
+                    .value_parser(::clap::builder::TypedValueParser::map(
+                        ::clap::builder::PossibleValuesParser::new([
+                            types::OAuthProviderName::Github.to_string(),
+                            types::OAuthProviderName::Google.to_string(),
+                            types::OAuthProviderName::Zendesk.to_string(),
+                        ]),
+                        |s| types::OAuthProviderName::try_from(s).unwrap(),
+                    ))
+                    .required(true),
+            )
+            .about(
+                "Retrieve the metadata about an OAuth provider for public PKCE authorization code \
+                 flow",
+            )
     }
 
     pub fn cli_list_magic_links() -> ::clap::Command {
@@ -1100,6 +1259,14 @@ impl<T: CliConfig> Cli<T> {
     pub fn cli_register_blob() -> ::clap::Command {
         ::clap::Command::new("")
             .arg(
+                ::clap::Arg::new("blob-time")
+                    .long("blob-time")
+                    .value_parser(::clap::value_parser!(
+                        ::chrono::DateTime<::chrono::offset::Utc>
+                    ))
+                    .required(false),
+            )
+            .arg(
                 ::clap::Arg::new("idempotency-key")
                     .long("idempotency-key")
                     .value_parser(::clap::value_parser!(::std::string::String))
@@ -1319,6 +1486,91 @@ impl<T: CliConfig> Cli<T> {
             .about("Get a service by its id")
     }
 
+    pub fn cli_list_deployments() -> ::clap::Command {
+        ::clap::Command::new("")
+            .arg(
+                ::clap::Arg::new("service")
+                    .long("service")
+                    .value_parser(::clap::value_parser!(types::TypedUuidForServiceId))
+                    .required(true),
+            )
+            .about("List all deployments for a service")
+    }
+
+    pub fn cli_create_deployment() -> ::clap::Command {
+        ::clap::Command::new("")
+            .arg(
+                ::clap::Arg::new("project-id")
+                    .long("project-id")
+                    .value_parser(::clap::value_parser!(types::TypedUuidForProjectId))
+                    .required_unless_present("json-body"),
+            )
+            .arg(
+                ::clap::Arg::new("service")
+                    .long("service")
+                    .value_parser(::clap::value_parser!(types::TypedUuidForServiceId))
+                    .required(true),
+            )
+            .arg(
+                ::clap::Arg::new("silo-id")
+                    .long("silo-id")
+                    .value_parser(::clap::value_parser!(types::TypedUuidForSiloId))
+                    .required_unless_present("json-body"),
+            )
+            .arg(
+                ::clap::Arg::new("json-body")
+                    .long("json-body")
+                    .value_name("JSON-FILE")
+                    .required(false)
+                    .value_parser(::clap::value_parser!(std::path::PathBuf))
+                    .help("Path to a file that contains the full json body."),
+            )
+            .arg(
+                ::clap::Arg::new("json-body-template")
+                    .long("json-body-template")
+                    .action(::clap::ArgAction::SetTrue)
+                    .help("XXX"),
+            )
+            .about("Create a new deployment for a service")
+            .long_about(
+                "A deployment represents a project/silo pair where the service is deployed.",
+            )
+    }
+
+    pub fn cli_get_deployment() -> ::clap::Command {
+        ::clap::Command::new("")
+            .arg(
+                ::clap::Arg::new("deployment")
+                    .long("deployment")
+                    .value_parser(::clap::value_parser!(types::TypedUuidForDeploymentId))
+                    .required(true),
+            )
+            .arg(
+                ::clap::Arg::new("service")
+                    .long("service")
+                    .value_parser(::clap::value_parser!(types::TypedUuidForServiceId))
+                    .required(true),
+            )
+            .about("Get a deployment by its id")
+    }
+
+    pub fn cli_delete_deployment() -> ::clap::Command {
+        ::clap::Command::new("")
+            .arg(
+                ::clap::Arg::new("deployment")
+                    .long("deployment")
+                    .value_parser(::clap::value_parser!(types::TypedUuidForDeploymentId))
+                    .required(true),
+            )
+            .arg(
+                ::clap::Arg::new("service")
+                    .long("service")
+                    .value_parser(::clap::value_parser!(types::TypedUuidForServiceId))
+                    .required(true),
+            )
+            .about("Delete a deployment from a service")
+    }
+
     pub fn cli_register_server() -> ::clap::Command {
         ::clap::Command::new("")
             .arg(
@@ -1330,10 +1582,22 @@ impl<T: CliConfig> Cli<T> {
                     .required_unless_present("json-body"),
             )
             .arg(
+                ::clap::Arg::new("project-id")
+                    .long("project-id")
+                    .value_parser(::clap::value_parser!(types::TypedUuidForProjectId))
+                    .required_unless_present("json-body"),
+            )
+            .arg(
                 ::clap::Arg::new("service")
                     .long("service")
                     .value_parser(::clap::value_parser!(types::TypedUuidForServiceId))
                     .required(true),
+            )
+            .arg(
+                ::clap::Arg::new("silo-id")
+                    .long("silo-id")
+                    .value_parser(::clap::value_parser!(types::TypedUuidForSiloId))
+                    .required_unless_present("json-body"),
             )
             .arg(
                 ::clap::Arg::new("json-body")
@@ -1388,6 +1652,10 @@ impl<T: CliConfig> Cli<T> {
                 self.execute_remove_api_user_from_group(matches).await
             }
             CliCommand::LinkProvider => self.execute_link_provider(matches).await,
+            CliCommand::AddApiUserPermission => self.execute_add_api_user_permission(matches).await,
+            CliCommand::RemoveApiUserPermission => {
+                self.execute_remove_api_user_permission(matches).await
+            }
             CliCommand::ListApiUserTokens => self.execute_list_api_user_tokens(matches).await,
             CliCommand::CreateApiUserToken => self.execute_create_api_user_token(matches).await,
             CliCommand::GetApiUserToken => self.execute_get_api_user_token(matches).await,
@@ -1408,7 +1676,9 @@ impl<T: CliConfig> Cli<T> {
             CliCommand::AuthzCodeCallback => self.execute_authz_code_callback(matches).await,
             CliCommand::AuthzCodeExchange => self.execute_authz_code_exchange(matches).await,
             CliCommand::GetDeviceProvider => self.execute_get_device_provider(matches).await,
+            CliCommand::DeviceAuthz => self.execute_device_authz(matches).await,
             CliCommand::ExchangeDeviceToken => self.execute_exchange_device_token(matches).await,
+            CliCommand::GetWebPkceProvider => self.execute_get_web_pkce_provider(matches).await,
             CliCommand::ListMagicLinks => self.execute_list_magic_links(matches).await,
             CliCommand::CreateMagicLink => self.execute_create_magic_link(matches).await,
             CliCommand::GetMagicLink => self.execute_get_magic_link(matches).await,
@@ -1457,6 +1727,10 @@ impl<T: CliConfig> Cli<T> {
             CliCommand::TerminateServer => self.execute_terminate_server(matches).await,
             CliCommand::CreateService => self.execute_create_service(matches).await,
             CliCommand::GetService => self.execute_get_service(matches).await,
+            CliCommand::ListDeployments => self.execute_list_deployments(matches).await,
+            CliCommand::CreateDeployment => self.execute_create_deployment(matches).await,
+            CliCommand::GetDeployment => self.execute_get_deployment(matches).await,
+            CliCommand::DeleteDeployment => self.execute_delete_deployment(matches).await,
             CliCommand::RegisterServer => self.execute_register_server(matches).await,
             CliCommand::GetServiceServers => self.execute_get_service_servers(matches).await,
         }
@@ -1717,6 +1991,72 @@ impl<T: CliConfig> Cli<T> {
         match result {
             Ok(r) => {
                 self.config.success_no_item(&r);
+                Ok(())
+            }
+            Err(r) => {
+                self.config.error(&r);
+                Err(anyhow::Error::new(r))
+            }
+        }
+    }
+
+    pub async fn execute_add_api_user_permission(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
+        let mut request = self.client.add_api_user_permission();
+        if let Some(value) = matches.get_one::<types::TypedUuidForUserId>("user-id") {
+            request = request.user_id(value.clone());
+        }
+
+        if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
+            let body_txt = std::fs::read_to_string(value)
+                .with_context(|| format!("failed to read {}", value.display()))?;
+            let body_value =
+                serde_json::from_str::<types::ApiUserPermissionParamsForApiPermissions>(&body_txt)
+                    .with_context(|| format!("failed to parse {}", value.display()))?;
+            request = request.body(body_value);
+        }
+
+        self.config
+            .execute_add_api_user_permission(matches, &mut request)?;
+        let result = request.send().await;
+        match result {
+            Ok(r) => {
+                self.config.success_item(&r);
+                Ok(())
+            }
+            Err(r) => {
+                self.config.error(&r);
+                Err(anyhow::Error::new(r))
+            }
+        }
+    }
+
+    pub async fn execute_remove_api_user_permission(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
+        let mut request = self.client.remove_api_user_permission();
+        if let Some(value) = matches.get_one::<types::TypedUuidForUserId>("user-id") {
+            request = request.user_id(value.clone());
+        }
+
+        if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
+            let body_txt = std::fs::read_to_string(value)
+                .with_context(|| format!("failed to read {}", value.display()))?;
+            let body_value =
+                serde_json::from_str::<types::ApiUserPermissionParamsForApiPermissions>(&body_txt)
+                    .with_context(|| format!("failed to parse {}", value.display()))?;
+            request = request.body(body_value);
+        }
+
+        self.config
+            .execute_remove_api_user_permission(matches, &mut request)?;
+        let result = request.send().await;
+        match result {
+            Ok(r) => {
+                self.config.success_item(&r);
                 Ok(())
             }
             Err(r) => {
@@ -2208,6 +2548,14 @@ impl<T: CliConfig> Cli<T> {
             request = request.client_id(value.clone());
         }
 
+        if let Some(value) = matches.get_one::<::std::string::String>("code-challenge") {
+            request = request.code_challenge(value.clone());
+        }
+
+        if let Some(value) = matches.get_one::<::std::string::String>("code-challenge-method") {
+            request = request.code_challenge_method(value.clone());
+        }
+
         if let Some(value) = matches.get_one::<types::OAuthProviderName>("provider") {
             request = request.provider(value.clone());
         }
@@ -2310,6 +2658,10 @@ impl<T: CliConfig> Cli<T> {
             request = request.body_map(|body| body.redirect_uri(value.clone()))
         }
 
+        if let Some(value) = matches.get_one::<bool>("request-idp-token") {
+            request = request.request_idp_token(value.clone());
+        }
+
         if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
             let body_txt = std::fs::read_to_string(value)
                 .with_context(|| format!("failed to read {}", value.display()))?;
@@ -2357,19 +2709,51 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
+    pub async fn execute_device_authz(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+        let mut request = self.client.device_authz();
+        if let Some(value) = matches.get_one::<types::TypedUuidForOAuthClientId>("client-id") {
+            request = request.body_map(|body| body.client_id(value.clone()))
+        }
+
+        if let Some(value) = matches.get_one::<types::OAuthProviderName>("provider") {
+            request = request.provider(value.clone());
+        }
+
+        if let Some(value) = matches.get_one::<::std::string::String>("scope") {
+            request = request.body_map(|body| body.scope(value.clone()))
+        }
+
+        if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
+            let body_txt = std::fs::read_to_string(value)
+                .with_context(|| format!("failed to read {}", value.display()))?;
+            let body_value = serde_json::from_str::<types::DeviceAuthorizationRequest>(&body_txt)
+                .with_context(|| format!("failed to parse {}", value.display()))?;
+            request = request.body(body_value);
+        }
+
+        self.config.execute_device_authz(matches, &mut request)?;
+        let result = request.send().await;
+        match result {
+            Ok(r) => {
+                todo!()
+            }
+            Err(r) => {
+                todo!()
+            }
+        }
+    }
+
     pub async fn execute_exchange_device_token(
         &self,
         matches: &::clap::ArgMatches,
     ) -> anyhow::Result<()> {
         let mut request = self.client.exchange_device_token();
-        if let Some(value) = matches.get_one::<::std::string::String>("device-code") {
-            request = request.body_map(|body| body.device_code(value.clone()))
+        if let Some(value) = matches.get_one::<types::TypedUuidForOAuthClientId>("client-id") {
+            request = request.body_map(|body| body.client_id(value.clone()))
         }
 
-        if let Some(value) =
-            matches.get_one::<::chrono::DateTime<::chrono::offset::Utc>>("expires-at")
-        {
-            request = request.body_map(|body| body.expires_at(value.clone()))
+        if let Some(value) = matches.get_one::<::std::string::String>("device-code") {
+            request = request.body_map(|body| body.device_code(value.clone()))
         }
 
         if let Some(value) = matches.get_one::<::std::string::String>("grant-type") {
@@ -2383,7 +2767,7 @@ impl<T: CliConfig> Cli<T> {
         if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
             let body_txt = std::fs::read_to_string(value)
                 .with_context(|| format!("failed to read {}", value.display()))?;
-            let body_value = serde_json::from_str::<types::AccessTokenExchangeRequest>(&body_txt)
+            let body_value = serde_json::from_str::<types::DeviceTokenExchangeRequest>(&body_txt)
                 .with_context(|| format!("failed to parse {}", value.display()))?;
             request = request.body(body_value);
         }
@@ -2397,6 +2781,30 @@ impl<T: CliConfig> Cli<T> {
             }
             Err(r) => {
                 todo!()
+            }
+        }
+    }
+
+    pub async fn execute_get_web_pkce_provider(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
+        let mut request = self.client.get_web_pkce_provider();
+        if let Some(value) = matches.get_one::<types::OAuthProviderName>("provider") {
+            request = request.provider(value.clone());
+        }
+
+        self.config
+            .execute_get_web_pkce_provider(matches, &mut request)?;
+        let result = request.send().await;
+        match result {
+            Ok(r) => {
+                self.config.success_item(&r);
+                Ok(())
+            }
+            Err(r) => {
+                self.config.error(&r);
+                Err(anyhow::Error::new(r))
             }
         }
     }
@@ -2871,6 +3279,12 @@ impl<T: CliConfig> Cli<T> {
 
     pub async fn execute_register_blob(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
         let mut request = self.client.register_blob();
+        if let Some(value) =
+            matches.get_one::<::chrono::DateTime<::chrono::offset::Utc>>("blob-time")
+        {
+            request = request.body_map(|body| body.blob_time(value.clone()))
+        }
+
         if let Some(value) = matches.get_one::<::std::string::String>("idempotency-key") {
             request = request.body_map(|body| body.idempotency_key(value.clone()))
         }
@@ -3119,6 +3533,122 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
+    pub async fn execute_list_deployments(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
+        let mut request = self.client.list_deployments();
+        if let Some(value) = matches.get_one::<types::TypedUuidForServiceId>("service") {
+            request = request.service(value.clone());
+        }
+
+        self.config
+            .execute_list_deployments(matches, &mut request)?;
+        let result = request.send().await;
+        match result {
+            Ok(r) => {
+                self.config.success_item(&r);
+                Ok(())
+            }
+            Err(r) => {
+                self.config.error(&r);
+                Err(anyhow::Error::new(r))
+            }
+        }
+    }
+
+    pub async fn execute_create_deployment(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
+        let mut request = self.client.create_deployment();
+        if let Some(value) = matches.get_one::<types::TypedUuidForProjectId>("project-id") {
+            request = request.body_map(|body| body.project_id(value.clone()))
+        }
+
+        if let Some(value) = matches.get_one::<types::TypedUuidForServiceId>("service") {
+            request = request.service(value.clone());
+        }
+
+        if let Some(value) = matches.get_one::<types::TypedUuidForSiloId>("silo-id") {
+            request = request.body_map(|body| body.silo_id(value.clone()))
+        }
+
+        if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
+            let body_txt = std::fs::read_to_string(value)
+                .with_context(|| format!("failed to read {}", value.display()))?;
+            let body_value = serde_json::from_str::<types::CreateDeploymentBody>(&body_txt)
+                .with_context(|| format!("failed to parse {}", value.display()))?;
+            request = request.body(body_value);
+        }
+
+        self.config
+            .execute_create_deployment(matches, &mut request)?;
+        let result = request.send().await;
+        match result {
+            Ok(r) => {
+                self.config.success_item(&r);
+                Ok(())
+            }
+            Err(r) => {
+                self.config.error(&r);
+                Err(anyhow::Error::new(r))
+            }
+        }
+    }
+
+    pub async fn execute_get_deployment(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+        let mut request = self.client.get_deployment();
+        if let Some(value) = matches.get_one::<types::TypedUuidForDeploymentId>("deployment") {
+            request = request.deployment(value.clone());
+        }
+
+        if let Some(value) = matches.get_one::<types::TypedUuidForServiceId>("service") {
+            request = request.service(value.clone());
+        }
+
+        self.config.execute_get_deployment(matches, &mut request)?;
+        let result = request.send().await;
+        match result {
+            Ok(r) => {
+                self.config.success_item(&r);
+                Ok(())
+            }
+            Err(r) => {
+                self.config.error(&r);
+                Err(anyhow::Error::new(r))
+            }
+        }
+    }
+
+    pub async fn execute_delete_deployment(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
+        let mut request = self.client.delete_deployment();
+        if let Some(value) = matches.get_one::<types::TypedUuidForDeploymentId>("deployment") {
+            request = request.deployment(value.clone());
+        }
+
+        if let Some(value) = matches.get_one::<types::TypedUuidForServiceId>("service") {
+            request = request.service(value.clone());
+        }
+
+        self.config
+            .execute_delete_deployment(matches, &mut request)?;
+        let result = request.send().await;
+        match result {
+            Ok(r) => {
+                self.config.success_no_item(&r);
+                Ok(())
+            }
+            Err(r) => {
+                self.config.error(&r);
+                Err(anyhow::Error::new(r))
+            }
+        }
+    }
+
     pub async fn execute_register_server(
         &self,
         matches: &::clap::ArgMatches,
@@ -3130,8 +3660,16 @@ impl<T: CliConfig> Cli<T> {
             request = request.body_map(|body| body.instance(value.clone()))
         }
 
+        if let Some(value) = matches.get_one::<types::TypedUuidForProjectId>("project-id") {
+            request = request.body_map(|body| body.project_id(value.clone()))
+        }
+
         if let Some(value) = matches.get_one::<types::TypedUuidForServiceId>("service") {
             request = request.service(value.clone());
+        }
+
+        if let Some(value) = matches.get_one::<types::TypedUuidForSiloId>("silo-id") {
+            request = request.body_map(|body| body.silo_id(value.clone()))
         }
 
         if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
@@ -3277,6 +3815,22 @@ pub trait CliConfig {
         &self,
         matches: &::clap::ArgMatches,
         request: &mut builder::LinkProvider,
+    ) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn execute_add_api_user_permission(
+        &self,
+        matches: &::clap::ArgMatches,
+        request: &mut builder::AddApiUserPermission,
+    ) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn execute_remove_api_user_permission(
+        &self,
+        matches: &::clap::ArgMatches,
+        request: &mut builder::RemoveApiUserPermission,
     ) -> anyhow::Result<()> {
         Ok(())
     }
@@ -3441,10 +3995,26 @@ pub trait CliConfig {
         Ok(())
     }
 
+    fn execute_device_authz(
+        &self,
+        matches: &::clap::ArgMatches,
+        request: &mut builder::DeviceAuthz,
+    ) -> anyhow::Result<()> {
+        Ok(())
+    }
+
     fn execute_exchange_device_token(
         &self,
         matches: &::clap::ArgMatches,
         request: &mut builder::ExchangeDeviceToken,
+    ) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn execute_get_web_pkce_provider(
+        &self,
+        matches: &::clap::ArgMatches,
+        request: &mut builder::GetWebPkceProvider,
     ) -> anyhow::Result<()> {
         Ok(())
     }
@@ -3673,6 +4243,38 @@ pub trait CliConfig {
         Ok(())
     }
 
+    fn execute_list_deployments(
+        &self,
+        matches: &::clap::ArgMatches,
+        request: &mut builder::ListDeployments,
+    ) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn execute_create_deployment(
+        &self,
+        matches: &::clap::ArgMatches,
+        request: &mut builder::CreateDeployment,
+    ) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn execute_get_deployment(
+        &self,
+        matches: &::clap::ArgMatches,
+        request: &mut builder::GetDeployment,
+    ) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn execute_delete_deployment(
+        &self,
+        matches: &::clap::ArgMatches,
+        request: &mut builder::DeleteDeployment,
+    ) -> anyhow::Result<()> {
+        Ok(())
+    }
+
     fn execute_register_server(
         &self,
         matches: &::clap::ArgMatches,
@@ -3702,6 +4304,8 @@ pub enum CliCommand {
     AddApiUserToGroup,
     RemoveApiUserFromGroup,
     LinkProvider,
+    AddApiUserPermission,
+    RemoveApiUserPermission,
     ListApiUserTokens,
     CreateApiUserToken,
     GetApiUserToken,
@@ -3722,7 +4326,9 @@ pub enum CliCommand {
     AuthzCodeCallback,
     AuthzCodeExchange,
     GetDeviceProvider,
+    DeviceAuthz,
     ExchangeDeviceToken,
+    GetWebPkceProvider,
     ListMagicLinks,
     CreateMagicLink,
     GetMagicLink,
@@ -3751,6 +4357,10 @@ pub enum CliCommand {
     TerminateServer,
     CreateService,
     GetService,
+    ListDeployments,
+    CreateDeployment,
+    GetDeployment,
+    DeleteDeployment,
     RegisterServer,
     GetServiceServers,
 }
@@ -3768,6 +4378,8 @@ impl CliCommand {
             CliCommand::AddApiUserToGroup,
             CliCommand::RemoveApiUserFromGroup,
             CliCommand::LinkProvider,
+            CliCommand::AddApiUserPermission,
+            CliCommand::RemoveApiUserPermission,
             CliCommand::ListApiUserTokens,
             CliCommand::CreateApiUserToken,
             CliCommand::GetApiUserToken,
@@ -3788,7 +4400,9 @@ impl CliCommand {
             CliCommand::AuthzCodeCallback,
             CliCommand::AuthzCodeExchange,
             CliCommand::GetDeviceProvider,
+            CliCommand::DeviceAuthz,
             CliCommand::ExchangeDeviceToken,
+            CliCommand::GetWebPkceProvider,
             CliCommand::ListMagicLinks,
             CliCommand::CreateMagicLink,
             CliCommand::GetMagicLink,
@@ -3817,6 +4431,10 @@ impl CliCommand {
             CliCommand::TerminateServer,
             CliCommand::CreateService,
             CliCommand::GetService,
+            CliCommand::ListDeployments,
+            CliCommand::CreateDeployment,
+            CliCommand::GetDeployment,
+            CliCommand::DeleteDeployment,
             CliCommand::RegisterServer,
             CliCommand::GetServiceServers,
         ]

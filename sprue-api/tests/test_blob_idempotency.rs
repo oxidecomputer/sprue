@@ -44,7 +44,11 @@ async fn test_upload_blob() {
         .client
         .register_server()
         .service(service.id.0)
-        .body_map(|body| body.instance(vm.conf.uuid))
+        .body_map(|body| {
+            body.instance(vm.conf.uuid)
+                .project_id(vm.conf().project)
+                .silo_id(vm.conf().silo)
+        })
         .send()
         .await
         .unwrap()

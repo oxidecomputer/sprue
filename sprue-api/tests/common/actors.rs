@@ -15,7 +15,7 @@ use std::{
 use uuid::Uuid;
 use v_api::{ApiContext as VApiContext, authn::key::RawKey};
 use v_model::{
-    AccessGroupId, ApiUserInfo, Permissions,
+    AccessGroupId, ApiUserInfo,
     schema_ext::MagicLinkMedium as Medium,
     storage::{ApiUserFilter, ListPagination},
 };
@@ -119,7 +119,7 @@ impl MockUser {
         for group in groups {
             ctx.v_ctx()
                 .add_api_user_to_group(
-                    &Permissions::from(vec![ApiPermissions::ManageGroupMembershipsAll]).into(),
+                    &ctx.v_ctx().builtin_registration_user(),
                     &user.user.id,
                     &group,
                 )

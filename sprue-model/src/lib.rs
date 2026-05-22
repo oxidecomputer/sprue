@@ -9,8 +9,8 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use thiserror::Error;
 
 use crate::db::{
-    BlobModel, HealthCheckModel, IdempotentRequestModel, ServerRegistrationModel, ServiceModel,
-    TokenRequestModel,
+    BlobModel, DeploymentModel, HealthCheckModel, IdempotentRequestModel, ServerRegistrationModel,
+    ServiceModel, TokenRequestModel,
 };
 
 pub mod db;
@@ -40,6 +40,54 @@ impl From<ServiceModel> for Service {
         Self {
             id: model.id,
             name: model.name,
+            created_at: model.created_at,
+        }
+    }
+}
+
+#[derive(JsonSchema)]
+pub enum DeploymentId {}
+impl TypedUuidKind for DeploymentId {
+    fn tag() -> TypedUuidTag {
+        const TAG: TypedUuidTag = TypedUuidTag::new("deployment");
+        TAG
+    }
+}
+
+#[derive(JsonSchema)]
+pub enum ProjectId {}
+impl TypedUuidKind for ProjectId {
+    fn tag() -> TypedUuidTag {
+        const TAG: TypedUuidTag = TypedUuidTag::new("project");
+        TAG
+    }
+}
+
+#[derive(JsonSchema)]
+pub enum SiloId {}
+impl TypedUuidKind for SiloId {
+    fn tag() -> TypedUuidTag {
+        const TAG: TypedUuidTag = TypedUuidTag::new("silo");
+        TAG
+    }
+}
+
+#[derive(Debug, Clone, Serialize, JsonSchema)]
+pub struct Deployment {
+    pub id: TypedUuid<DeploymentId>,
+    pub service_id: TypedUuid<ServiceId>,
+    pub project_id: TypedUuid<ProjectId>,
+    pub silo_id: TypedUuid<SiloId>,
+    pub created_at: DateTime<Utc>,
+}
+
+impl From<DeploymentModel> for Deployment {
+    fn from(model: DeploymentModel) -> Self {
+        Self {
+            id: model.id,
+            service_id: model.service_id,
+            project_id: model.project_id,
+            silo_id: model.silo_id,
             created_at: model.created_at,
         }
     }
@@ -285,6 +333,8 @@ pub struct ServerRegistration {
     pub id: TypedUuid<ServerRegistrationId>,
     pub service_id: TypedUuid<ServiceId>,
     pub instance_id: TypedUuid<ServerRegistrationInstanceId>,
+    pub project_id: TypedUuid<ProjectId>,
+    pub silo_id: TypedUuid<SiloId>,
     pub nonce: Option<String>,
     pub state: ServerRegistrationState,
     pub expires_at: Option<DateTime<Utc>>,
@@ -298,6 +348,8 @@ impl From<ServerRegistrationModel> for ServerRegistration {
             id: model.id,
             service_id: model.service_id,
             instance_id: model.instance_id,
+            project_id: model.project_id,
+            silo_id: model.silo_id,
             nonce: model.nonce,
             state: model.state,
             expires_at: model.expires_at,

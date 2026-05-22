@@ -12,8 +12,9 @@ use crate::{
         blob::{cancel_blob_upload, complete_blob_upload, reset_blob_upload, write_blob_upload},
         oidc::{prove_oidc_token_request, register_oidc_token_request},
         service::{
-            accept_server, checkin_server, create_service, get_service, get_service_servers,
-            prove_server, register_blob, register_server, reject_server, terminate_server,
+            accept_server, checkin_server, create_deployment, create_service, delete_deployment,
+            get_deployment, get_service, get_service_servers, list_deployments, prove_server,
+            register_blob, register_server, reject_server, terminate_server,
         },
     },
     permissions::ApiPermissions,
@@ -88,6 +89,19 @@ pub fn describe() -> ApiDescription<ApiContext> {
         .expect("Register endpoint");
     description
         .register(prove_oidc_token_request)
+        .expect("Register endpoint");
+
+    description
+        .register(create_deployment)
+        .expect("Register endpoint");
+    description
+        .register(list_deployments)
+        .expect("Register endpoint");
+    description
+        .register(get_deployment)
+        .expect("Register endpoint");
+    description
+        .register(delete_deployment)
         .expect("Register endpoint");
 
     description

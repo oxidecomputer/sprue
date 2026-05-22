@@ -18,6 +18,9 @@ clap = { workspace = true }
 clap_complete = { workspace = true }
 config = { workspace = true }
 dirs = { workspace = true }
+http = { workspace = true }
+http-body-util = { workspace = true }
+hyper = { workspace = true }
 oauth2 = { workspace = true }
 oauth2-reqwest = { workspace = true }
 owo-colors = { workspace = true }
@@ -28,6 +31,8 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 sprue-sdk = { path = "../sprue-sdk" }
 tabwriter = { workspace = true }
+thiserror = { workspace = true }
 tokio = { workspace = true }
 toml = { workspace = true }
 uuid = { workspace = true }
+v-cli-sdk = { workspace = true }

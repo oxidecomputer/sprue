@@ -30,6 +30,7 @@ use std::{
     time::Duration,
 };
 use steno::ActionRegistry;
+use strum::IntoEnumIterator;
 use tokio::task::JoinHandle;
 use v_api::{
     ApiContext as VApiContext, MagicLinkMessage, MagicLinkTarget, VContextBuilder,
@@ -123,17 +124,13 @@ impl SeededContext {
                 },
             ])
             .with_saga_backend(test_id, None)
+            .with_additional_builtin_permissions(ApiPermissions::iter().collect())
             .build()
             .await?;
 
         let caller = Caller {
             id: TypedUuid::new_v4(),
-            permissions: vec![
-                ApiPermissions::CreateMagicLinkClient,
-                ApiPermissions::ManageMagicLinkClientsAll,
-                ApiPermissions::CreateGroup,
-            ]
-            .into(),
+            permissions: ApiPermissions::iter().collect(),
             extensions: HashMap::new(),
         };
 
@@ -198,6 +195,7 @@ impl SeededContext {
             ))
             .service(ServiceContext::new(storage, Duration::from_secs(10)))
             .saga_action_registry(Arc::new(ActionRegistry::new()))
+            .policy(None)
             .v_ctx(v_ctx)
             .build()?;
 

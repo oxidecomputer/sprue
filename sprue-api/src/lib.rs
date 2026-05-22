@@ -8,7 +8,6 @@ use newtype_uuid::TypedUuid;
 use secrecy::ExposeSecret;
 use slog::Logger;
 use sprue_model::storage::postgres::PostgresStorage;
-use strum::IntoEnumIterator;
 use std::{
     path::PathBuf,
     process,
@@ -16,6 +15,7 @@ use std::{
     time::Duration,
 };
 use steno::ActionRegistry;
+use strum::IntoEnumIterator;
 use thiserror::Error;
 use tokio::select;
 use v_api::{
@@ -33,6 +33,7 @@ use crate::{
         blob::BlobContext,
         idempotency::IdempotencyContext,
         oidc::{OidcContext, OidcContextError},
+        policy::PolicyEngine,
         server_identity::ServerIdentityContext,
         service::ServiceContext,
     },
@@ -50,6 +51,7 @@ pub mod context;
 mod endpoints;
 mod initial_data;
 pub mod permissions;
+mod policy;
 mod sagas;
 mod server;
 
@@ -68,6 +70,8 @@ pub enum ServerError {
     Measurement(#[from] CorimError),
     #[error("Failed to create OidcContext")]
     Oidc(#[from] OidcContextError),
+    #[error("Failed to load registration policy")]
+    Policy(String),
     #[error("Failed to resolve paramater")]
     ParamResolution(#[from] ParamResolutionError),
     #[error("Failed to read measurement file")]
@@ -88,6 +92,7 @@ pub async fn run_server(
     param_path: Option<PathBuf>,
     logger: Logger,
 ) -> Result<(), ServerError> {
+    let param_path = param_path.as_deref();
     let database_url_secret = config.database_url.resolve(param_path)?;
     let storage = Arc::new(PostgresStorage::create(database_url_secret.expose_secret()).unwrap());
 
@@ -103,7 +108,7 @@ pub async fn run_server(
 
     // Install OAuth provider
     if let Some(google) = config.authn.oauth.google {
-        let google_resolved = google.resolve(config.param_base_path.clone())?;
+        let google_resolved = google.resolve(param_path)?;
         let google_public_url = config.public_url.clone();
         v_ctx.insert_oauth_provider(
             OAuthProviderName::Google,
@@ -135,6 +140,29 @@ pub async fn run_server(
         Box::pin(async move { Ok(v_ctx_token.service_token(&audience).await?) })
     });
 
+    let policy_engine =
+        config
+            .auto_registration_policy
+            .map(|policy_config| {
+                let policy_text = policy_config.policy.resolve(param_path).map_err(|e| {
+                    ServerError::Policy(format!("Failed to read policy file: {}", e))
+                })?;
+                let schema_text = policy_config.schema.resolve(param_path).map_err(|e| {
+                    ServerError::Policy(format!("Failed to read schema file: {}", e))
+                })?;
+                PolicyEngine::new(&policy_text.expose_secret(), &schema_text.expose_secret())
+                    .map_err(|e| ServerError::Policy(e.to_string()))
+            })
+            .transpose()?;
+
+    if policy_engine.is_some() {
+        tracing::info!("Registration policy engine enabled");
+    } else {
+        tracing::info!(
+            "No registration policy configured; server registrations require manual approval"
+        );
+    }
+
     let mut saga_actions = ActionRegistry::new();
     load_actions(&mut saga_actions);
 
@@ -151,6 +179,7 @@ pub async fn run_server(
             config.oidc,
             storage.clone(),
         )?)
+        .policy(policy_engine)
         .server_identity(ServerIdentityContext::new(
             config.vm_identity.organization,
             Certificate::load_pem_chain(config.vm_identity.root_cert_chain.as_bytes())?,

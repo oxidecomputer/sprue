@@ -166,54 +166,6 @@ pub mod types {
         }
     }
 
-    /// `AccessTokenExchangeRequest`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "device_code",
-    ///    "grant_type"
-    ///  ],
-    ///  "properties": {
-    ///    "device_code": {
-    ///      "type": "string"
-    ///    },
-    ///    "expires_at": {
-    ///      "type": [
-    ///        "string",
-    ///        "null"
-    ///      ],
-    ///      "format": "date-time"
-    ///    },
-    ///    "grant_type": {
-    ///      "type": "string"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
-    #[derive(
-        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
-    )]
-    pub struct AccessTokenExchangeRequest {
-        pub device_code: ::std::string::String,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
-        pub expires_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
-        pub grant_type: ::std::string::String,
-    }
-
-    impl AccessTokenExchangeRequest {
-        pub fn builder() -> builder::AccessTokenExchangeRequest {
-            Default::default()
-        }
-    }
-
     /// `AddGroupBody`
     ///
     /// <details><summary>JSON schema</summary>
@@ -467,7 +419,7 @@ pub mod types {
     ///        "GetServicesAll",
     ///        "CreateService",
     ///        "ManageServicesAssigned",
-    ///        "ManageServersAll",
+    ///        "ManageServicesAll",
     ///        "GetBlobsAssigned",
     ///        "GetBlobsAll",
     ///        "CreateApiUser",
@@ -506,6 +458,7 @@ pub mod types {
     ///        "ManageMagicLinkClientsAssigned",
     ///        "ManageMagicLinkClientsAll",
     ///        "CreateAccessToken",
+    ///        "RetrieveRemoteAccessToken",
     ///        "GetSagasAll",
     ///        "ManageSagasAll"
     ///      ]
@@ -981,7 +934,7 @@ pub mod types {
         GetServicesAll,
         CreateService,
         ManageServicesAssigned,
-        ManageServersAll,
+        ManageServicesAll,
         GetBlobsAssigned,
         GetBlobsAll,
         CreateApiUser,
@@ -1020,6 +973,7 @@ pub mod types {
         ManageMagicLinkClientsAssigned,
         ManageMagicLinkClientsAll,
         CreateAccessToken,
+        RetrieveRemoteAccessToken,
         GetSagasAll,
         ManageSagasAll,
         GetService(TypedUuidForServiceId),
@@ -1321,6 +1275,40 @@ pub mod types {
         }
     }
 
+    /// `ApiUserPermissionParamsForApiPermissions`
+    ///
+    /// <details><summary>JSON schema</summary>
+    ///
+    /// ```json
+    /// {
+    ///  "type": "object",
+    ///  "required": [
+    ///    "permission"
+    ///  ],
+    ///  "properties": {
+    ///    "permission": {
+    ///      "$ref": "#/components/schemas/ApiPermissions"
+    ///    }
+
+    ///  }
+
+    /// }
+
+    /// ```
+    /// </details>
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
+    pub struct ApiUserPermissionParamsForApiPermissions {
+        pub permission: ApiPermissions,
+    }
+
+    impl ApiUserPermissionParamsForApiPermissions {
+        pub fn builder() -> builder::ApiUserPermissionParamsForApiPermissions {
+            Default::default()
+        }
+    }
+
     /// `ApiUserProvider`
     ///
     /// <details><summary>JSON schema</summary>
@@ -1451,11 +1439,11 @@ pub mod types {
     /// {
     ///  "type": "object",
     ///  "required": [
-    ///    "group_ids",
     ///    "permissions"
     ///  ],
     ///  "properties": {
     ///    "group_ids": {
+    ///      "default": [],
     ///      "type": "array",
     ///      "items": {
     ///        "$ref": "#/components/schemas/TypedUuidForAccessGroupId"
@@ -1476,6 +1464,7 @@ pub mod types {
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
     pub struct ApiUserUpdateParamsForApiPermissions {
+        #[serde(default = "defaults::api_user_update_params_for_api_permissions_group_ids")]
         pub group_ids: Vec<TypedUuidForAccessGroupId>,
         pub permissions: PermissionsForApiPermissions,
     }
@@ -1494,6 +1483,7 @@ pub mod types {
     /// {
     ///  "type": "object",
     ///  "required": [
+    ///    "blob_time",
     ///    "created_at",
     ///    "id",
     ///    "server_registration_id",
@@ -1504,6 +1494,10 @@ pub mod types {
     ///    "updated_at"
     ///  ],
     ///  "properties": {
+    ///    "blob_time": {
+    ///      "type": "string",
+    ///      "format": "date-time"
+    ///    },
     ///    "created_at": {
     ///      "type": "string",
     ///      "format": "date-time"
@@ -1543,6 +1537,7 @@ pub mod types {
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
     pub struct Blob {
+        pub blob_time: ::chrono::DateTime<::chrono::offset::Utc>,
         pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
         pub id: TypedUuidForBlobId,
         pub server_registration_id: TypedUuidForServerRegistrationId,
@@ -1846,6 +1841,45 @@ pub mod types {
         }
     }
 
+    /// `CreateDeploymentBody`
+    ///
+    /// <details><summary>JSON schema</summary>
+    ///
+    /// ```json
+    /// {
+    ///  "type": "object",
+    ///  "required": [
+    ///    "project_id",
+    ///    "silo_id"
+    ///  ],
+    ///  "properties": {
+    ///    "project_id": {
+    ///      "$ref": "#/components/schemas/TypedUuidForProjectId"
+    ///    },
+    ///    "silo_id": {
+    ///      "$ref": "#/components/schemas/TypedUuidForSiloId"
+    ///    }
+
+    ///  }
+
+    /// }
+
+    /// ```
+    /// </details>
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
+    pub struct CreateDeploymentBody {
+        pub project_id: TypedUuidForProjectId,
+        pub silo_id: TypedUuidForSiloId,
+    }
+
+    impl CreateDeploymentBody {
+        pub fn builder() -> builder::CreateDeploymentBody {
+            Default::default()
+        }
+    }
+
     /// `CreateMapper`
     ///
     /// <details><summary>JSON schema</summary>
@@ -1922,6 +1956,182 @@ pub mod types {
 
     impl CreateService {
         pub fn builder() -> builder::CreateService {
+            Default::default()
+        }
+    }
+
+    /// `Deployment`
+    ///
+    /// <details><summary>JSON schema</summary>
+    ///
+    /// ```json
+    /// {
+    ///  "type": "object",
+    ///  "required": [
+    ///    "created_at",
+    ///    "id",
+    ///    "project_id",
+    ///    "service_id",
+    ///    "silo_id"
+    ///  ],
+    ///  "properties": {
+    ///    "created_at": {
+    ///      "type": "string",
+    ///      "format": "date-time"
+    ///    },
+    ///    "id": {
+    ///      "$ref": "#/components/schemas/TypedUuidForDeploymentId"
+    ///    },
+    ///    "project_id": {
+    ///      "$ref": "#/components/schemas/TypedUuidForProjectId"
+    ///    },
+    ///    "service_id": {
+    ///      "$ref": "#/components/schemas/TypedUuidForServiceId"
+    ///    },
+    ///    "silo_id": {
+    ///      "$ref": "#/components/schemas/TypedUuidForSiloId"
+    ///    }
+
+    ///  }
+
+    /// }
+
+    /// ```
+    /// </details>
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
+    pub struct Deployment {
+        pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
+        pub id: TypedUuidForDeploymentId,
+        pub project_id: TypedUuidForProjectId,
+        pub service_id: TypedUuidForServiceId,
+        pub silo_id: TypedUuidForSiloId,
+    }
+
+    impl Deployment {
+        pub fn builder() -> builder::Deployment {
+            Default::default()
+        }
+    }
+
+    /// `DeploymentId`
+    ///
+    /// <details><summary>JSON schema</summary>
+    ///
+    /// ```json
+    /// false
+    /// ```
+    /// </details>
+    #[derive(
+        :: serde :: Deserialize,
+        :: serde :: Serialize,
+        Clone,
+        Copy,
+        Debug,
+        Eq,
+        Hash,
+        Ord,
+        PartialEq,
+        PartialOrd,
+        schemars :: JsonSchema,
+    )]
+    #[serde(deny_unknown_fields)]
+    pub enum DeploymentId {}
+
+    /// Request body for initiating a device authorization flow. The client
+    /// sends its `client_id` and an optional `scope`. The API server proxies
+    /// the device authorization request to the upstream provider and tracks it
+    /// as a login attempt.
+    ///
+    /// <details><summary>JSON schema</summary>
+    ///
+    /// ```json
+    /// {
+    ///  "description": "Request body for initiating a device authorization
+    /// flow. The client sends its `client_id` and an optional `scope`. The API
+    /// server proxies the device authorization request to the upstream provider
+    /// and tracks it as a login attempt.",
+    ///  "type": "object",
+    ///  "required": [
+    ///    "client_id"
+    ///  ],
+    ///  "properties": {
+    ///    "client_id": {
+    ///      "$ref": "#/components/schemas/TypedUuidForOAuthClientId"
+    ///    },
+    ///    "scope": {
+    ///      "type": [
+    ///        "string",
+    ///        "null"
+    ///      ]
+    ///    }
+
+    ///  }
+
+    /// }
+
+    /// ```
+    /// </details>
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
+    pub struct DeviceAuthorizationRequest {
+        pub client_id: TypedUuidForOAuthClientId,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub scope: ::std::option::Option<::std::string::String>,
+    }
+
+    impl DeviceAuthorizationRequest {
+        pub fn builder() -> builder::DeviceAuthorizationRequest {
+            Default::default()
+        }
+    }
+
+    /// Request body for the device token exchange. The client polls this
+    /// endpoint with the device_code received from the authorization step.
+    ///
+    /// <details><summary>JSON schema</summary>
+    ///
+    /// ```json
+    /// {
+    ///  "description": "Request body for the device token exchange. The client
+    /// polls this endpoint with the device_code received from the authorization
+    /// step.",
+    ///  "type": "object",
+    ///  "required": [
+    ///    "client_id",
+    ///    "device_code",
+    ///    "grant_type"
+    ///  ],
+    ///  "properties": {
+    ///    "client_id": {
+    ///      "$ref": "#/components/schemas/TypedUuidForOAuthClientId"
+    ///    },
+    ///    "device_code": {
+    ///      "type": "string"
+    ///    },
+    ///    "grant_type": {
+    ///      "type": "string"
+    ///    }
+
+    ///  }
+
+    /// }
+
+    /// ```
+    /// </details>
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
+    pub struct DeviceTokenExchangeRequest {
+        pub client_id: TypedUuidForOAuthClientId,
+        pub device_code: ::std::string::String,
+        pub grant_type: ::std::string::String,
+    }
+
+    impl DeviceTokenExchangeRequest {
+        pub fn builder() -> builder::DeviceTokenExchangeRequest {
             Default::default()
         }
     }
@@ -2891,6 +3101,7 @@ pub mod types {
     ///    "id",
     ///    "name",
     ///    "rule",
+    ///    "source",
     ///    "updated_at"
     ///  ],
     ///  "properties": {
@@ -2933,6 +3144,9 @@ pub mod types {
     ///      "type": "string"
     ///    },
     ///    "rule": {},
+    ///    "source": {
+    ///      "$ref": "#/components/schemas/MapperSource"
+    ///    },
     ///    "updated_at": {
     ///      "type": "string",
     ///      "format": "date-time"
@@ -2960,6 +3174,7 @@ pub mod types {
         pub max_activations: ::std::option::Option<i32>,
         pub name: ::std::string::String,
         pub rule: ::serde_json::Value,
+        pub source: MapperSource,
         pub updated_at: ::chrono::DateTime<::chrono::offset::Utc>,
     }
 
@@ -2993,6 +3208,104 @@ pub mod types {
     #[serde(deny_unknown_fields)]
     pub enum MapperId {}
 
+    /// `MapperSource`
+    ///
+    /// <details><summary>JSON schema</summary>
+    ///
+    /// ```json
+    /// {
+    ///  "oneOf": [
+    ///    {
+    ///      "description": "Created via the API, persisted in the database,
+    /// supports activation limits",
+    ///      "type": "string",
+    ///      "enum": [
+    ///        "dynamic"
+    ///      ]
+    ///    },
+    ///    {
+    ///      "description": "Loaded from service configuration, in-memory only,
+    /// no activation limits",
+    ///      "type": "string",
+    ///      "enum": [
+    ///        "preset"
+    ///      ]
+    ///    }
+
+    ///  ]
+    /// }
+
+    /// ```
+    /// </details>
+    #[derive(
+        :: serde :: Deserialize,
+        :: serde :: Serialize,
+        Clone,
+        Copy,
+        Debug,
+        Eq,
+        Hash,
+        Ord,
+        PartialEq,
+        PartialOrd,
+        schemars :: JsonSchema,
+    )]
+    pub enum MapperSource {
+        /// Created via the API, persisted in the database, supports activation
+        /// limits
+        #[serde(rename = "dynamic")]
+        Dynamic,
+        /// Loaded from service configuration, in-memory only, no activation
+        /// limits
+        #[serde(rename = "preset")]
+        Preset,
+    }
+
+    impl ::std::fmt::Display for MapperSource {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            match *self {
+                Self::Dynamic => f.write_str("dynamic"),
+                Self::Preset => f.write_str("preset"),
+            }
+        }
+    }
+
+    impl ::std::str::FromStr for MapperSource {
+        type Err = self::error::ConversionError;
+        fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+            match value {
+                "dynamic" => Ok(Self::Dynamic),
+                "preset" => Ok(Self::Preset),
+                _ => Err("invalid value".into()),
+            }
+        }
+    }
+
+    impl ::std::convert::TryFrom<&str> for MapperSource {
+        type Error = self::error::ConversionError;
+        fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+            value.parse()
+        }
+    }
+
+    impl ::std::convert::TryFrom<&::std::string::String> for MapperSource {
+        type Error = self::error::ConversionError;
+        fn try_from(
+            value: &::std::string::String,
+        ) -> ::std::result::Result<Self, self::error::ConversionError> {
+            value.parse()
+        }
+    }
+
+    impl ::std::convert::TryFrom<::std::string::String> for MapperSource {
+        type Error = self::error::ConversionError;
+        fn try_from(
+            value: ::std::string::String,
+        ) -> ::std::result::Result<Self, self::error::ConversionError> {
+            value.parse()
+        }
+    }
+
     /// `OAuthAuthzCodeExchangeBody`
     ///
     /// <details><summary>JSON schema</summary>
@@ -3003,6 +3316,7 @@ pub mod types {
     ///  "required": [
     ///    "code",
     ///    "grant_type",
+    ///    "pkce_verifier",
     ///    "redirect_uri"
     ///  ],
     ///  "properties": {
@@ -3045,10 +3359,9 @@ pub mod types {
     ///      "type": "string"
     ///    },
     ///    "pkce_verifier": {
-    ///      "type": [
-    ///        "string",
-    ///        "null"
-    ///      ]
+    ///      "description": "PKCE code verifier (RFC 7636). Required for all
+    /// authorization code exchanges.",
+    ///      "type": "string"
     ///    },
     ///    "redirect_uri": {
     ///      "type": "string"
@@ -3070,8 +3383,9 @@ pub mod types {
         pub client_secret: ::std::option::Option<SecretString>,
         pub code: ::std::string::String,
         pub grant_type: ::std::string::String,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
-        pub pkce_verifier: ::std::option::Option<::std::string::String>,
+        /// PKCE code verifier (RFC 7636). Required for all authorization code
+        /// exchanges.
+        pub pkce_verifier: ::std::string::String,
         pub redirect_uri: ::std::string::String,
     }
 
@@ -3091,6 +3405,7 @@ pub mod types {
     ///  "required": [
     ///    "access_token",
     ///    "expires_in",
+    ///    "scope",
     ///    "token_type"
     ///  ],
     ///  "properties": {
@@ -3100,6 +3415,17 @@ pub mod types {
     ///    "expires_in": {
     ///      "type": "integer",
     ///      "format": "int64"
+    ///    },
+    ///    "idp_token": {
+    ///      "type": [
+    ///        "string",
+    ///        "null"
+    ///      ]
+    ///    },
+    ///    "scope": {
+    ///      "description": "The scope granted to the access token (RFC 6749
+    /// §5.1).",
+    ///      "type": "string"
     ///    },
     ///    "token_type": {
     ///      "type": "string"
@@ -3117,6 +3443,10 @@ pub mod types {
     pub struct OAuthAuthzCodeExchangeResponse {
         pub access_token: ::std::string::String,
         pub expires_in: i64,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub idp_token: ::std::option::Option<::std::string::String>,
+        /// The scope granted to the access token (RFC 6749 §5.1).
+        pub scope: ::std::string::String,
         pub token_type: ::std::string::String,
     }
 
@@ -3335,7 +3665,107 @@ pub mod types {
         }
     }
 
-    /// `OAuthProviderInfo`
+    /// `OAuthProviderAuthorizationCodeInfo`
+    ///
+    /// <details><summary>JSON schema</summary>
+    ///
+    /// ```json
+    /// {
+    ///  "type": "object",
+    ///  "required": [
+    ///    "auth_url_endpoint",
+    ///    "redirect_endpoint",
+    ///    "token_endpoint",
+    ///    "token_endpoint_content_type"
+    ///  ],
+    ///  "properties": {
+    ///    "auth_url_endpoint": {
+    ///      "type": "string"
+    ///    },
+    ///    "redirect_endpoint": {
+    ///      "type": "string"
+    ///    },
+    ///    "token_endpoint": {
+    ///      "type": "string"
+    ///    },
+    ///    "token_endpoint_content_type": {
+    ///      "type": "string"
+    ///    }
+
+    ///  }
+
+    /// }
+
+    /// ```
+    /// </details>
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
+    pub struct OAuthProviderAuthorizationCodeInfo {
+        pub auth_url_endpoint: ::std::string::String,
+        pub redirect_endpoint: ::std::string::String,
+        pub token_endpoint: ::std::string::String,
+        pub token_endpoint_content_type: ::std::string::String,
+    }
+
+    impl OAuthProviderAuthorizationCodeInfo {
+        pub fn builder() -> builder::OAuthProviderAuthorizationCodeInfo {
+            Default::default()
+        }
+    }
+
+    /// `OAuthProviderAuthorizationCodePkceInfo`
+    ///
+    /// <details><summary>JSON schema</summary>
+    ///
+    /// ```json
+    /// {
+    ///  "type": "object",
+    ///  "required": [
+    ///    "client_id",
+    ///    "proxy_port",
+    ///    "redirect_endpoint",
+    ///    "web"
+    ///  ],
+    ///  "properties": {
+    ///    "client_id": {
+    ///      "$ref": "#/components/schemas/TypedUuidForOAuthClientId"
+    ///    },
+    ///    "proxy_port": {
+    ///      "type": "integer",
+    ///      "format": "uint16",
+    ///      "minimum": 0.0
+    ///    },
+    ///    "redirect_endpoint": {
+    ///      "type": "string"
+    ///    },
+    ///    "web": {
+    ///      "$ref": "#/components/schemas/OAuthProviderAuthorizationCodeInfo"
+    ///    }
+
+    ///  }
+
+    /// }
+
+    /// ```
+    /// </details>
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
+    pub struct OAuthProviderAuthorizationCodePkceInfo {
+        pub client_id: TypedUuidForOAuthClientId,
+        pub proxy_port: u16,
+        pub redirect_endpoint: ::std::string::String,
+        pub web: OAuthProviderAuthorizationCodeInfo,
+    }
+
+    impl OAuthProviderAuthorizationCodePkceInfo {
+        pub fn builder() -> builder::OAuthProviderAuthorizationCodePkceInfo {
+            Default::default()
+        }
+    }
+
+    /// `OAuthProviderDeviceInfo`
     ///
     /// <details><summary>JSON schema</summary>
     ///
@@ -3345,9 +3775,6 @@ pub mod types {
     ///  "required": [
     ///    "auth_url_endpoint",
     ///    "client_id",
-    ///    "device_code_endpoint",
-    ///    "provider",
-    ///    "scopes",
     ///    "token_endpoint"
     ///  ],
     ///  "properties": {
@@ -3355,20 +3782,7 @@ pub mod types {
     ///      "type": "string"
     ///    },
     ///    "client_id": {
-    ///      "type": "string"
-    ///    },
-    ///    "device_code_endpoint": {
-    ///      "type": "string"
-    ///    },
-    ///    "provider": {
-    ///      "$ref": "#/components/schemas/OAuthProviderName"
-    ///    },
-    ///    "scopes": {
-    ///      "type": "array",
-    ///      "items": {
-    ///        "type": "string"
-    ///      }
-
+    ///      "$ref": "#/components/schemas/TypedUuidForOAuthClientId"
     ///    },
     ///    "token_endpoint": {
     ///      "type": "string"
@@ -3383,17 +3797,14 @@ pub mod types {
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
-    pub struct OAuthProviderInfo {
+    pub struct OAuthProviderDeviceInfo {
         pub auth_url_endpoint: ::std::string::String,
-        pub client_id: ::std::string::String,
-        pub device_code_endpoint: ::std::string::String,
-        pub provider: OAuthProviderName,
-        pub scopes: ::std::vec::Vec<::std::string::String>,
+        pub client_id: TypedUuidForOAuthClientId,
         pub token_endpoint: ::std::string::String,
     }
 
-    impl OAuthProviderInfo {
-        pub fn builder() -> builder::OAuthProviderInfo {
+    impl OAuthProviderDeviceInfo {
+        pub fn builder() -> builder::OAuthProviderDeviceInfo {
             Default::default()
         }
     }
@@ -3407,7 +3818,8 @@ pub mod types {
     ///  "type": "string",
     ///  "enum": [
     ///    "github",
-    ///    "google"
+    ///    "google",
+    ///    "zendesk"
     ///  ]
     /// }
 
@@ -3431,6 +3843,8 @@ pub mod types {
         Github,
         #[serde(rename = "google")]
         Google,
+        #[serde(rename = "zendesk")]
+        Zendesk,
     }
 
     impl ::std::fmt::Display for OAuthProviderName {
@@ -3438,6 +3852,7 @@ pub mod types {
             match *self {
                 Self::Github => f.write_str("github"),
                 Self::Google => f.write_str("google"),
+                Self::Zendesk => f.write_str("zendesk"),
             }
         }
     }
@@ -3448,6 +3863,7 @@ pub mod types {
             match value {
                 "github" => Ok(Self::Github),
                 "google" => Ok(Self::Google),
+                "zendesk" => Ok(Self::Zendesk),
                 _ => Err("invalid value".into()),
             }
         }
@@ -3633,6 +4049,30 @@ pub mod types {
         }
     }
 
+    /// `ProjectId`
+    ///
+    /// <details><summary>JSON schema</summary>
+    ///
+    /// ```json
+    /// false
+    /// ```
+    /// </details>
+    #[derive(
+        :: serde :: Deserialize,
+        :: serde :: Serialize,
+        Clone,
+        Copy,
+        Debug,
+        Eq,
+        Hash,
+        Ord,
+        PartialEq,
+        PartialOrd,
+        schemars :: JsonSchema,
+    )]
+    #[serde(deny_unknown_fields)]
+    pub enum ProjectId {}
+
     /// `RegisterBlobBody`
     ///
     /// <details><summary>JSON schema</summary>
@@ -3644,6 +4084,13 @@ pub mod types {
     ///    "size"
     ///  ],
     ///  "properties": {
+    ///    "blob_time": {
+    ///      "type": [
+    ///        "string",
+    ///        "null"
+    ///      ],
+    ///      "format": "date-time"
+    ///    },
     ///    "idempotency_key": {
     ///      "type": [
     ///        "string",
@@ -3665,6 +4112,8 @@ pub mod types {
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
     pub struct RegisterBlobBody {
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub blob_time: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub idempotency_key: ::std::option::Option<::std::string::String>,
         pub size: i64,
@@ -3718,12 +4167,20 @@ pub mod types {
     /// {
     ///  "type": "object",
     ///  "required": [
-    ///    "instance"
+    ///    "instance",
+    ///    "project_id",
+    ///    "silo_id"
     ///  ],
     ///  "properties": {
     ///    "instance": {
     ///      "$ref":
     /// "#/components/schemas/TypedUuidForServerRegistrationInstanceId"
+    ///    },
+    ///    "project_id": {
+    ///      "$ref": "#/components/schemas/TypedUuidForProjectId"
+    ///    },
+    ///    "silo_id": {
+    ///      "$ref": "#/components/schemas/TypedUuidForSiloId"
     ///    }
 
     ///  }
@@ -3737,6 +4194,8 @@ pub mod types {
     )]
     pub struct RegisterServerBody {
         pub instance: TypedUuidForServerRegistrationInstanceId,
+        pub project_id: TypedUuidForProjectId,
+        pub silo_id: TypedUuidForSiloId,
     }
 
     impl RegisterServerBody {
@@ -3916,7 +4375,9 @@ pub mod types {
     ///    "created_at",
     ///    "id",
     ///    "instance_id",
+    ///    "project_id",
     ///    "service_id",
+    ///    "silo_id",
     ///    "state",
     ///    "updated_at"
     ///  ],
@@ -3945,8 +4406,14 @@ pub mod types {
     ///        "null"
     ///      ]
     ///    },
+    ///    "project_id": {
+    ///      "$ref": "#/components/schemas/TypedUuidForProjectId"
+    ///    },
     ///    "service_id": {
     ///      "$ref": "#/components/schemas/TypedUuidForServiceId"
+    ///    },
+    ///    "silo_id": {
+    ///      "$ref": "#/components/schemas/TypedUuidForSiloId"
     ///    },
     ///    "state": {
     ///      "$ref": "#/components/schemas/ServerRegistrationState"
@@ -3973,7 +4440,9 @@ pub mod types {
         pub instance_id: TypedUuidForServerRegistrationInstanceId,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub nonce: ::std::option::Option<::std::string::String>,
+        pub project_id: TypedUuidForProjectId,
         pub service_id: TypedUuidForServiceId,
+        pub silo_id: TypedUuidForSiloId,
         pub state: ServerRegistrationState,
         pub updated_at: ::chrono::DateTime<::chrono::offset::Utc>,
     }
@@ -4194,6 +4663,30 @@ pub mod types {
     )]
     #[serde(deny_unknown_fields)]
     pub enum ServiceId {}
+
+    /// `SiloId`
+    ///
+    /// <details><summary>JSON schema</summary>
+    ///
+    /// ```json
+    /// false
+    /// ```
+    /// </details>
+    #[derive(
+        :: serde :: Deserialize,
+        :: serde :: Serialize,
+        Clone,
+        Copy,
+        Debug,
+        Eq,
+        Hash,
+        Ord,
+        PartialEq,
+        PartialOrd,
+        schemars :: JsonSchema,
+    )]
+    #[serde(deny_unknown_fields)]
+    pub enum SiloId {}
 
     /// `TokenRequest`
     ///
@@ -4598,6 +5091,81 @@ pub mod types {
     }
 
     impl ::std::fmt::Display for TypedUuidForBlobId {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            self.0.fmt(f)
+        }
+    }
+
+    /// `TypedUuidForDeploymentId`
+    ///
+    /// <details><summary>JSON schema</summary>
+    ///
+    /// ```json
+    /// {
+    ///  "type": "string",
+    ///  "format": "uuid",
+    ///  "x-rust-type": {
+    ///    "crate": "newtype-uuid",
+    ///    "parameters": [
+    ///      {
+    ///        "$ref": "#/components/schemas/DeploymentId"
+    ///      }
+
+    ///    ],
+    ///    "path": "newtype_uuid::TypedUuid",
+    ///    "version": "1"
+    ///  }
+
+    /// }
+
+    /// ```
+    /// </details>
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
+    #[serde(transparent)]
+    pub struct TypedUuidForDeploymentId(pub ::uuid::Uuid);
+    impl ::std::ops::Deref for TypedUuidForDeploymentId {
+        type Target = ::uuid::Uuid;
+        fn deref(&self) -> &::uuid::Uuid {
+            &self.0
+        }
+    }
+
+    impl ::std::convert::From<TypedUuidForDeploymentId> for ::uuid::Uuid {
+        fn from(value: TypedUuidForDeploymentId) -> Self {
+            value.0
+        }
+    }
+
+    impl ::std::convert::From<::uuid::Uuid> for TypedUuidForDeploymentId {
+        fn from(value: ::uuid::Uuid) -> Self {
+            Self(value)
+        }
+    }
+
+    impl ::std::str::FromStr for TypedUuidForDeploymentId {
+        type Err = <::uuid::Uuid as ::std::str::FromStr>::Err;
+        fn from_str(value: &str) -> ::std::result::Result<Self, Self::Err> {
+            Ok(Self(value.parse()?))
+        }
+    }
+
+    impl ::std::convert::TryFrom<&str> for TypedUuidForDeploymentId {
+        type Error = <::uuid::Uuid as ::std::str::FromStr>::Err;
+        fn try_from(value: &str) -> ::std::result::Result<Self, Self::Error> {
+            value.parse()
+        }
+    }
+
+    impl ::std::convert::TryFrom<String> for TypedUuidForDeploymentId {
+        type Error = <::uuid::Uuid as ::std::str::FromStr>::Err;
+        fn try_from(value: String) -> ::std::result::Result<Self, Self::Error> {
+            value.parse()
+        }
+    }
+
+    impl ::std::fmt::Display for TypedUuidForDeploymentId {
         fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
             self.0.fmt(f)
         }
@@ -5278,6 +5846,81 @@ pub mod types {
         }
     }
 
+    /// `TypedUuidForProjectId`
+    ///
+    /// <details><summary>JSON schema</summary>
+    ///
+    /// ```json
+    /// {
+    ///  "type": "string",
+    ///  "format": "uuid",
+    ///  "x-rust-type": {
+    ///    "crate": "newtype-uuid",
+    ///    "parameters": [
+    ///      {
+    ///        "$ref": "#/components/schemas/ProjectId"
+    ///      }
+
+    ///    ],
+    ///    "path": "newtype_uuid::TypedUuid",
+    ///    "version": "1"
+    ///  }
+
+    /// }
+
+    /// ```
+    /// </details>
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
+    #[serde(transparent)]
+    pub struct TypedUuidForProjectId(pub ::uuid::Uuid);
+    impl ::std::ops::Deref for TypedUuidForProjectId {
+        type Target = ::uuid::Uuid;
+        fn deref(&self) -> &::uuid::Uuid {
+            &self.0
+        }
+    }
+
+    impl ::std::convert::From<TypedUuidForProjectId> for ::uuid::Uuid {
+        fn from(value: TypedUuidForProjectId) -> Self {
+            value.0
+        }
+    }
+
+    impl ::std::convert::From<::uuid::Uuid> for TypedUuidForProjectId {
+        fn from(value: ::uuid::Uuid) -> Self {
+            Self(value)
+        }
+    }
+
+    impl ::std::str::FromStr for TypedUuidForProjectId {
+        type Err = <::uuid::Uuid as ::std::str::FromStr>::Err;
+        fn from_str(value: &str) -> ::std::result::Result<Self, Self::Err> {
+            Ok(Self(value.parse()?))
+        }
+    }
+
+    impl ::std::convert::TryFrom<&str> for TypedUuidForProjectId {
+        type Error = <::uuid::Uuid as ::std::str::FromStr>::Err;
+        fn try_from(value: &str) -> ::std::result::Result<Self, Self::Error> {
+            value.parse()
+        }
+    }
+
+    impl ::std::convert::TryFrom<String> for TypedUuidForProjectId {
+        type Error = <::uuid::Uuid as ::std::str::FromStr>::Err;
+        fn try_from(value: String) -> ::std::result::Result<Self, Self::Error> {
+            value.parse()
+        }
+    }
+
+    impl ::std::fmt::Display for TypedUuidForProjectId {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            self.0.fmt(f)
+        }
+    }
+
     /// `TypedUuidForServerRegistrationId`
     ///
     /// <details><summary>JSON schema</summary>
@@ -5498,6 +6141,81 @@ pub mod types {
     }
 
     impl ::std::fmt::Display for TypedUuidForServiceId {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            self.0.fmt(f)
+        }
+    }
+
+    /// `TypedUuidForSiloId`
+    ///
+    /// <details><summary>JSON schema</summary>
+    ///
+    /// ```json
+    /// {
+    ///  "type": "string",
+    ///  "format": "uuid",
+    ///  "x-rust-type": {
+    ///    "crate": "newtype-uuid",
+    ///    "parameters": [
+    ///      {
+    ///        "$ref": "#/components/schemas/SiloId"
+    ///      }
+
+    ///    ],
+    ///    "path": "newtype_uuid::TypedUuid",
+    ///    "version": "1"
+    ///  }
+
+    /// }
+
+    /// ```
+    /// </details>
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
+    #[serde(transparent)]
+    pub struct TypedUuidForSiloId(pub ::uuid::Uuid);
+    impl ::std::ops::Deref for TypedUuidForSiloId {
+        type Target = ::uuid::Uuid;
+        fn deref(&self) -> &::uuid::Uuid {
+            &self.0
+        }
+    }
+
+    impl ::std::convert::From<TypedUuidForSiloId> for ::uuid::Uuid {
+        fn from(value: TypedUuidForSiloId) -> Self {
+            value.0
+        }
+    }
+
+    impl ::std::convert::From<::uuid::Uuid> for TypedUuidForSiloId {
+        fn from(value: ::uuid::Uuid) -> Self {
+            Self(value)
+        }
+    }
+
+    impl ::std::str::FromStr for TypedUuidForSiloId {
+        type Err = <::uuid::Uuid as ::std::str::FromStr>::Err;
+        fn from_str(value: &str) -> ::std::result::Result<Self, Self::Err> {
+            Ok(Self(value.parse()?))
+        }
+    }
+
+    impl ::std::convert::TryFrom<&str> for TypedUuidForSiloId {
+        type Error = <::uuid::Uuid as ::std::str::FromStr>::Err;
+        fn try_from(value: &str) -> ::std::result::Result<Self, Self::Error> {
+            value.parse()
+        }
+    }
+
+    impl ::std::convert::TryFrom<String> for TypedUuidForSiloId {
+        type Error = <::uuid::Uuid as ::std::str::FromStr>::Err;
+        fn try_from(value: String) -> ::std::result::Result<Self, Self::Error> {
+            value.parse()
+        }
+    }
+
+    impl ::std::fmt::Display for TypedUuidForSiloId {
         fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
             self.0.fmt(f)
         }
@@ -5965,84 +6683,6 @@ pub mod types {
                 Self {
                     name: Ok(value.name),
                     permissions: Ok(value.permissions),
-                }
-            }
-        }
-
-        #[derive(Clone, Debug)]
-        pub struct AccessTokenExchangeRequest {
-            device_code: ::std::result::Result<::std::string::String, ::std::string::String>,
-            expires_at: ::std::result::Result<
-                ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
-                ::std::string::String,
-            >,
-            grant_type: ::std::result::Result<::std::string::String, ::std::string::String>,
-        }
-
-        impl ::std::default::Default for AccessTokenExchangeRequest {
-            fn default() -> Self {
-                Self {
-                    device_code: Err("no value supplied for device_code".to_string()),
-                    expires_at: Ok(Default::default()),
-                    grant_type: Err("no value supplied for grant_type".to_string()),
-                }
-            }
-        }
-
-        impl AccessTokenExchangeRequest {
-            pub fn device_code<T>(mut self, value: T) -> Self
-            where
-                T: ::std::convert::TryInto<::std::string::String>,
-                T::Error: ::std::fmt::Display,
-            {
-                self.device_code = value
-                    .try_into()
-                    .map_err(|e| format!("error converting supplied value for device_code: {e}"));
-                self
-            }
-            pub fn expires_at<T>(mut self, value: T) -> Self
-            where
-                T: ::std::convert::TryInto<
-                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
-                    >,
-                T::Error: ::std::fmt::Display,
-            {
-                self.expires_at = value
-                    .try_into()
-                    .map_err(|e| format!("error converting supplied value for expires_at: {e}"));
-                self
-            }
-            pub fn grant_type<T>(mut self, value: T) -> Self
-            where
-                T: ::std::convert::TryInto<::std::string::String>,
-                T::Error: ::std::fmt::Display,
-            {
-                self.grant_type = value
-                    .try_into()
-                    .map_err(|e| format!("error converting supplied value for grant_type: {e}"));
-                self
-            }
-        }
-
-        impl ::std::convert::TryFrom<AccessTokenExchangeRequest> for super::AccessTokenExchangeRequest {
-            type Error = super::error::ConversionError;
-            fn try_from(
-                value: AccessTokenExchangeRequest,
-            ) -> ::std::result::Result<Self, super::error::ConversionError> {
-                Ok(Self {
-                    device_code: value.device_code?,
-                    expires_at: value.expires_at?,
-                    grant_type: value.grant_type?,
-                })
-            }
-        }
-
-        impl ::std::convert::From<super::AccessTokenExchangeRequest> for AccessTokenExchangeRequest {
-            fn from(value: super::AccessTokenExchangeRequest) -> Self {
-                Self {
-                    device_code: Ok(value.device_code),
-                    expires_at: Ok(value.expires_at),
-                    grant_type: Ok(value.grant_type),
                 }
             }
         }
@@ -6729,6 +7369,55 @@ pub mod types {
         }
 
         #[derive(Clone, Debug)]
+        pub struct ApiUserPermissionParamsForApiPermissions {
+            permission: ::std::result::Result<super::ApiPermissions, ::std::string::String>,
+        }
+
+        impl ::std::default::Default for ApiUserPermissionParamsForApiPermissions {
+            fn default() -> Self {
+                Self {
+                    permission: Err("no value supplied for permission".to_string()),
+                }
+            }
+        }
+
+        impl ApiUserPermissionParamsForApiPermissions {
+            pub fn permission<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::ApiPermissions>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.permission = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for permission: {e}"));
+                self
+            }
+        }
+
+        impl ::std::convert::TryFrom<ApiUserPermissionParamsForApiPermissions>
+            for super::ApiUserPermissionParamsForApiPermissions
+        {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: ApiUserPermissionParamsForApiPermissions,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    permission: value.permission?,
+                })
+            }
+        }
+
+        impl ::std::convert::From<super::ApiUserPermissionParamsForApiPermissions>
+            for ApiUserPermissionParamsForApiPermissions
+        {
+            fn from(value: super::ApiUserPermissionParamsForApiPermissions) -> Self {
+                Self {
+                    permission: Ok(value.permission),
+                }
+            }
+        }
+
+        #[derive(Clone, Debug)]
         pub struct ApiUserProvider {
             created_at: ::std::result::Result<
                 ::chrono::DateTime<::chrono::offset::Utc>,
@@ -6958,7 +7647,9 @@ pub mod types {
         impl ::std::default::Default for ApiUserUpdateParamsForApiPermissions {
             fn default() -> Self {
                 Self {
-                    group_ids: Err("no value supplied for group_ids".to_string()),
+                    group_ids: Ok(
+                        super::defaults::api_user_update_params_for_api_permissions_group_ids(),
+                    ),
                     permissions: Err("no value supplied for permissions".to_string()),
                 }
             }
@@ -7014,6 +7705,10 @@ pub mod types {
 
         #[derive(Clone, Debug)]
         pub struct Blob {
+            blob_time: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
             created_at: ::std::result::Result<
                 ::chrono::DateTime<::chrono::offset::Utc>,
                 ::std::string::String,
@@ -7036,6 +7731,7 @@ pub mod types {
         impl ::std::default::Default for Blob {
             fn default() -> Self {
                 Self {
+                    blob_time: Err("no value supplied for blob_time".to_string()),
                     created_at: Err("no value supplied for created_at".to_string()),
                     id: Err("no value supplied for id".to_string()),
                     server_registration_id: Err(
@@ -7051,6 +7747,16 @@ pub mod types {
         }
 
         impl Blob {
+            pub fn blob_time<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.blob_time = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for blob_time: {e}"));
+                self
+            }
             pub fn created_at<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
@@ -7137,6 +7843,7 @@ pub mod types {
             type Error = super::error::ConversionError;
             fn try_from(value: Blob) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
+                    blob_time: value.blob_time?,
                     created_at: value.created_at?,
                     id: value.id?,
                     server_registration_id: value.server_registration_id?,
@@ -7152,6 +7859,7 @@ pub mod types {
         impl ::std::convert::From<super::Blob> for Blob {
             fn from(value: super::Blob) -> Self {
                 Self {
+                    blob_time: Ok(value.blob_time),
                     created_at: Ok(value.created_at),
                     id: Ok(value.id),
                     server_registration_id: Ok(value.server_registration_id),
@@ -7208,6 +7916,65 @@ pub mod types {
             fn from(value: super::CheckinBody) -> Self {
                 Self {
                     checked_in_at: Ok(value.checked_in_at),
+                }
+            }
+        }
+
+        #[derive(Clone, Debug)]
+        pub struct CreateDeploymentBody {
+            project_id: ::std::result::Result<super::TypedUuidForProjectId, ::std::string::String>,
+            silo_id: ::std::result::Result<super::TypedUuidForSiloId, ::std::string::String>,
+        }
+
+        impl ::std::default::Default for CreateDeploymentBody {
+            fn default() -> Self {
+                Self {
+                    project_id: Err("no value supplied for project_id".to_string()),
+                    silo_id: Err("no value supplied for silo_id".to_string()),
+                }
+            }
+        }
+
+        impl CreateDeploymentBody {
+            pub fn project_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::TypedUuidForProjectId>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.project_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for project_id: {e}"));
+                self
+            }
+            pub fn silo_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::TypedUuidForSiloId>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.silo_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for silo_id: {e}"));
+                self
+            }
+        }
+
+        impl ::std::convert::TryFrom<CreateDeploymentBody> for super::CreateDeploymentBody {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: CreateDeploymentBody,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    project_id: value.project_id?,
+                    silo_id: value.silo_id?,
+                })
+            }
+        }
+
+        impl ::std::convert::From<super::CreateDeploymentBody> for CreateDeploymentBody {
+            fn from(value: super::CreateDeploymentBody) -> Self {
+                Self {
+                    project_id: Ok(value.project_id),
+                    silo_id: Ok(value.silo_id),
                 }
             }
         }
@@ -7325,6 +8092,247 @@ pub mod types {
             fn from(value: super::CreateService) -> Self {
                 Self {
                     name: Ok(value.name),
+                }
+            }
+        }
+
+        #[derive(Clone, Debug)]
+        pub struct Deployment {
+            created_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+            id: ::std::result::Result<super::TypedUuidForDeploymentId, ::std::string::String>,
+            project_id: ::std::result::Result<super::TypedUuidForProjectId, ::std::string::String>,
+            service_id: ::std::result::Result<super::TypedUuidForServiceId, ::std::string::String>,
+            silo_id: ::std::result::Result<super::TypedUuidForSiloId, ::std::string::String>,
+        }
+
+        impl ::std::default::Default for Deployment {
+            fn default() -> Self {
+                Self {
+                    created_at: Err("no value supplied for created_at".to_string()),
+                    id: Err("no value supplied for id".to_string()),
+                    project_id: Err("no value supplied for project_id".to_string()),
+                    service_id: Err("no value supplied for service_id".to_string()),
+                    silo_id: Err("no value supplied for silo_id".to_string()),
+                }
+            }
+        }
+
+        impl Deployment {
+            pub fn created_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.created_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for created_at: {e}"));
+                self
+            }
+            pub fn id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::TypedUuidForDeploymentId>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for id: {e}"));
+                self
+            }
+            pub fn project_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::TypedUuidForProjectId>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.project_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for project_id: {e}"));
+                self
+            }
+            pub fn service_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::TypedUuidForServiceId>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.service_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for service_id: {e}"));
+                self
+            }
+            pub fn silo_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::TypedUuidForSiloId>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.silo_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for silo_id: {e}"));
+                self
+            }
+        }
+
+        impl ::std::convert::TryFrom<Deployment> for super::Deployment {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: Deployment,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    created_at: value.created_at?,
+                    id: value.id?,
+                    project_id: value.project_id?,
+                    service_id: value.service_id?,
+                    silo_id: value.silo_id?,
+                })
+            }
+        }
+
+        impl ::std::convert::From<super::Deployment> for Deployment {
+            fn from(value: super::Deployment) -> Self {
+                Self {
+                    created_at: Ok(value.created_at),
+                    id: Ok(value.id),
+                    project_id: Ok(value.project_id),
+                    service_id: Ok(value.service_id),
+                    silo_id: Ok(value.silo_id),
+                }
+            }
+        }
+
+        #[derive(Clone, Debug)]
+        pub struct DeviceAuthorizationRequest {
+            client_id:
+                ::std::result::Result<super::TypedUuidForOAuthClientId, ::std::string::String>,
+            scope: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+        }
+
+        impl ::std::default::Default for DeviceAuthorizationRequest {
+            fn default() -> Self {
+                Self {
+                    client_id: Err("no value supplied for client_id".to_string()),
+                    scope: Ok(Default::default()),
+                }
+            }
+        }
+
+        impl DeviceAuthorizationRequest {
+            pub fn client_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::TypedUuidForOAuthClientId>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.client_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for client_id: {e}"));
+                self
+            }
+            pub fn scope<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.scope = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for scope: {e}"));
+                self
+            }
+        }
+
+        impl ::std::convert::TryFrom<DeviceAuthorizationRequest> for super::DeviceAuthorizationRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: DeviceAuthorizationRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    client_id: value.client_id?,
+                    scope: value.scope?,
+                })
+            }
+        }
+
+        impl ::std::convert::From<super::DeviceAuthorizationRequest> for DeviceAuthorizationRequest {
+            fn from(value: super::DeviceAuthorizationRequest) -> Self {
+                Self {
+                    client_id: Ok(value.client_id),
+                    scope: Ok(value.scope),
+                }
+            }
+        }
+
+        #[derive(Clone, Debug)]
+        pub struct DeviceTokenExchangeRequest {
+            client_id:
+                ::std::result::Result<super::TypedUuidForOAuthClientId, ::std::string::String>,
+            device_code: ::std::result::Result<::std::string::String, ::std::string::String>,
+            grant_type: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+
+        impl ::std::default::Default for DeviceTokenExchangeRequest {
+            fn default() -> Self {
+                Self {
+                    client_id: Err("no value supplied for client_id".to_string()),
+                    device_code: Err("no value supplied for device_code".to_string()),
+                    grant_type: Err("no value supplied for grant_type".to_string()),
+                }
+            }
+        }
+
+        impl DeviceTokenExchangeRequest {
+            pub fn client_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::TypedUuidForOAuthClientId>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.client_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for client_id: {e}"));
+                self
+            }
+            pub fn device_code<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.device_code = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for device_code: {e}"));
+                self
+            }
+            pub fn grant_type<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.grant_type = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for grant_type: {e}"));
+                self
+            }
+        }
+
+        impl ::std::convert::TryFrom<DeviceTokenExchangeRequest> for super::DeviceTokenExchangeRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: DeviceTokenExchangeRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    client_id: value.client_id?,
+                    device_code: value.device_code?,
+                    grant_type: value.grant_type?,
+                })
+            }
+        }
+
+        impl ::std::convert::From<super::DeviceTokenExchangeRequest> for DeviceTokenExchangeRequest {
+            fn from(value: super::DeviceTokenExchangeRequest) -> Self {
+                Self {
+                    client_id: Ok(value.client_id),
+                    device_code: Ok(value.device_code),
+                    grant_type: Ok(value.grant_type),
                 }
             }
         }
@@ -8641,6 +9649,7 @@ pub mod types {
                 ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
             name: ::std::result::Result<::std::string::String, ::std::string::String>,
             rule: ::std::result::Result<::serde_json::Value, ::std::string::String>,
+            source: ::std::result::Result<super::MapperSource, ::std::string::String>,
             updated_at: ::std::result::Result<
                 ::chrono::DateTime<::chrono::offset::Utc>,
                 ::std::string::String,
@@ -8658,6 +9667,7 @@ pub mod types {
                     max_activations: Ok(Default::default()),
                     name: Err("no value supplied for name".to_string()),
                     rule: Err("no value supplied for rule".to_string()),
+                    source: Err("no value supplied for source".to_string()),
                     updated_at: Err("no value supplied for updated_at".to_string()),
                 }
             }
@@ -8748,6 +9758,16 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for rule: {e}"));
                 self
             }
+            pub fn source<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::MapperSource>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.source = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for source: {e}"));
+                self
+            }
             pub fn updated_at<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
@@ -8774,6 +9794,7 @@ pub mod types {
                     max_activations: value.max_activations?,
                     name: value.name?,
                     rule: value.rule?,
+                    source: value.source?,
                     updated_at: value.updated_at?,
                 })
             }
@@ -8790,6 +9811,7 @@ pub mod types {
                     max_activations: Ok(value.max_activations),
                     name: Ok(value.name),
                     rule: Ok(value.rule),
+                    source: Ok(value.source),
                     updated_at: Ok(value.updated_at),
                 }
             }
@@ -8807,10 +9829,7 @@ pub mod types {
             >,
             code: ::std::result::Result<::std::string::String, ::std::string::String>,
             grant_type: ::std::result::Result<::std::string::String, ::std::string::String>,
-            pkce_verifier: ::std::result::Result<
-                ::std::option::Option<::std::string::String>,
-                ::std::string::String,
-            >,
+            pkce_verifier: ::std::result::Result<::std::string::String, ::std::string::String>,
             redirect_uri: ::std::result::Result<::std::string::String, ::std::string::String>,
         }
 
@@ -8821,7 +9840,7 @@ pub mod types {
                     client_secret: Ok(Default::default()),
                     code: Err("no value supplied for code".to_string()),
                     grant_type: Err("no value supplied for grant_type".to_string()),
-                    pkce_verifier: Ok(Default::default()),
+                    pkce_verifier: Err("no value supplied for pkce_verifier".to_string()),
                     redirect_uri: Err("no value supplied for redirect_uri".to_string()),
                 }
             }
@@ -8870,7 +9889,7 @@ pub mod types {
             }
             pub fn pkce_verifier<T>(mut self, value: T) -> Self
             where
-                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T: ::std::convert::TryInto<::std::string::String>,
                 T::Error: ::std::fmt::Display,
             {
                 self.pkce_verifier = value
@@ -8923,6 +9942,11 @@ pub mod types {
         pub struct OAuthAuthzCodeExchangeResponse {
             access_token: ::std::result::Result<::std::string::String, ::std::string::String>,
             expires_in: ::std::result::Result<i64, ::std::string::String>,
+            idp_token: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            scope: ::std::result::Result<::std::string::String, ::std::string::String>,
             token_type: ::std::result::Result<::std::string::String, ::std::string::String>,
         }
 
@@ -8931,6 +9955,8 @@ pub mod types {
                 Self {
                     access_token: Err("no value supplied for access_token".to_string()),
                     expires_in: Err("no value supplied for expires_in".to_string()),
+                    idp_token: Ok(Default::default()),
+                    scope: Err("no value supplied for scope".to_string()),
                     token_type: Err("no value supplied for token_type".to_string()),
                 }
             }
@@ -8957,6 +9983,26 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for expires_in: {e}"));
                 self
             }
+            pub fn idp_token<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.idp_token = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for idp_token: {e}"));
+                self
+            }
+            pub fn scope<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.scope = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for scope: {e}"));
+                self
+            }
             pub fn token_type<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::std::string::String>,
@@ -8979,6 +10025,8 @@ pub mod types {
                 Ok(Self {
                     access_token: value.access_token?,
                     expires_in: value.expires_in?,
+                    idp_token: value.idp_token?,
+                    scope: value.scope?,
                     token_type: value.token_type?,
                 })
             }
@@ -8991,6 +10039,8 @@ pub mod types {
                 Self {
                     access_token: Ok(value.access_token),
                     expires_in: Ok(value.expires_in),
+                    idp_token: Ok(value.idp_token),
+                    scope: Ok(value.scope),
                     token_type: Ok(value.token_type),
                 }
             }
@@ -9332,35 +10382,213 @@ pub mod types {
         }
 
         #[derive(Clone, Debug)]
-        pub struct OAuthProviderInfo {
+        pub struct OAuthProviderAuthorizationCodeInfo {
             auth_url_endpoint: ::std::result::Result<::std::string::String, ::std::string::String>,
-            client_id: ::std::result::Result<::std::string::String, ::std::string::String>,
-            device_code_endpoint:
+            redirect_endpoint: ::std::result::Result<::std::string::String, ::std::string::String>,
+            token_endpoint: ::std::result::Result<::std::string::String, ::std::string::String>,
+            token_endpoint_content_type:
                 ::std::result::Result<::std::string::String, ::std::string::String>,
-            provider: ::std::result::Result<super::OAuthProviderName, ::std::string::String>,
-            scopes: ::std::result::Result<
-                ::std::vec::Vec<::std::string::String>,
+        }
+
+        impl ::std::default::Default for OAuthProviderAuthorizationCodeInfo {
+            fn default() -> Self {
+                Self {
+                    auth_url_endpoint: Err("no value supplied for auth_url_endpoint".to_string()),
+                    redirect_endpoint: Err("no value supplied for redirect_endpoint".to_string()),
+                    token_endpoint: Err("no value supplied for token_endpoint".to_string()),
+                    token_endpoint_content_type: Err("no value supplied for \
+                                                      token_endpoint_content_type"
+                        .to_string()),
+                }
+            }
+        }
+
+        impl OAuthProviderAuthorizationCodeInfo {
+            pub fn auth_url_endpoint<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.auth_url_endpoint = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for auth_url_endpoint: {e}")
+                });
+                self
+            }
+            pub fn redirect_endpoint<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.redirect_endpoint = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for redirect_endpoint: {e}")
+                });
+                self
+            }
+            pub fn token_endpoint<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.token_endpoint = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for token_endpoint: {e}")
+                });
+                self
+            }
+            pub fn token_endpoint_content_type<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.token_endpoint_content_type = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for token_endpoint_content_type: {e}")
+                });
+                self
+            }
+        }
+
+        impl ::std::convert::TryFrom<OAuthProviderAuthorizationCodeInfo>
+            for super::OAuthProviderAuthorizationCodeInfo
+        {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: OAuthProviderAuthorizationCodeInfo,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    auth_url_endpoint: value.auth_url_endpoint?,
+                    redirect_endpoint: value.redirect_endpoint?,
+                    token_endpoint: value.token_endpoint?,
+                    token_endpoint_content_type: value.token_endpoint_content_type?,
+                })
+            }
+        }
+
+        impl ::std::convert::From<super::OAuthProviderAuthorizationCodeInfo>
+            for OAuthProviderAuthorizationCodeInfo
+        {
+            fn from(value: super::OAuthProviderAuthorizationCodeInfo) -> Self {
+                Self {
+                    auth_url_endpoint: Ok(value.auth_url_endpoint),
+                    redirect_endpoint: Ok(value.redirect_endpoint),
+                    token_endpoint: Ok(value.token_endpoint),
+                    token_endpoint_content_type: Ok(value.token_endpoint_content_type),
+                }
+            }
+        }
+
+        #[derive(Clone, Debug)]
+        pub struct OAuthProviderAuthorizationCodePkceInfo {
+            client_id:
+                ::std::result::Result<super::TypedUuidForOAuthClientId, ::std::string::String>,
+            proxy_port: ::std::result::Result<u16, ::std::string::String>,
+            redirect_endpoint: ::std::result::Result<::std::string::String, ::std::string::String>,
+            web: ::std::result::Result<
+                super::OAuthProviderAuthorizationCodeInfo,
                 ::std::string::String,
             >,
+        }
+
+        impl ::std::default::Default for OAuthProviderAuthorizationCodePkceInfo {
+            fn default() -> Self {
+                Self {
+                    client_id: Err("no value supplied for client_id".to_string()),
+                    proxy_port: Err("no value supplied for proxy_port".to_string()),
+                    redirect_endpoint: Err("no value supplied for redirect_endpoint".to_string()),
+                    web: Err("no value supplied for web".to_string()),
+                }
+            }
+        }
+
+        impl OAuthProviderAuthorizationCodePkceInfo {
+            pub fn client_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::TypedUuidForOAuthClientId>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.client_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for client_id: {e}"));
+                self
+            }
+            pub fn proxy_port<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<u16>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.proxy_port = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for proxy_port: {e}"));
+                self
+            }
+            pub fn redirect_endpoint<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.redirect_endpoint = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for redirect_endpoint: {e}")
+                });
+                self
+            }
+            pub fn web<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::OAuthProviderAuthorizationCodeInfo>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.web = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for web: {e}"));
+                self
+            }
+        }
+
+        impl ::std::convert::TryFrom<OAuthProviderAuthorizationCodePkceInfo>
+            for super::OAuthProviderAuthorizationCodePkceInfo
+        {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: OAuthProviderAuthorizationCodePkceInfo,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    client_id: value.client_id?,
+                    proxy_port: value.proxy_port?,
+                    redirect_endpoint: value.redirect_endpoint?,
+                    web: value.web?,
+                })
+            }
+        }
+
+        impl ::std::convert::From<super::OAuthProviderAuthorizationCodePkceInfo>
+            for OAuthProviderAuthorizationCodePkceInfo
+        {
+            fn from(value: super::OAuthProviderAuthorizationCodePkceInfo) -> Self {
+                Self {
+                    client_id: Ok(value.client_id),
+                    proxy_port: Ok(value.proxy_port),
+                    redirect_endpoint: Ok(value.redirect_endpoint),
+                    web: Ok(value.web),
+                }
+            }
+        }
+
+        #[derive(Clone, Debug)]
+        pub struct OAuthProviderDeviceInfo {
+            auth_url_endpoint: ::std::result::Result<::std::string::String, ::std::string::String>,
+            client_id:
+                ::std::result::Result<super::TypedUuidForOAuthClientId, ::std::string::String>,
             token_endpoint: ::std::result::Result<::std::string::String, ::std::string::String>,
         }
 
-        impl ::std::default::Default for OAuthProviderInfo {
+        impl ::std::default::Default for OAuthProviderDeviceInfo {
             fn default() -> Self {
                 Self {
                     auth_url_endpoint: Err("no value supplied for auth_url_endpoint".to_string()),
                     client_id: Err("no value supplied for client_id".to_string()),
-                    device_code_endpoint: Err(
-                        "no value supplied for device_code_endpoint".to_string()
-                    ),
-                    provider: Err("no value supplied for provider".to_string()),
-                    scopes: Err("no value supplied for scopes".to_string()),
                     token_endpoint: Err("no value supplied for token_endpoint".to_string()),
                 }
             }
         }
 
-        impl OAuthProviderInfo {
+        impl OAuthProviderDeviceInfo {
             pub fn auth_url_endpoint<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::std::string::String>,
@@ -9373,42 +10601,12 @@ pub mod types {
             }
             pub fn client_id<T>(mut self, value: T) -> Self
             where
-                T: ::std::convert::TryInto<::std::string::String>,
+                T: ::std::convert::TryInto<super::TypedUuidForOAuthClientId>,
                 T::Error: ::std::fmt::Display,
             {
                 self.client_id = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for client_id: {e}"));
-                self
-            }
-            pub fn device_code_endpoint<T>(mut self, value: T) -> Self
-            where
-                T: ::std::convert::TryInto<::std::string::String>,
-                T::Error: ::std::fmt::Display,
-            {
-                self.device_code_endpoint = value.try_into().map_err(|e| {
-                    format!("error converting supplied value for device_code_endpoint: {e}")
-                });
-                self
-            }
-            pub fn provider<T>(mut self, value: T) -> Self
-            where
-                T: ::std::convert::TryInto<super::OAuthProviderName>,
-                T::Error: ::std::fmt::Display,
-            {
-                self.provider = value
-                    .try_into()
-                    .map_err(|e| format!("error converting supplied value for provider: {e}"));
-                self
-            }
-            pub fn scopes<T>(mut self, value: T) -> Self
-            where
-                T: ::std::convert::TryInto<::std::vec::Vec<::std::string::String>>,
-                T::Error: ::std::fmt::Display,
-            {
-                self.scopes = value
-                    .try_into()
-                    .map_err(|e| format!("error converting supplied value for scopes: {e}"));
                 self
             }
             pub fn token_endpoint<T>(mut self, value: T) -> Self
@@ -9423,30 +10621,24 @@ pub mod types {
             }
         }
 
-        impl ::std::convert::TryFrom<OAuthProviderInfo> for super::OAuthProviderInfo {
+        impl ::std::convert::TryFrom<OAuthProviderDeviceInfo> for super::OAuthProviderDeviceInfo {
             type Error = super::error::ConversionError;
             fn try_from(
-                value: OAuthProviderInfo,
+                value: OAuthProviderDeviceInfo,
             ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
                     auth_url_endpoint: value.auth_url_endpoint?,
                     client_id: value.client_id?,
-                    device_code_endpoint: value.device_code_endpoint?,
-                    provider: value.provider?,
-                    scopes: value.scopes?,
                     token_endpoint: value.token_endpoint?,
                 })
             }
         }
 
-        impl ::std::convert::From<super::OAuthProviderInfo> for OAuthProviderInfo {
-            fn from(value: super::OAuthProviderInfo) -> Self {
+        impl ::std::convert::From<super::OAuthProviderDeviceInfo> for OAuthProviderDeviceInfo {
+            fn from(value: super::OAuthProviderDeviceInfo) -> Self {
                 Self {
                     auth_url_endpoint: Ok(value.auth_url_endpoint),
                     client_id: Ok(value.client_id),
-                    device_code_endpoint: Ok(value.device_code_endpoint),
-                    provider: Ok(value.provider),
-                    scopes: Ok(value.scopes),
                     token_endpoint: Ok(value.token_endpoint),
                 }
             }
@@ -9544,6 +10736,10 @@ pub mod types {
 
         #[derive(Clone, Debug)]
         pub struct RegisterBlobBody {
+            blob_time: ::std::result::Result<
+                ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                ::std::string::String,
+            >,
             idempotency_key: ::std::result::Result<
                 ::std::option::Option<::std::string::String>,
                 ::std::string::String,
@@ -9554,6 +10750,7 @@ pub mod types {
         impl ::std::default::Default for RegisterBlobBody {
             fn default() -> Self {
                 Self {
+                    blob_time: Ok(Default::default()),
                     idempotency_key: Ok(Default::default()),
                     size: Err("no value supplied for size".to_string()),
                 }
@@ -9561,6 +10758,18 @@ pub mod types {
         }
 
         impl RegisterBlobBody {
+            pub fn blob_time<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.blob_time = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for blob_time: {e}"));
+                self
+            }
             pub fn idempotency_key<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
@@ -9589,6 +10798,7 @@ pub mod types {
                 value: RegisterBlobBody,
             ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
+                    blob_time: value.blob_time?,
                     idempotency_key: value.idempotency_key?,
                     size: value.size?,
                 })
@@ -9598,6 +10808,7 @@ pub mod types {
         impl ::std::convert::From<super::RegisterBlobBody> for RegisterBlobBody {
             fn from(value: super::RegisterBlobBody) -> Self {
                 Self {
+                    blob_time: Ok(value.blob_time),
                     idempotency_key: Ok(value.idempotency_key),
                     size: Ok(value.size),
                 }
@@ -9653,12 +10864,16 @@ pub mod types {
                 super::TypedUuidForServerRegistrationInstanceId,
                 ::std::string::String,
             >,
+            project_id: ::std::result::Result<super::TypedUuidForProjectId, ::std::string::String>,
+            silo_id: ::std::result::Result<super::TypedUuidForSiloId, ::std::string::String>,
         }
 
         impl ::std::default::Default for RegisterServerBody {
             fn default() -> Self {
                 Self {
                     instance: Err("no value supplied for instance".to_string()),
+                    project_id: Err("no value supplied for project_id".to_string()),
+                    silo_id: Err("no value supplied for silo_id".to_string()),
                 }
             }
         }
@@ -9674,6 +10889,26 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for instance: {e}"));
                 self
             }
+            pub fn project_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::TypedUuidForProjectId>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.project_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for project_id: {e}"));
+                self
+            }
+            pub fn silo_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::TypedUuidForSiloId>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.silo_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for silo_id: {e}"));
+                self
+            }
         }
 
         impl ::std::convert::TryFrom<RegisterServerBody> for super::RegisterServerBody {
@@ -9683,6 +10918,8 @@ pub mod types {
             ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
                     instance: value.instance?,
+                    project_id: value.project_id?,
+                    silo_id: value.silo_id?,
                 })
             }
         }
@@ -9691,6 +10928,8 @@ pub mod types {
             fn from(value: super::RegisterServerBody) -> Self {
                 Self {
                     instance: Ok(value.instance),
+                    project_id: Ok(value.project_id),
+                    silo_id: Ok(value.silo_id),
                 }
             }
         }
@@ -9867,7 +11106,9 @@ pub mod types {
                 ::std::option::Option<::std::string::String>,
                 ::std::string::String,
             >,
+            project_id: ::std::result::Result<super::TypedUuidForProjectId, ::std::string::String>,
             service_id: ::std::result::Result<super::TypedUuidForServiceId, ::std::string::String>,
+            silo_id: ::std::result::Result<super::TypedUuidForSiloId, ::std::string::String>,
             state: ::std::result::Result<super::ServerRegistrationState, ::std::string::String>,
             updated_at: ::std::result::Result<
                 ::chrono::DateTime<::chrono::offset::Utc>,
@@ -9883,7 +11124,9 @@ pub mod types {
                     id: Err("no value supplied for id".to_string()),
                     instance_id: Err("no value supplied for instance_id".to_string()),
                     nonce: Ok(Default::default()),
+                    project_id: Err("no value supplied for project_id".to_string()),
                     service_id: Err("no value supplied for service_id".to_string()),
+                    silo_id: Err("no value supplied for silo_id".to_string()),
                     state: Err("no value supplied for state".to_string()),
                     updated_at: Err("no value supplied for updated_at".to_string()),
                 }
@@ -9943,6 +11186,16 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for nonce: {e}"));
                 self
             }
+            pub fn project_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::TypedUuidForProjectId>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.project_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for project_id: {e}"));
+                self
+            }
             pub fn service_id<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<super::TypedUuidForServiceId>,
@@ -9951,6 +11204,16 @@ pub mod types {
                 self.service_id = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for service_id: {e}"));
+                self
+            }
+            pub fn silo_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::TypedUuidForSiloId>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.silo_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for silo_id: {e}"));
                 self
             }
             pub fn state<T>(mut self, value: T) -> Self
@@ -9986,7 +11249,9 @@ pub mod types {
                     id: value.id?,
                     instance_id: value.instance_id?,
                     nonce: value.nonce?,
+                    project_id: value.project_id?,
                     service_id: value.service_id?,
+                    silo_id: value.silo_id?,
                     state: value.state?,
                     updated_at: value.updated_at?,
                 })
@@ -10001,7 +11266,9 @@ pub mod types {
                     id: Ok(value.id),
                     instance_id: Ok(value.instance_id),
                     nonce: Ok(value.nonce),
+                    project_id: Ok(value.project_id),
                     service_id: Ok(value.service_id),
+                    silo_id: Ok(value.silo_id),
                     state: Ok(value.state),
                     updated_at: Ok(value.updated_at),
                 }
@@ -10232,6 +11499,14 @@ pub mod types {
             }
         }
     }
+
+    /// Generation of default values for serde.
+    pub mod defaults {
+        pub(super) fn api_user_update_params_for_api_permissions_group_ids()
+        -> Vec<super::TypedUuidForAccessGroupId> {
+            vec![]
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -10362,7 +11637,10 @@ impl Client {
         builder::GetApiUser::new(self)
     }
 
-    /// Update the permissions assigned to a given user
+    /// Update the permissions assigned to a given user. These replace any
+    /// existing
+    ///
+    /// permissions.
     ///
     /// Sends a `POST` request to `/api-user/{user_id}`
     ///
@@ -10435,6 +11713,36 @@ impl Client {
     /// ```
     pub fn link_provider(&self) -> builder::LinkProvider<'_> {
         builder::LinkProvider::new(self)
+    }
+
+    /// Add a single permission to a user
+    ///
+    /// Sends a `POST` request to `/api-user/{user_id}/permission`
+    ///
+    /// ```ignore
+    /// let response = client.add_api_user_permission()
+    ///    .user_id(user_id)
+    ///    .body(body)
+    ///    .send()
+    ///    .await;
+    /// ```
+    pub fn add_api_user_permission(&self) -> builder::AddApiUserPermission<'_> {
+        builder::AddApiUserPermission::new(self)
+    }
+
+    /// Remove a single permission from a user
+    ///
+    /// Sends a `DELETE` request to `/api-user/{user_id}/permission`
+    ///
+    /// ```ignore
+    /// let response = client.remove_api_user_permission()
+    ///    .user_id(user_id)
+    ///    .body(body)
+    ///    .send()
+    ///    .await;
+    /// ```
+    pub fn remove_api_user_permission(&self) -> builder::RemoveApiUserPermission<'_> {
+        builder::RemoveApiUserPermission::new(self)
     }
 
     /// List api keys for a user
@@ -10681,10 +11989,22 @@ impl Client {
     ///
     /// Sends a `GET` request to `/login/oauth/{provider}/code/authorize`
     ///
+    /// Arguments:
+    /// - `provider`
+    /// - `client_id`
+    /// - `code_challenge`: PKCE code challenge (RFC 7636). Required for all
+    ///   authorization code flows.
+    /// - `code_challenge_method`: PKCE code challenge method. Must be "S256".
+    /// - `redirect_uri`
+    /// - `response_type`
+    /// - `scope`
+    /// - `state`
     /// ```ignore
     /// let response = client.authz_code_redirect()
     ///    .provider(provider)
     ///    .client_id(client_id)
+    ///    .code_challenge(code_challenge)
+    ///    .code_challenge_method(code_challenge_method)
     ///    .redirect_uri(redirect_uri)
     ///    .response_type(response_type)
     ///    .scope(scope)
@@ -10720,6 +12040,7 @@ impl Client {
     /// ```ignore
     /// let response = client.authz_code_exchange()
     ///    .provider(provider)
+    ///    .request_idp_token(request_idp_token)
     ///    .body(body)
     ///    .send()
     ///    .await;
@@ -10728,7 +12049,8 @@ impl Client {
         builder::AuthzCodeExchange::new(self)
     }
 
-    /// Retrieve the metadata about an OAuth provider
+    /// Retrieve the metadata about an OAuth provider for device authorization
+    /// flow
     ///
     /// Sends a `GET` request to `/login/oauth/{provider}/device`
     ///
@@ -10742,7 +12064,27 @@ impl Client {
         builder::GetDeviceProvider::new(self)
     }
 
-    /// Exchange an OAuth device code request for an access token
+    /// Initiate a device authorization flow by proxying the request to the
+    ///
+    /// upstream OAuth provider. Creates a login attempt and returns the
+    /// upstream device authorization response.
+    ///
+    /// Sends a `POST` request to `/login/oauth/{provider}/device`
+    ///
+    /// ```ignore
+    /// let response = client.device_authz()
+    ///    .provider(provider)
+    ///    .body(body)
+    ///    .send()
+    ///    .await;
+    /// ```
+    pub fn device_authz(&self) -> builder::DeviceAuthz<'_> {
+        builder::DeviceAuthz::new(self)
+    }
+
+    /// Exchange an OAuth device code for an access token. The client polls
+    ///
+    /// this endpoint until the user completes authorization.
     ///
     /// Sends a `POST` request to `/login/oauth/{provider}/device/exchange`
     ///
@@ -10755,6 +12097,21 @@ impl Client {
     /// ```
     pub fn exchange_device_token(&self) -> builder::ExchangeDeviceToken<'_> {
         builder::ExchangeDeviceToken::new(self)
+    }
+
+    /// Retrieve the metadata about an OAuth provider for public PKCE
+    /// authorization code flow
+    ///
+    /// Sends a `GET` request to `/login/oauth/{provider}/public-pkce`
+    ///
+    /// ```ignore
+    /// let response = client.get_web_pkce_provider()
+    ///    .provider(provider)
+    ///    .send()
+    ///    .await;
+    /// ```
+    pub fn get_web_pkce_provider(&self) -> builder::GetWebPkceProvider<'_> {
+        builder::GetWebPkceProvider::new(self)
     }
 
     /// List Magic Link clients
@@ -11169,6 +12526,68 @@ impl Client {
     /// ```
     pub fn get_service(&self) -> builder::GetService<'_> {
         builder::GetService::new(self)
+    }
+
+    /// List all deployments for a service
+    ///
+    /// Sends a `GET` request to `/service/{service}/deployment`
+    ///
+    /// ```ignore
+    /// let response = client.list_deployments()
+    ///    .service(service)
+    ///    .send()
+    ///    .await;
+    /// ```
+    pub fn list_deployments(&self) -> builder::ListDeployments<'_> {
+        builder::ListDeployments::new(self)
+    }
+
+    /// Create a new deployment for a service
+    ///
+    /// A deployment represents a project/silo pair where the service is
+    /// deployed.
+    ///
+    /// Sends a `POST` request to `/service/{service}/deployment`
+    ///
+    /// ```ignore
+    /// let response = client.create_deployment()
+    ///    .service(service)
+    ///    .body(body)
+    ///    .send()
+    ///    .await;
+    /// ```
+    pub fn create_deployment(&self) -> builder::CreateDeployment<'_> {
+        builder::CreateDeployment::new(self)
+    }
+
+    /// Get a deployment by its id
+    ///
+    /// Sends a `GET` request to `/service/{service}/deployment/{deployment}`
+    ///
+    /// ```ignore
+    /// let response = client.get_deployment()
+    ///    .service(service)
+    ///    .deployment(deployment)
+    ///    .send()
+    ///    .await;
+    /// ```
+    pub fn get_deployment(&self) -> builder::GetDeployment<'_> {
+        builder::GetDeployment::new(self)
+    }
+
+    /// Delete a deployment from a service
+    ///
+    /// Sends a `DELETE` request to `/service/{service}/deployment/{deployment}`
+    ///
+    /// ```ignore
+    /// let response = client.delete_deployment()
+    ///    .service(service)
+    ///    .deployment(deployment)
+    ///    .send()
+    ///    .await;
+    /// ```
+    pub fn delete_deployment(&self) -> builder::DeleteDeployment<'_> {
+        builder::DeleteDeployment::new(self)
     }
 
     /// Request a server be registered as a representative instance of a service
@@ -12058,6 +13477,232 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
+                400u16..=499u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                500u16..=599u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+
+    /// Builder for [`Client::add_api_user_permission`]
+    ///
+    /// [`Client::add_api_user_permission`]: super::Client::add_api_user_permission
+    #[derive(Debug, Clone)]
+    pub struct AddApiUserPermission<'a> {
+        client: &'a super::Client,
+        user_id: Result<types::TypedUuidForUserId, String>,
+        body: Result<types::builder::ApiUserPermissionParamsForApiPermissions, String>,
+    }
+
+    impl<'a> AddApiUserPermission<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                user_id: Err("user_id was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+
+        pub fn user_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::TypedUuidForUserId>,
+        {
+            self.user_id = value
+                .try_into()
+                .map_err(|_| "conversion to `TypedUuidForUserId` for user_id failed".to_string());
+            self
+        }
+
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::ApiUserPermissionParamsForApiPermissions>,
+            <V as std::convert::TryInto<types::ApiUserPermissionParamsForApiPermissions>>::Error:
+                std::fmt::Display,
+        {
+            self.body = value.try_into().map(From::from).map_err(|s| {
+                format!(
+                    "conversion to `ApiUserPermissionParamsForApiPermissions` for body failed: {}",
+                    s
+                )
+            });
+            self
+        }
+
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::ApiUserPermissionParamsForApiPermissions,
+                )
+                    -> types::builder::ApiUserPermissionParamsForApiPermissions,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+
+        /// Sends a `POST` request to `/api-user/{user_id}/permission`
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<types::GetUserResponseForApiPermissions>, Error<types::Error>>
+        {
+            let Self {
+                client,
+                user_id,
+                body,
+            } = self;
+            let user_id = user_id.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| {
+                    types::ApiUserPermissionParamsForApiPermissions::try_from(v)
+                        .map_err(|e| e.to_string())
+                })
+                .map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api-user/{}/permission",
+                client.baseurl,
+                encode_path(&user_id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "add_api_user_permission",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                400u16..=499u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                500u16..=599u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+
+    /// Builder for [`Client::remove_api_user_permission`]
+    ///
+    /// [`Client::remove_api_user_permission`]: super::Client::remove_api_user_permission
+    #[derive(Debug, Clone)]
+    pub struct RemoveApiUserPermission<'a> {
+        client: &'a super::Client,
+        user_id: Result<types::TypedUuidForUserId, String>,
+        body: Result<types::builder::ApiUserPermissionParamsForApiPermissions, String>,
+    }
+
+    impl<'a> RemoveApiUserPermission<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                user_id: Err("user_id was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+
+        pub fn user_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::TypedUuidForUserId>,
+        {
+            self.user_id = value
+                .try_into()
+                .map_err(|_| "conversion to `TypedUuidForUserId` for user_id failed".to_string());
+            self
+        }
+
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::ApiUserPermissionParamsForApiPermissions>,
+            <V as std::convert::TryInto<types::ApiUserPermissionParamsForApiPermissions>>::Error:
+                std::fmt::Display,
+        {
+            self.body = value.try_into().map(From::from).map_err(|s| {
+                format!(
+                    "conversion to `ApiUserPermissionParamsForApiPermissions` for body failed: {}",
+                    s
+                )
+            });
+            self
+        }
+
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::ApiUserPermissionParamsForApiPermissions,
+                )
+                    -> types::builder::ApiUserPermissionParamsForApiPermissions,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+
+        /// Sends a `DELETE` request to `/api-user/{user_id}/permission`
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<types::GetUserResponseForApiPermissions>, Error<types::Error>>
+        {
+            let Self {
+                client,
+                user_id,
+                body,
+            } = self;
+            let user_id = user_id.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| {
+                    types::ApiUserPermissionParamsForApiPermissions::try_from(v)
+                        .map_err(|e| e.to_string())
+                })
+                .map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api-user/{}/permission",
+                client.baseurl,
+                encode_path(&user_id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .delete(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "remove_api_user_permission",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
                 400u16..=499u16 => Err(Error::ErrorResponse(
                     ResponseValue::from_response(response).await?,
                 )),
@@ -13491,6 +15136,8 @@ pub mod builder {
         client: &'a super::Client,
         provider: Result<types::OAuthProviderName, String>,
         client_id: Result<types::TypedUuidForOAuthClientId, String>,
+        code_challenge: Result<::std::string::String, String>,
+        code_challenge_method: Result<::std::string::String, String>,
         redirect_uri: Result<::std::string::String, String>,
         response_type: Result<::std::string::String, String>,
         scope: Result<Option<::std::string::String>, String>,
@@ -13503,6 +15150,8 @@ pub mod builder {
                 client: client,
                 provider: Err("provider was not initialized".to_string()),
                 client_id: Err("client_id was not initialized".to_string()),
+                code_challenge: Err("code_challenge was not initialized".to_string()),
+                code_challenge_method: Err("code_challenge_method was not initialized".to_string()),
                 redirect_uri: Err("redirect_uri was not initialized".to_string()),
                 response_type: Err("response_type was not initialized".to_string()),
                 scope: Ok(None),
@@ -13526,6 +15175,27 @@ pub mod builder {
         {
             self.client_id = value.try_into().map_err(|_| {
                 "conversion to `TypedUuidForOAuthClientId` for client_id failed".to_string()
+            });
+            self
+        }
+
+        pub fn code_challenge<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.code_challenge = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for code_challenge failed".to_string()
+            });
+            self
+        }
+
+        pub fn code_challenge_method<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.code_challenge_method = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for code_challenge_method failed"
+                    .to_string()
             });
             self
         }
@@ -13576,6 +15246,8 @@ pub mod builder {
                 client,
                 provider,
                 client_id,
+                code_challenge,
+                code_challenge_method,
                 redirect_uri,
                 response_type,
                 scope,
@@ -13583,6 +15255,8 @@ pub mod builder {
             } = self;
             let provider = provider.map_err(Error::InvalidRequest)?;
             let client_id = client_id.map_err(Error::InvalidRequest)?;
+            let code_challenge = code_challenge.map_err(Error::InvalidRequest)?;
+            let code_challenge_method = code_challenge_method.map_err(Error::InvalidRequest)?;
             let redirect_uri = redirect_uri.map_err(Error::InvalidRequest)?;
             let response_type = response_type.map_err(Error::InvalidRequest)?;
             let scope = scope.map_err(Error::InvalidRequest)?;
@@ -13602,6 +15276,14 @@ pub mod builder {
                 .client
                 .get(url)
                 .query(&progenitor_client::QueryParam::new("client_id", &client_id))
+                .query(&progenitor_client::QueryParam::new(
+                    "code_challenge",
+                    &code_challenge,
+                ))
+                .query(&progenitor_client::QueryParam::new(
+                    "code_challenge_method",
+                    &code_challenge_method,
+                ))
                 .query(&progenitor_client::QueryParam::new(
                     "redirect_uri",
                     &redirect_uri,
@@ -13756,6 +15438,7 @@ pub mod builder {
     pub struct AuthzCodeExchange<'a> {
         client: &'a super::Client,
         provider: Result<types::OAuthProviderName, String>,
+        request_idp_token: Result<Option<bool>, String>,
         body: Result<types::builder::OAuthAuthzCodeExchangeBody, String>,
     }
 
@@ -13764,6 +15447,7 @@ pub mod builder {
             Self {
                 client: client,
                 provider: Err("provider was not initialized".to_string()),
+                request_idp_token: Ok(None),
                 body: Ok(::std::default::Default::default()),
             }
         }
@@ -13775,6 +15459,17 @@ pub mod builder {
             self.provider = value
                 .try_into()
                 .map_err(|_| "conversion to `OAuthProviderName` for provider failed".to_string());
+            self
+        }
+
+        pub fn request_idp_token<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<bool>,
+        {
+            self.request_idp_token = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `bool` for request_idp_token failed".to_string());
             self
         }
 
@@ -13811,9 +15506,11 @@ pub mod builder {
             let Self {
                 client,
                 provider,
+                request_idp_token,
                 body,
             } = self;
             let provider = provider.map_err(Error::InvalidRequest)?;
+            let request_idp_token = request_idp_token.map_err(Error::InvalidRequest)?;
             let body = body
                 .and_then(|v| {
                     types::OAuthAuthzCodeExchangeBody::try_from(v).map_err(|e| e.to_string())
@@ -13838,6 +15535,10 @@ pub mod builder {
                     ::reqwest::header::HeaderValue::from_static("application/json"),
                 )
                 .form_urlencoded(&body)?
+                .query(&progenitor_client::QueryParam::new(
+                    "request_idp_token",
+                    &request_idp_token,
+                ))
                 .headers(header_map)
                 .build()?;
             let info = OperationInfo {
@@ -13890,7 +15591,7 @@ pub mod builder {
         /// Sends a `GET` request to `/login/oauth/{provider}/device`
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<types::OAuthProviderInfo>, Error<types::Error>> {
+        ) -> Result<ResponseValue<types::OAuthProviderDeviceInfo>, Error<types::Error>> {
             let Self { client, provider } = self;
             let provider = provider.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -13933,6 +15634,104 @@ pub mod builder {
         }
     }
 
+    /// Builder for [`Client::device_authz`]
+    ///
+    /// [`Client::device_authz`]: super::Client::device_authz
+    #[derive(Debug, Clone)]
+    pub struct DeviceAuthz<'a> {
+        client: &'a super::Client,
+        provider: Result<types::OAuthProviderName, String>,
+        body: Result<types::builder::DeviceAuthorizationRequest, String>,
+    }
+
+    impl<'a> DeviceAuthz<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                provider: Err("provider was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+
+        pub fn provider<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::OAuthProviderName>,
+        {
+            self.provider = value
+                .try_into()
+                .map_err(|_| "conversion to `OAuthProviderName` for provider failed".to_string());
+            self
+        }
+
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::DeviceAuthorizationRequest>,
+            <V as std::convert::TryInto<types::DeviceAuthorizationRequest>>::Error:
+                std::fmt::Display,
+        {
+            self.body = value.try_into().map(From::from).map_err(|s| {
+                format!(
+                    "conversion to `DeviceAuthorizationRequest` for body failed: {}",
+                    s
+                )
+            });
+            self
+        }
+
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::DeviceAuthorizationRequest,
+                ) -> types::builder::DeviceAuthorizationRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+
+        /// Sends a `POST` request to `/login/oauth/{provider}/device`
+        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error<ByteStream>> {
+            let Self {
+                client,
+                provider,
+                body,
+            } = self;
+            let provider = provider.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| {
+                    types::DeviceAuthorizationRequest::try_from(v).map_err(|e| e.to_string())
+                })
+                .map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/login/oauth/{}/device",
+                client.baseurl,
+                encode_path(&provider.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "device_authz",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200..=299 => Ok(ResponseValue::stream(response)),
+                _ => Err(Error::ErrorResponse(ResponseValue::stream(response))),
+            }
+        }
+    }
+
     /// Builder for [`Client::exchange_device_token`]
     ///
     /// [`Client::exchange_device_token`]: super::Client::exchange_device_token
@@ -13940,7 +15739,7 @@ pub mod builder {
     pub struct ExchangeDeviceToken<'a> {
         client: &'a super::Client,
         provider: Result<types::OAuthProviderName, String>,
-        body: Result<types::builder::AccessTokenExchangeRequest, String>,
+        body: Result<types::builder::DeviceTokenExchangeRequest, String>,
     }
 
     impl<'a> ExchangeDeviceToken<'a> {
@@ -13964,13 +15763,13 @@ pub mod builder {
 
         pub fn body<V>(mut self, value: V) -> Self
         where
-            V: std::convert::TryInto<types::AccessTokenExchangeRequest>,
-            <V as std::convert::TryInto<types::AccessTokenExchangeRequest>>::Error:
+            V: std::convert::TryInto<types::DeviceTokenExchangeRequest>,
+            <V as std::convert::TryInto<types::DeviceTokenExchangeRequest>>::Error:
                 std::fmt::Display,
         {
             self.body = value.try_into().map(From::from).map_err(|s| {
                 format!(
-                    "conversion to `AccessTokenExchangeRequest` for body failed: {}",
+                    "conversion to `DeviceTokenExchangeRequest` for body failed: {}",
                     s
                 )
             });
@@ -13980,8 +15779,8 @@ pub mod builder {
         pub fn body_map<F>(mut self, f: F) -> Self
         where
             F: std::ops::FnOnce(
-                    types::builder::AccessTokenExchangeRequest,
-                ) -> types::builder::AccessTokenExchangeRequest,
+                    types::builder::DeviceTokenExchangeRequest,
+                ) -> types::builder::DeviceTokenExchangeRequest,
         {
             self.body = self.body.map(f);
             self
@@ -13997,7 +15796,7 @@ pub mod builder {
             let provider = provider.map_err(Error::InvalidRequest)?;
             let body = body
                 .and_then(|v| {
-                    types::AccessTokenExchangeRequest::try_from(v).map_err(|e| e.to_string())
+                    types::DeviceTokenExchangeRequest::try_from(v).map_err(|e| e.to_string())
                 })
                 .map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -14027,6 +15826,80 @@ pub mod builder {
             match response.status().as_u16() {
                 200..=299 => Ok(ResponseValue::stream(response)),
                 _ => Err(Error::ErrorResponse(ResponseValue::stream(response))),
+            }
+        }
+    }
+
+    /// Builder for [`Client::get_web_pkce_provider`]
+    ///
+    /// [`Client::get_web_pkce_provider`]: super::Client::get_web_pkce_provider
+    #[derive(Debug, Clone)]
+    pub struct GetWebPkceProvider<'a> {
+        client: &'a super::Client,
+        provider: Result<types::OAuthProviderName, String>,
+    }
+
+    impl<'a> GetWebPkceProvider<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                provider: Err("provider was not initialized".to_string()),
+            }
+        }
+
+        pub fn provider<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::OAuthProviderName>,
+        {
+            self.provider = value
+                .try_into()
+                .map_err(|_| "conversion to `OAuthProviderName` for provider failed".to_string());
+            self
+        }
+
+        /// Sends a `GET` request to `/login/oauth/{provider}/public-pkce`
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<types::OAuthProviderAuthorizationCodePkceInfo>, Error<types::Error>>
+        {
+            let Self { client, provider } = self;
+            let provider = provider.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/login/oauth/{}/public-pkce",
+                client.baseurl,
+                encode_path(&provider.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "get_web_pkce_provider",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                400u16..=499u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                500u16..=599u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                _ => Err(Error::UnexpectedResponse(response)),
             }
         }
     }
@@ -16244,6 +18117,365 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
+                400u16..=499u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                500u16..=599u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+
+    /// Builder for [`Client::list_deployments`]
+    ///
+    /// [`Client::list_deployments`]: super::Client::list_deployments
+    #[derive(Debug, Clone)]
+    pub struct ListDeployments<'a> {
+        client: &'a super::Client,
+        service: Result<types::TypedUuidForServiceId, String>,
+    }
+
+    impl<'a> ListDeployments<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                service: Err("service was not initialized".to_string()),
+            }
+        }
+
+        pub fn service<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::TypedUuidForServiceId>,
+        {
+            self.service = value.try_into().map_err(|_| {
+                "conversion to `TypedUuidForServiceId` for service failed".to_string()
+            });
+            self
+        }
+
+        /// Sends a `GET` request to `/service/{service}/deployment`
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<::std::vec::Vec<types::Deployment>>, Error<types::Error>>
+        {
+            let Self { client, service } = self;
+            let service = service.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/service/{}/deployment",
+                client.baseurl,
+                encode_path(&service.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "list_deployments",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                400u16..=499u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                500u16..=599u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+
+    /// Builder for [`Client::create_deployment`]
+    ///
+    /// [`Client::create_deployment`]: super::Client::create_deployment
+    #[derive(Debug, Clone)]
+    pub struct CreateDeployment<'a> {
+        client: &'a super::Client,
+        service: Result<types::TypedUuidForServiceId, String>,
+        body: Result<types::builder::CreateDeploymentBody, String>,
+    }
+
+    impl<'a> CreateDeployment<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                service: Err("service was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+
+        pub fn service<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::TypedUuidForServiceId>,
+        {
+            self.service = value.try_into().map_err(|_| {
+                "conversion to `TypedUuidForServiceId` for service failed".to_string()
+            });
+            self
+        }
+
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::CreateDeploymentBody>,
+            <V as std::convert::TryInto<types::CreateDeploymentBody>>::Error: std::fmt::Display,
+        {
+            self.body = value.try_into().map(From::from).map_err(|s| {
+                format!(
+                    "conversion to `CreateDeploymentBody` for body failed: {}",
+                    s
+                )
+            });
+            self
+        }
+
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::CreateDeploymentBody,
+                ) -> types::builder::CreateDeploymentBody,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+
+        /// Sends a `POST` request to `/service/{service}/deployment`
+        pub async fn send(self) -> Result<ResponseValue<types::Deployment>, Error<types::Error>> {
+            let Self {
+                client,
+                service,
+                body,
+            } = self;
+            let service = service.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| types::CreateDeploymentBody::try_from(v).map_err(|e| e.to_string()))
+                .map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/service/{}/deployment",
+                client.baseurl,
+                encode_path(&service.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "create_deployment",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                400u16..=499u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                500u16..=599u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+
+    /// Builder for [`Client::get_deployment`]
+    ///
+    /// [`Client::get_deployment`]: super::Client::get_deployment
+    #[derive(Debug, Clone)]
+    pub struct GetDeployment<'a> {
+        client: &'a super::Client,
+        service: Result<types::TypedUuidForServiceId, String>,
+        deployment: Result<types::TypedUuidForDeploymentId, String>,
+    }
+
+    impl<'a> GetDeployment<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                service: Err("service was not initialized".to_string()),
+                deployment: Err("deployment was not initialized".to_string()),
+            }
+        }
+
+        pub fn service<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::TypedUuidForServiceId>,
+        {
+            self.service = value.try_into().map_err(|_| {
+                "conversion to `TypedUuidForServiceId` for service failed".to_string()
+            });
+            self
+        }
+
+        pub fn deployment<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::TypedUuidForDeploymentId>,
+        {
+            self.deployment = value.try_into().map_err(|_| {
+                "conversion to `TypedUuidForDeploymentId` for deployment failed".to_string()
+            });
+            self
+        }
+
+        /// Sends a `GET` request to
+        /// `/service/{service}/deployment/{deployment}`
+        pub async fn send(self) -> Result<ResponseValue<types::Deployment>, Error<types::Error>> {
+            let Self {
+                client,
+                service,
+                deployment,
+            } = self;
+            let service = service.map_err(Error::InvalidRequest)?;
+            let deployment = deployment.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/service/{}/deployment/{}",
+                client.baseurl,
+                encode_path(&service.to_string()),
+                encode_path(&deployment.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "get_deployment",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                400u16..=499u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                500u16..=599u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+
+    /// Builder for [`Client::delete_deployment`]
+    ///
+    /// [`Client::delete_deployment`]: super::Client::delete_deployment
+    #[derive(Debug, Clone)]
+    pub struct DeleteDeployment<'a> {
+        client: &'a super::Client,
+        service: Result<types::TypedUuidForServiceId, String>,
+        deployment: Result<types::TypedUuidForDeploymentId, String>,
+    }
+
+    impl<'a> DeleteDeployment<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                service: Err("service was not initialized".to_string()),
+                deployment: Err("deployment was not initialized".to_string()),
+            }
+        }
+
+        pub fn service<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::TypedUuidForServiceId>,
+        {
+            self.service = value.try_into().map_err(|_| {
+                "conversion to `TypedUuidForServiceId` for service failed".to_string()
+            });
+            self
+        }
+
+        pub fn deployment<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::TypedUuidForDeploymentId>,
+        {
+            self.deployment = value.try_into().map_err(|_| {
+                "conversion to `TypedUuidForDeploymentId` for deployment failed".to_string()
+            });
+            self
+        }
+
+        /// Sends a `DELETE` request to
+        /// `/service/{service}/deployment/{deployment}`
+        pub async fn send(self) -> Result<ResponseValue<()>, Error<types::Error>> {
+            let Self {
+                client,
+                service,
+                deployment,
+            } = self;
+            let service = service.map_err(Error::InvalidRequest)?;
+            let deployment = deployment.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/service/{}/deployment/{}",
+                client.baseurl,
+                encode_path(&service.to_string()),
+                encode_path(&deployment.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .delete(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "delete_deployment",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                204u16 => Ok(ResponseValue::empty(response)),
                 400u16..=499u16 => Err(Error::ErrorResponse(
                     ResponseValue::from_response(response).await?,
                 )),

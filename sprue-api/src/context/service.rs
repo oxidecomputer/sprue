@@ -9,10 +9,13 @@ use thiserror::Error;
 use v_model::permissions::Caller;
 
 use sprue_model::{
-    HealthCheck, InvalidStateTransition, ServerRegistration, ServerRegistrationId,
-    ServerRegistrationInstanceId, Service, ServiceId,
-    db::{NewHealthCheckModel, NewServerRegistrationModel, NewServiceModel},
-    storage::{HealthCheckStorage, ServerRegistrationStorage, ServiceStorage, StorageError},
+    Deployment, DeploymentId, HealthCheck, InvalidStateTransition, ProjectId, ServerRegistration,
+    ServerRegistrationId, ServerRegistrationInstanceId, Service, ServiceId, SiloId,
+    db::{NewDeploymentModel, NewHealthCheckModel, NewServerRegistrationModel, NewServiceModel},
+    storage::{
+        DeploymentStorage, HealthCheckStorage, ServerRegistrationStorage, ServiceStorage,
+        StorageError,
+    },
 };
 use v_api::response::{
     OptionalResource, ResourceError, ResourceErrorInner, ResourceResult, resource_restricted,
@@ -29,11 +32,11 @@ pub enum ServiceError {
 }
 
 pub trait ServiceContextStorage:
-    ServiceStorage + ServerRegistrationStorage + HealthCheckStorage
+    ServiceStorage + DeploymentStorage + ServerRegistrationStorage + HealthCheckStorage
 {
 }
-impl<T: ServiceStorage + ServerRegistrationStorage + HealthCheckStorage> ServiceContextStorage
-    for T
+impl<T: ServiceStorage + DeploymentStorage + ServerRegistrationStorage + HealthCheckStorage>
+    ServiceContextStorage for T
 {
 }
 
@@ -155,6 +158,8 @@ impl ServiceContext {
         caller: &Caller<ApiPermissions>,
         service: TypedUuid<ServiceId>,
         instance: TypedUuid<ServerRegistrationInstanceId>,
+        project_id: TypedUuid<ProjectId>,
+        silo_id: TypedUuid<SiloId>,
         nonce: String,
     ) -> ResourceResult<ServerRegistration, ServiceError> {
         let service = self.get_service(caller, service).await?;
@@ -178,6 +183,8 @@ impl ServiceContext {
                     .create_server_registration(&NewServerRegistrationModel {
                         service_id: service.id,
                         instance_id: instance,
+                        project_id,
+                        silo_id,
                         nonce: Some(nonce),
                         expires_at: Some(Utc::now().add(self.max_server_registration_age)),
                     })
@@ -330,6 +337,111 @@ impl ServiceContext {
                 .inner_err_into()?
                 .into();
             Ok(record)
+        } else {
+            resource_restricted()
+        }
+    }
+
+    pub async fn create_deployment(
+        &self,
+        caller: &Caller<ApiPermissions>,
+        service_id: TypedUuid<ServiceId>,
+        project_id: TypedUuid<ProjectId>,
+        silo_id: TypedUuid<SiloId>,
+    ) -> ResourceResult<Deployment, ServiceError> {
+        if caller.any(
+            [
+                ApiPermissions::ManageService(service_id),
+                ApiPermissions::ManageServicesAll,
+            ]
+            .iter(),
+        ) {
+            Ok(self
+                .storage
+                .create_deployment(&NewDeploymentModel {
+                    service_id,
+                    project_id,
+                    silo_id,
+                })
+                .await
+                .map_err(ResourceError::InternalError)
+                .inner_err_into()?
+                .into())
+        } else {
+            resource_restricted()
+        }
+    }
+
+    pub async fn get_deployment(
+        &self,
+        caller: &Caller<ApiPermissions>,
+        deployment_id: TypedUuid<DeploymentId>,
+    ) -> ResourceResult<Deployment, ServiceError> {
+        let deployment: Deployment = self
+            .storage
+            .get_deployment(deployment_id)
+            .await
+            .optional()?
+            .into();
+
+        if caller.any(
+            [
+                ApiPermissions::GetService(deployment.service_id),
+                ApiPermissions::GetServicesAll,
+            ]
+            .iter(),
+        ) {
+            Ok(deployment)
+        } else {
+            resource_restricted()
+        }
+    }
+
+    pub async fn list_deployments(
+        &self,
+        caller: &Caller<ApiPermissions>,
+        service_id: TypedUuid<ServiceId>,
+    ) -> ResourceResult<Vec<Deployment>, ServiceError> {
+        if caller.any(
+            [
+                ApiPermissions::GetService(service_id),
+                ApiPermissions::GetServicesAll,
+            ]
+            .iter(),
+        ) {
+            let deployments = self
+                .storage
+                .list_deployments_by_service_id(service_id)
+                .await
+                .map_err(ResourceError::InternalError)
+                .inner_err_into()?
+                .into_iter()
+                .map(Into::into)
+                .collect();
+
+            Ok(deployments)
+        } else {
+            resource_restricted()
+        }
+    }
+
+    pub async fn delete_deployment(
+        &self,
+        caller: &Caller<ApiPermissions>,
+        deployment: &Deployment,
+    ) -> ResourceResult<(), ServiceError> {
+        if caller.any(
+            [
+                ApiPermissions::ManageService(deployment.service_id),
+                ApiPermissions::ManageServicesAll,
+            ]
+            .iter(),
+        ) {
+            Ok(self
+                .storage
+                .delete_deployment(deployment.id)
+                .await
+                .optional()?)
         } else {
             resource_restricted()
         }

@@ -10,7 +10,6 @@ use clap_complete::{Shell, generate};
 use generated::cli::{CliConfig as ProgenitorCliConfig, *};
 use owo_colors::OwoColorize;
 use owo_colors::colors::xterm::DarkGreen;
-use printer::{CliOutput, Printer};
 use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderValue};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -18,92 +17,18 @@ use sprue_sdk::Client;
 use std::fmt::{Debug, Display};
 use std::time::Duration;
 use std::{collections::HashMap, error::Error};
-use store::CliConfig;
-use uuid::timestamp::context;
+use v_cli_sdk::{
+    printer::Printer,
+    {FormatStyle, VCliConfig, VCliContext, VerbosityLevel},
+};
 
-mod cmd;
-mod err;
+use crate::auth::LoginProvider;
+use crate::context::Context;
+
+mod auth;
+mod config;
+mod context;
 mod generated;
-mod printer;
-mod store;
-
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum VerbosityLevel {
-    None,
-    All,
-}
-
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Clone, Serialize, Deserialize)]
-pub enum FormatStyle {
-    #[value(name = "json")]
-    Json,
-    #[value(name = "tab")]
-    Tab,
-}
-
-impl Display for FormatStyle {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Json => write!(f, "json"),
-            Self::Tab => write!(f, "tab"),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct Context {
-    config: CliConfig,
-    client: Option<Client>,
-    printer: Option<Printer>,
-    verbosity: VerbosityLevel,
-}
-
-impl Context {
-    pub fn new() -> Result<Self> {
-        let config = CliConfig::new()?;
-
-        Ok(Self {
-            config,
-            client: None,
-            printer: None,
-            verbosity: VerbosityLevel::None,
-        })
-    }
-
-    pub fn new_client(&self, token: Option<&str>) -> Result<Client> {
-        let mut default_headers = HeaderMap::new();
-
-        if let Some(token) = token {
-            let mut auth_header = HeaderValue::from_str(&format!("Bearer {}", token))?;
-            // auth_header.set_sensitive(true);
-            default_headers.insert(AUTHORIZATION, auth_header);
-        }
-
-        let http_client = reqwest::Client::builder()
-            .default_headers(default_headers)
-            .connect_timeout(Duration::from_secs(5))
-            .timeout(Duration::from_secs(10))
-            .build()?;
-
-        Ok(Client::new_with_client(self.config.host()?, http_client))
-    }
-
-    pub fn client(&mut self) -> Result<&Client> {
-        if self.client.is_none() {
-            self.client = Some(Self::new_client(self, self.config.token().ok())?);
-        }
-
-        self.client
-            .as_ref()
-            .ok_or_else(|| anyhow!("Failed to construct client"))
-    }
-
-    pub fn printer(&self) -> Result<&Printer> {
-        self.printer
-            .as_ref()
-            .ok_or_else(|| anyhow!("No printer configured"))
-    }
-}
 
 #[derive(Debug, Default)]
 struct Tree<'a> {
@@ -135,6 +60,11 @@ fn cmd_path<'a>(cmd: &CliCommand) -> Option<&'a str> {
         CliCommand::GetService => Some("service get"),
         CliCommand::GetServiceServers => Some("service server list"),
 
+        CliCommand::CreateDeployment => Some("deployment create"),
+        CliCommand::GetDeployment => Some("deployment get"),
+        CliCommand::ListDeployments => Some("deployment list"),
+        CliCommand::DeleteDeployment => Some("deployment delete"),
+
         CliCommand::RegisterServer => Some("server register"),
         CliCommand::AcceptServer => Some("server accept"),
         CliCommand::ProveServer => Some("server prove"),
@@ -162,6 +92,8 @@ fn cmd_path<'a>(cmd: &CliCommand) -> Option<&'a str> {
         CliCommand::UpdateApiUser => Some("sys user update"),
         CliCommand::GetSelf => Some("self"),
         CliCommand::SetApiUserContactEmail => Some("sys user contact email set"),
+        CliCommand::AddApiUserPermission => Some("sys user permission add"),
+        CliCommand::RemoveApiUserPermission => Some("sys user permission remove"),
 
         // Link commands are handled separately
         CliCommand::CreateLinkToken => None,
@@ -212,6 +144,10 @@ fn cmd_path<'a>(cmd: &CliCommand) -> Option<&'a str> {
         CliCommand::AuthzCodeCallback => None,
         CliCommand::AuthzCodeExchange => None,
         CliCommand::OpenidConfiguration => None,
+        CliCommand::DeviceAuthz => None,
+        CliCommand::ExchangeDeviceToken => None,
+        CliCommand::GetDeviceProvider => None,
+        CliCommand::GetWebPkceProvider => None,
         CliCommand::JwksJson => None,
     }
 }
@@ -267,8 +203,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 .action(ArgAction::Set),
         );
 
-    cmd = cmd.subcommand(cmd::auth::Auth::command());
-    cmd = cmd.subcommand(cmd::config::ConfigCmd::command());
+    cmd = cmd.subcommand(v_cli_sdk::cmd::auth::Auth::<LoginProvider>::command());
+    cmd = cmd.subcommand(v_cli_sdk::cmd::config::ConfigCmd::command());
     cmd = cmd.subcommand(
         Command::new("completion")
             .about("Generate shell completions")
@@ -288,18 +224,18 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let matches = cmd.clone().get_matches();
 
     if matches.try_get_one::<bool>("debug").ok().is_some() {
-        ctx.verbosity = VerbosityLevel::All;
+        ctx.set_verbosity(VerbosityLevel::All);
     }
 
     let format = matches
         .try_get_one::<FormatStyle>("format")
         .unwrap()
         .cloned()
-        .unwrap_or_else(|| ctx.config.format_style());
-    ctx.printer = Some(match format {
+        .unwrap_or_else(|| ctx.config().default_format());
+    ctx.set_printer(Some(match format {
         FormatStyle::Json => Printer::Json,
         FormatStyle::Tab => Printer::Tab,
-    });
+    }));
 
     let mut node = &root;
     let mut sm = &matches;
@@ -315,13 +251,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
             return Ok(());
         }
         Some(("auth", sub_matches)) => {
-            cmd::auth::Auth::from_arg_matches(sub_matches)
+            v_cli_sdk::cmd::auth::Auth::<LoginProvider>::from_arg_matches(sub_matches)
                 .unwrap()
                 .run(&mut ctx)
                 .await?;
         }
         Some(("config", sub_matches)) => {
-            cmd::config::ConfigCmd::from_arg_matches(sub_matches)
+            v_cli_sdk::cmd::config::ConfigCmd::from_arg_matches(sub_matches)
                 .unwrap()
                 .run(&mut ctx)
                 .await?;
@@ -332,7 +268,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 sm = sub_matches;
             }
 
-            let cli = Cli::new(ctx.client()?.clone(), ctx);
+            let client = ctx.client();
+            if client.is_none() {
+                println!(
+                    "A host must be configured. Run `sprue-cli config set host <HOST>` to configure a host."
+                );
+                std::process::exit(1);
+            }
+            let cli = Cli::new(ctx.client().expect("Client has been created"), ctx);
             if cli.execute(node.cmd.unwrap(), sm).await.is_err() {
                 std::process::exit(1);
             }
@@ -366,7 +309,7 @@ impl ProgenitorCliConfig for Context {
     where
         T: schemars::JsonSchema + serde::Serialize + std::fmt::Debug,
     {
-        self.printer().unwrap().print_error_response(value)
+        self.printer().unwrap().print_error_response::<T>(value)
     }
 
     fn list_start<T>(&self)

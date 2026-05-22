@@ -12,13 +12,13 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sprue_model::{
-    Blob, HealthCheck, ServerRegistration, ServerRegistrationId, ServerRegistrationInstanceId,
-    Service, ServiceId,
+    Blob, Deployment, DeploymentId, HealthCheck, ProjectId, ServerRegistration,
+    ServerRegistrationId, ServerRegistrationInstanceId, Service, ServiceId, SiloId,
 };
 use v_api::ApiContext as VApiContext;
 use vm_attest::VmInstanceAttestation;
 
-use crate::{context::ApiContext, permissions::ApiPermissions};
+use crate::{context::ApiContext, context::policy::PolicyDecision, permissions::ApiPermissions};
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ServicePath {
@@ -97,6 +97,8 @@ pub async fn get_service_servers(
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct RegisterServerBody {
     instance: TypedUuid<ServerRegistrationInstanceId>,
+    project_id: TypedUuid<ProjectId>,
+    silo_id: TypedUuid<SiloId>,
 }
 
 #[derive(Debug, Serialize, JsonSchema)]
@@ -123,7 +125,14 @@ pub async fn register_server(
     let nonce = ctx.server_identity.generate_nonce()?;
     let registration = ctx
         .service
-        .register_server(ctx.system_caller(), path.service, body.instance, nonce)
+        .register_server(
+            ctx.system_caller(),
+            path.service,
+            body.instance,
+            body.project_id,
+            body.silo_id,
+            nonce,
+        )
         .await?;
 
     Ok(HttpResponseOk(RegisterServerResponse { registration }))
@@ -190,6 +199,52 @@ pub async fn prove_server(
             tracing::info!(?err, "Failed to prove server");
             HttpError::for_bad_request(None, "Failed to prove server".to_string())
         })?;
+
+    // If a registration policy engine is configured, evaluate the policy to
+    // automatically accept or reject the server now that its identity is proven.
+    if let Some(ref policy) = ctx.policy {
+        // Retrieve the service and all known deployments for the service that this instance is
+        // attempting to register against.
+        let service = ctx
+            .service
+            .get_service(ctx.system_caller(), server.service_id)
+            .await?;
+        let deployments = ctx
+            .service
+            .list_deployments(ctx.system_caller(), server.service_id)
+            .await?;
+
+        match policy.evaluate_server_auto_registration(&server, &service, deployments.iter()) {
+            Ok(PolicyDecision::Accept) => {
+                tracing::info!(
+                    server = ?server.id,
+                    "Policy engine auto-accepting server registration"
+                );
+                ctx.service
+                    .accept_server(ctx.system_caller(), &server)
+                    .await
+                    .map_err(|err| {
+                        tracing::error!(?err, "Failed to auto-accept server via policy");
+                        HttpError::for_internal_error(
+                            "Failed to apply registration policy".to_string(),
+                        )
+                    })?;
+            }
+            Ok(PolicyDecision::Reject) => {
+                tracing::info!(
+                    server = ?server.id,
+                    "Policy engine did not allow auto-accepting server registration; server remains in proven state"
+                );
+            }
+            Err(err) => {
+                tracing::error!(
+                    ?err,
+                    server = ?server.id,
+                    "Policy evaluation failed; server remains in proven state"
+                );
+            }
+        }
+    }
 
     Ok(HttpResponseUpdatedNoContent())
 }
@@ -310,4 +365,92 @@ pub async fn register_blob(
             Ok(response)
         })
         .await
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct CreateDeploymentBody {
+    project_id: TypedUuid<ProjectId>,
+    silo_id: TypedUuid<SiloId>,
+}
+
+/// Create a new deployment for a service
+///
+/// A deployment represents a project/silo pair where the service is deployed.
+#[endpoint {
+    method = POST,
+    path = "/service/{service}/deployment",
+}]
+pub async fn create_deployment(
+    rqctx: RequestContext<ApiContext>,
+    path: Path<ServicePath>,
+    body: TypedBody<CreateDeploymentBody>,
+) -> Result<HttpResponseOk<Deployment>, HttpError> {
+    let ctx = rqctx.context();
+    let caller = rqctx.v_ctx().get_caller(&rqctx).await?;
+    let path = path.into_inner();
+    let body = body.into_inner();
+    let deployment = ctx
+        .service
+        .create_deployment(&caller, path.service, body.project_id, body.silo_id)
+        .await?;
+
+    Ok(HttpResponseOk(deployment))
+}
+
+/// List all deployments for a service
+#[endpoint {
+    method = GET,
+    path = "/service/{service}/deployment",
+}]
+pub async fn list_deployments(
+    rqctx: RequestContext<ApiContext>,
+    path: Path<ServicePath>,
+) -> Result<HttpResponseOk<Vec<Deployment>>, HttpError> {
+    let ctx = rqctx.context();
+    let caller = rqctx.v_ctx().get_caller(&rqctx).await?;
+    let path = path.into_inner();
+    let deployments = ctx.service.list_deployments(&caller, path.service).await?;
+
+    Ok(HttpResponseOk(deployments))
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct DeploymentPath {
+    #[allow(dead_code)]
+    service: TypedUuid<ServiceId>,
+    deployment: TypedUuid<DeploymentId>,
+}
+
+/// Get a deployment by its id
+#[endpoint {
+    method = GET,
+    path = "/service/{service}/deployment/{deployment}",
+}]
+pub async fn get_deployment(
+    rqctx: RequestContext<ApiContext>,
+    path: Path<DeploymentPath>,
+) -> Result<HttpResponseOk<Deployment>, HttpError> {
+    let ctx = rqctx.context();
+    let caller = rqctx.v_ctx().get_caller(&rqctx).await?;
+    let path = path.into_inner();
+    let deployment = ctx.service.get_deployment(&caller, path.deployment).await?;
+
+    Ok(HttpResponseOk(deployment))
+}
+
+/// Delete a deployment from a service
+#[endpoint {
+    method = DELETE,
+    path = "/service/{service}/deployment/{deployment}",
+}]
+pub async fn delete_deployment(
+    rqctx: RequestContext<ApiContext>,
+    path: Path<DeploymentPath>,
+) -> Result<HttpResponseUpdatedNoContent, HttpError> {
+    let ctx = rqctx.context();
+    let caller = rqctx.v_ctx().get_caller(&rqctx).await?;
+    let path = path.into_inner();
+    let deployment = ctx.service.get_deployment(&caller, path.deployment).await?;
+    ctx.service.delete_deployment(&caller, &deployment).await?;
+    Ok(HttpResponseUpdatedNoContent())
 }

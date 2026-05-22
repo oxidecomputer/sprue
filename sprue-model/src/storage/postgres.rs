@@ -8,19 +8,21 @@ use newtype_uuid::{GenericUuid, TypedUuid};
 use sqlx::{PgPool, Row};
 
 use super::{
-    BlobStateTransition, BlobStorage, HealthCheckStorage, IdempotentRequestStorage,
-    ServerRegistrationStateTransition, ServerRegistrationStorage, ServiceStorage, Storage,
-    StorageError, StorageResult, TokenRequestStateTransition, TokenRequestStorage,
+    BlobStateTransition, BlobStorage, DeploymentStorage, HealthCheckStorage,
+    IdempotentRequestStorage, ServerRegistrationStateTransition, ServerRegistrationStorage,
+    ServiceStorage, Storage, StorageError, StorageResult, TokenRequestStateTransition,
+    TokenRequestStorage,
 };
 use crate::db::{
-    BlobModel, HealthCheckModel, IdempotentRequestModel, NewBlobModel, NewHealthCheckModel,
-    NewIdempotentRequestModel, NewServerRegistrationModel, NewServiceModel, NewTokenRequestModel,
-    ServerRegistrationModel, ServiceModel, TokenRequestModel,
+    BlobModel, DeploymentModel, HealthCheckModel, IdempotentRequestModel, NewBlobModel,
+    NewDeploymentModel, NewHealthCheckModel, NewIdempotentRequestModel, NewServerRegistrationModel,
+    NewServiceModel, NewTokenRequestModel, ServerRegistrationModel, ServiceModel,
+    TokenRequestModel,
 };
 use crate::{
-    BlobId, BlobState, IdempotentRequestId, IdempotentRequestState, ServerRegistrationId,
-    ServerRegistrationInstanceId, ServerRegistrationState, ServiceId, TokenRequestId,
-    TokenRequestState,
+    BlobId, BlobState, DeploymentId, IdempotentRequestId, IdempotentRequestState,
+    ServerRegistrationId, ServerRegistrationInstanceId, ServerRegistrationState, ServiceId,
+    TokenRequestId, TokenRequestState,
 };
 
 /// PostgreSQL storage implementation
@@ -169,6 +171,138 @@ impl ServiceStorage for PostgresStorage {
 }
 
 #[async_trait]
+impl DeploymentStorage for PostgresStorage {
+    async fn create_deployment(
+        &self,
+        deployment: &NewDeploymentModel,
+    ) -> StorageResult<DeploymentModel> {
+        let now = Utc::now();
+        let row = sqlx::query(
+            r#"
+            INSERT INTO deployment (service_id, project_id, silo_id, created_at)
+            VALUES ($1, $2, $3, $4)
+            RETURNING id, service_id, project_id, silo_id, created_at
+            "#,
+        )
+        .bind(deployment.service_id.as_untyped_uuid())
+        .bind(deployment.project_id.as_untyped_uuid())
+        .bind(deployment.silo_id.as_untyped_uuid())
+        .bind(now)
+        .fetch_one(&self.pool)
+        .await?;
+
+        let id_uuid: sqlx::types::Uuid = row.try_get("id")?;
+        let service_id_uuid: sqlx::types::Uuid = row.try_get("service_id")?;
+        Ok(DeploymentModel {
+            id: TypedUuid::from_untyped_uuid(id_uuid),
+            service_id: TypedUuid::from_untyped_uuid(service_id_uuid),
+            project_id: {
+                let v: sqlx::types::Uuid = row.try_get("project_id")?;
+                TypedUuid::from_untyped_uuid(v)
+            },
+            silo_id: {
+                let v: sqlx::types::Uuid = row.try_get("silo_id")?;
+                TypedUuid::from_untyped_uuid(v)
+            },
+            created_at: row.try_get("created_at")?,
+        })
+    }
+
+    async fn get_deployment(
+        &self,
+        id: TypedUuid<DeploymentId>,
+    ) -> StorageResult<Option<DeploymentModel>> {
+        let row = sqlx::query(
+            r#"
+            SELECT id, service_id, project_id, silo_id, created_at
+            FROM deployment
+            WHERE id = $1
+            "#,
+        )
+        .bind(id.as_untyped_uuid())
+        .fetch_optional(&self.pool)
+        .await?;
+
+        match row {
+            Some(row) => {
+                let id_uuid: sqlx::types::Uuid = row.try_get("id")?;
+                let service_id_uuid: sqlx::types::Uuid = row.try_get("service_id")?;
+                Ok(Some(DeploymentModel {
+                    id: TypedUuid::from_untyped_uuid(id_uuid),
+                    service_id: TypedUuid::from_untyped_uuid(service_id_uuid),
+                    project_id: {
+                        let v: sqlx::types::Uuid = row.try_get("project_id")?;
+                        TypedUuid::from_untyped_uuid(v)
+                    },
+                    silo_id: {
+                        let v: sqlx::types::Uuid = row.try_get("silo_id")?;
+                        TypedUuid::from_untyped_uuid(v)
+                    },
+                    created_at: row.try_get("created_at")?,
+                }))
+            }
+            None => Ok(None),
+        }
+    }
+
+    async fn list_deployments_by_service_id(
+        &self,
+        service_id: TypedUuid<ServiceId>,
+    ) -> StorageResult<Vec<DeploymentModel>> {
+        let rows = sqlx::query(
+            r#"
+            SELECT id, service_id, project_id, silo_id, created_at
+            FROM deployment
+            WHERE service_id = $1
+            ORDER BY created_at ASC
+            "#,
+        )
+        .bind(service_id.as_untyped_uuid())
+        .fetch_all(&self.pool)
+        .await?;
+
+        let mut deployments = Vec::with_capacity(rows.len());
+        for row in rows {
+            let id_uuid: sqlx::types::Uuid = row.try_get("id")?;
+            let service_id_uuid: sqlx::types::Uuid = row.try_get("service_id")?;
+            deployments.push(DeploymentModel {
+                id: TypedUuid::from_untyped_uuid(id_uuid),
+                service_id: TypedUuid::from_untyped_uuid(service_id_uuid),
+                project_id: {
+                    let v: sqlx::types::Uuid = row.try_get("project_id")?;
+                    TypedUuid::from_untyped_uuid(v)
+                },
+                silo_id: {
+                    let v: sqlx::types::Uuid = row.try_get("silo_id")?;
+                    TypedUuid::from_untyped_uuid(v)
+                },
+                created_at: row.try_get("created_at")?,
+            });
+        }
+
+        Ok(deployments)
+    }
+
+    async fn delete_deployment(&self, id: TypedUuid<DeploymentId>) -> StorageResult<Option<()>> {
+        let result = sqlx::query(
+            r#"
+            DELETE FROM deployment
+            WHERE id = $1
+            "#,
+        )
+        .bind(id.as_untyped_uuid())
+        .execute(&self.pool)
+        .await?;
+
+        if result.rows_affected() > 0 {
+            Ok(Some(()))
+        } else {
+            Ok(None)
+        }
+    }
+}
+
+#[async_trait]
 impl ServerRegistrationStorage for PostgresStorage {
     async fn create_server_registration(
         &self,
@@ -188,13 +322,15 @@ impl ServerRegistrationStorage for PostgresStorage {
         // Insert the server registration record
         let row = sqlx::query(
             r#"
-            INSERT INTO server_registration (service_id, instance_id, nonce, expires_at, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6)
-            RETURNING id, service_id, instance_id, nonce, expires_at, created_at, updated_at
+            INSERT INTO server_registration (service_id, instance_id, project_id, silo_id, nonce, expires_at, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            RETURNING id, service_id, instance_id, project_id, silo_id, nonce, expires_at, created_at, updated_at
             "#,
         )
         .bind(registration.service_id.as_untyped_uuid())
         .bind(registration.instance_id.as_untyped_uuid())
+        .bind(registration.project_id.as_untyped_uuid())
+        .bind(registration.silo_id.as_untyped_uuid())
         .bind(registration.nonce.as_deref().unwrap_or_default())
         .bind(registration.expires_at)
         .bind(now)
@@ -230,10 +366,14 @@ impl ServerRegistrationStorage for PostgresStorage {
 
         let service_id_uuid: sqlx::types::Uuid = row.try_get("service_id")?;
         let instance_id_uuid: sqlx::types::Uuid = row.try_get("instance_id")?;
+        let project_id_uuid: sqlx::types::Uuid = row.try_get("project_id")?;
+        let silo_id_uuid: sqlx::types::Uuid = row.try_get("silo_id")?;
         Ok(ServerRegistrationModel {
             id: registration_id,
             service_id: TypedUuid::from_untyped_uuid(service_id_uuid),
             instance_id: TypedUuid::from_untyped_uuid(instance_id_uuid),
+            project_id: TypedUuid::from_untyped_uuid(project_id_uuid),
+            silo_id: TypedUuid::from_untyped_uuid(silo_id_uuid),
             nonce: row.try_get("nonce")?,
             expires_at: row.try_get("expires_at")?,
             state: pending_state,
@@ -248,7 +388,7 @@ impl ServerRegistrationStorage for PostgresStorage {
     ) -> StorageResult<Option<ServerRegistrationModel>> {
         let row = sqlx::query(
             r#"
-            SELECT sr.id, sr.service_id, sr.instance_id, sr.nonce, sr.expires_at, sr.created_at, sr.updated_at, srs.state
+            SELECT sr.id, sr.service_id, sr.instance_id, sr.project_id, sr.silo_id, sr.nonce, sr.expires_at, sr.created_at, sr.updated_at, srs.state
             FROM server_registration sr
             JOIN server_registration_state srs ON srs.server_registration_id = sr.id
             WHERE sr.id = $1
@@ -265,6 +405,8 @@ impl ServerRegistrationStorage for PostgresStorage {
                 let id_uuid: sqlx::types::Uuid = row.try_get("id")?;
                 let service_id_uuid: sqlx::types::Uuid = row.try_get("service_id")?;
                 let instance_id_uuid: sqlx::types::Uuid = row.try_get("instance_id")?;
+                let project_id_uuid: sqlx::types::Uuid = row.try_get("project_id")?;
+                let silo_id_uuid: sqlx::types::Uuid = row.try_get("silo_id")?;
                 let state_json: serde_json::Value = row.try_get("state")?;
                 let state: ServerRegistrationState =
                     serde_json::from_value(state_json).map_err(|e| {
@@ -278,6 +420,8 @@ impl ServerRegistrationStorage for PostgresStorage {
                     id: TypedUuid::from_untyped_uuid(id_uuid),
                     service_id: TypedUuid::from_untyped_uuid(service_id_uuid),
                     instance_id: TypedUuid::from_untyped_uuid(instance_id_uuid),
+                    project_id: TypedUuid::from_untyped_uuid(project_id_uuid),
+                    silo_id: TypedUuid::from_untyped_uuid(silo_id_uuid),
                     nonce: row.try_get("nonce")?,
                     expires_at: row.try_get("expires_at")?,
                     state,
@@ -295,7 +439,7 @@ impl ServerRegistrationStorage for PostgresStorage {
     ) -> StorageResult<Option<ServerRegistrationModel>> {
         let row = sqlx::query(
             r#"
-            SELECT sr.id, sr.service_id, sr.instance_id, sr.nonce, sr.expires_at, sr.created_at, sr.updated_at, srs.state
+            SELECT sr.id, sr.service_id, sr.instance_id, sr.project_id, sr.silo_id, sr.nonce, sr.expires_at, sr.created_at, sr.updated_at, srs.state
             FROM server_registration sr
             JOIN server_registration_state srs ON srs.server_registration_id = sr.id
             WHERE sr.instance_id = $1
@@ -312,6 +456,8 @@ impl ServerRegistrationStorage for PostgresStorage {
                 let id_uuid: sqlx::types::Uuid = row.try_get("id")?;
                 let service_id_uuid: sqlx::types::Uuid = row.try_get("service_id")?;
                 let instance_id_uuid: sqlx::types::Uuid = row.try_get("instance_id")?;
+                let project_id_uuid: sqlx::types::Uuid = row.try_get("project_id")?;
+                let silo_id_uuid: sqlx::types::Uuid = row.try_get("silo_id")?;
                 let state_json: serde_json::Value = row.try_get("state")?;
                 let state: ServerRegistrationState =
                     serde_json::from_value(state_json).map_err(|e| {
@@ -325,6 +471,8 @@ impl ServerRegistrationStorage for PostgresStorage {
                     id: TypedUuid::from_untyped_uuid(id_uuid),
                     service_id: TypedUuid::from_untyped_uuid(service_id_uuid),
                     instance_id: TypedUuid::from_untyped_uuid(instance_id_uuid),
+                    project_id: TypedUuid::from_untyped_uuid(project_id_uuid),
+                    silo_id: TypedUuid::from_untyped_uuid(silo_id_uuid),
                     nonce: row.try_get("nonce")?,
                     expires_at: row.try_get("expires_at")?,
                     state,
@@ -342,7 +490,7 @@ impl ServerRegistrationStorage for PostgresStorage {
     ) -> StorageResult<Vec<ServerRegistrationModel>> {
         let rows = sqlx::query(
             r#"
-            SELECT DISTINCT ON (sr.id) sr.id, sr.service_id, sr.instance_id, sr.nonce, sr.expires_at, sr.created_at, sr.updated_at, srs.state
+            SELECT DISTINCT ON (sr.id) sr.id, sr.service_id, sr.instance_id, sr.project_id, sr.silo_id, sr.nonce, sr.expires_at, sr.created_at, sr.updated_at, srs.state
             FROM server_registration sr
             JOIN server_registration_state srs ON srs.server_registration_id = sr.id
             WHERE sr.service_id = $1
@@ -359,6 +507,8 @@ impl ServerRegistrationStorage for PostgresStorage {
                 let id_uuid: sqlx::types::Uuid = row.try_get("id")?;
                 let service_id_uuid: sqlx::types::Uuid = row.try_get("service_id")?;
                 let instance_id_uuid: sqlx::types::Uuid = row.try_get("instance_id")?;
+                let project_id_uuid: sqlx::types::Uuid = row.try_get("project_id")?;
+                let silo_id_uuid: sqlx::types::Uuid = row.try_get("silo_id")?;
                 let state_json: serde_json::Value = row.try_get("state")?;
                 let state: ServerRegistrationState =
                     serde_json::from_value(state_json).map_err(|e| {
@@ -372,6 +522,8 @@ impl ServerRegistrationStorage for PostgresStorage {
                     id: TypedUuid::from_untyped_uuid(id_uuid),
                     service_id: TypedUuid::from_untyped_uuid(service_id_uuid),
                     instance_id: TypedUuid::from_untyped_uuid(instance_id_uuid),
+                    project_id: TypedUuid::from_untyped_uuid(project_id_uuid),
+                    silo_id: TypedUuid::from_untyped_uuid(silo_id_uuid),
                     nonce: row.try_get("nonce")?,
                     expires_at: row.try_get("expires_at")?,
                     state,

@@ -7,14 +7,15 @@ use chrono::{DateTime, Utc};
 use newtype_uuid::TypedUuid;
 
 use crate::db::{
-    BlobModel, HealthCheckModel, IdempotentRequestModel, NewBlobModel, NewHealthCheckModel,
-    NewIdempotentRequestModel, NewServerRegistrationModel, NewServiceModel, NewTokenRequestModel,
-    ServerRegistrationModel, ServiceModel, TokenRequestModel,
+    BlobModel, DeploymentModel, HealthCheckModel, IdempotentRequestModel, NewBlobModel,
+    NewDeploymentModel, NewHealthCheckModel, NewIdempotentRequestModel, NewServerRegistrationModel,
+    NewServiceModel, NewTokenRequestModel, ServerRegistrationModel, ServiceModel,
+    TokenRequestModel,
 };
 use crate::{
-    BlobId, BlobState, IdempotentRequestId, IdempotentRequestState, ServerRegistrationId,
-    ServerRegistrationInstanceId, ServerRegistrationState, ServiceId, TokenRequestId,
-    TokenRequestState,
+    BlobId, BlobState, DeploymentId, IdempotentRequestId, IdempotentRequestState,
+    ServerRegistrationId, ServerRegistrationInstanceId, ServerRegistrationState, ServiceId,
+    TokenRequestId, TokenRequestState,
 };
 
 pub mod postgres;
@@ -125,6 +126,33 @@ pub trait ServiceStorage: Send + Sync {
     /// Delete a service
     /// Returns None if the service does not exist
     async fn delete_service(&self, name: &str) -> StorageResult<Option<()>>;
+}
+
+/// Storage interface for deployment operations
+#[async_trait]
+pub trait DeploymentStorage: Send + Sync {
+    /// Create a new deployment and return the created model
+    async fn create_deployment(
+        &self,
+        deployment: &NewDeploymentModel,
+    ) -> StorageResult<DeploymentModel>;
+
+    /// Get a deployment by id
+    /// Returns None if the deployment does not exist
+    async fn get_deployment(
+        &self,
+        id: TypedUuid<DeploymentId>,
+    ) -> StorageResult<Option<DeploymentModel>>;
+
+    /// List all deployments for a service
+    async fn list_deployments_by_service_id(
+        &self,
+        service_id: TypedUuid<ServiceId>,
+    ) -> StorageResult<Vec<DeploymentModel>>;
+
+    /// Delete a deployment
+    /// Returns None if the deployment does not exist
+    async fn delete_deployment(&self, id: TypedUuid<DeploymentId>) -> StorageResult<Option<()>>;
 }
 
 /// Storage interface for server registration operations

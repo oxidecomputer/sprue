@@ -2,10 +2,9 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use std::path::PathBuf;
-
 use config::{Config, ConfigError, Environment, File};
 use serde::Deserialize;
+use std::path::PathBuf;
 use tap::TapFallible;
 use v_api::config::{AsymmetricKey, AuthnProviders, ServerLogFormat, SpecConfig};
 use v_api_param::StringParam;
@@ -24,6 +23,7 @@ pub struct ServerConfig {
     pub authn: AuthnProviders,
     pub vm_identity: VmIdentityConfig,
     pub oidc: OidcConfig,
+    pub auto_registration_policy: Option<ServerAutoRegistration>,
     pub backup: BackupConfig,
 }
 
@@ -51,6 +51,12 @@ pub struct OidcTokenConfig {
     pub audience: String,
     pub token_lifetime: u32,
     pub token_request_duration: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ServerAutoRegistration {
+    pub policy: StringParam,
+    pub schema: StringParam,
 }
 
 #[derive(Debug, Deserialize)]

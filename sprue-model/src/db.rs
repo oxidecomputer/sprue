@@ -7,9 +7,9 @@ use newtype_uuid::TypedUuid;
 use partial_struct::partial;
 
 use crate::{
-    BlobId, BlobState, HealthCheckId, IdempotentRequestId, IdempotentRequestState,
-    ServerRegistrationId, ServerRegistrationInstanceId, ServerRegistrationState, ServiceId,
-    TokenRequestId, TokenRequestState,
+    BlobId, BlobState, DeploymentId, HealthCheckId, IdempotentRequestId, IdempotentRequestState,
+    ProjectId, ServerRegistrationId, ServerRegistrationInstanceId, ServerRegistrationState,
+    ServiceId, SiloId, TokenRequestId, TokenRequestState,
 };
 
 #[partial(NewServiceModel)]
@@ -21,12 +21,25 @@ pub struct ServiceModel {
     pub created_at: DateTime<Utc>,
 }
 
+#[partial(NewDeploymentModel)]
+pub struct DeploymentModel {
+    #[partial(NewDeploymentModel(skip))]
+    pub id: TypedUuid<DeploymentId>,
+    pub service_id: TypedUuid<ServiceId>,
+    pub project_id: TypedUuid<ProjectId>,
+    pub silo_id: TypedUuid<SiloId>,
+    #[partial(NewDeploymentModel(skip))]
+    pub created_at: DateTime<Utc>,
+}
+
 #[partial(NewServerRegistrationModel)]
 pub struct ServerRegistrationModel {
     #[partial(NewServerRegistrationModel(skip))]
     pub id: TypedUuid<ServerRegistrationId>,
     pub service_id: TypedUuid<ServiceId>,
     pub instance_id: TypedUuid<ServerRegistrationInstanceId>,
+    pub project_id: TypedUuid<ProjectId>,
+    pub silo_id: TypedUuid<SiloId>,
     pub nonce: Option<String>,
     pub expires_at: Option<DateTime<Utc>>,
     #[partial(NewServerRegistrationModel(skip))]

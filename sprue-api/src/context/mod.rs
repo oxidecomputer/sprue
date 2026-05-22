@@ -20,6 +20,7 @@ use crate::{
         blob::BlobContext,
         idempotency::IdempotencyContext,
         oidc::{OidcContext, VmClaims},
+        policy::PolicyEngine,
         server_identity::ServerIdentityContext,
         service::ServiceContext,
     },
@@ -30,6 +31,7 @@ use crate::{
 pub mod blob;
 pub mod idempotency;
 pub mod oidc;
+pub mod policy;
 pub mod server_identity;
 pub mod service;
 
@@ -48,6 +50,7 @@ pub struct ApiContext {
     pub blob: BlobContext,
     pub idempotency: IdempotencyContext,
     pub oidc: OidcContext,
+    pub policy: Option<PolicyEngine>,
     pub server_identity: ServerIdentityContext,
     pub service: ServiceContext,
     pub saga_action_registry: Arc<ActionRegistry<SprueSaga>>,

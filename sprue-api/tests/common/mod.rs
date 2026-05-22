@@ -15,6 +15,7 @@ use sprue_api::{
         blob::{BackupStorage, BlobContext, LocalBackupStorage},
         idempotency::IdempotencyContext,
         oidc::OidcContext,
+        policy::PolicyEngine,
         server_identity::ServerIdentityContext,
         service::ServiceContext,
     },
@@ -98,6 +99,13 @@ fn url(port: u16, path: &str) -> String {
 
 impl SeededContext {
     pub async fn create(test_name: &str) -> anyhow::Result<SeededContext> {
+        Self::create_with_policy(test_name, None).await
+    }
+
+    pub async fn create_with_policy(
+        test_name: &str,
+        policy: Option<PolicyEngine>,
+    ) -> anyhow::Result<SeededContext> {
         let test_id = TypedUuid::new_v4();
         let db: TestDb = TestDb::new(test_name).await;
 
@@ -195,7 +203,7 @@ impl SeededContext {
             ))
             .service(ServiceContext::new(storage, Duration::from_secs(10)))
             .saga_action_registry(Arc::new(ActionRegistry::new()))
-            .policy(None)
+            .policy(policy)
             .v_ctx(v_ctx)
             .build()?;
 

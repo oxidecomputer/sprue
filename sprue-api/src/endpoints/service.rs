@@ -220,6 +220,12 @@ pub async fn prove_server(
                     server = ?server.id,
                     "Policy engine auto-accepting server registration"
                 );
+
+                // We need to refetch the server with its updated state
+                let server = ctx
+                    .service
+                    .get_server(ctx.system_caller(), server.id)
+                    .await?;
                 ctx.service
                     .accept_server(ctx.system_caller(), &server)
                     .await

@@ -57,8 +57,9 @@ sha2 = "0.10.9"
 similar = "2.7.0"
 slog = "2.8.2"
 slog-async = "2.8.0"
-steno = { git = "https://github.com/oxidecomputer/steno" }
 sqlx = { version = "0.8", features = ["chrono", "json", "uuid", "postgres", "runtime-tokio", "tls-rustls", "migrate"] }
+steno = { git = "https://github.com/oxidecomputer/steno" }
+strum = { version = "0.28.0", features = ["derive"] }
 tabwriter = "1.4.1"
 tap = "1.0.1"
 thiserror = "2"
@@ -69,11 +70,10 @@ tracing-appender = "0.2.4"
 tracing-slog = { git = "https://github.com/oxidecomputer/tracing-slog", default-features = false }
 tracing-subscriber = { version = "0.3.22", features = ["env-filter", "json"] }
 uuid = { version = "1", features = ["serde"] }
-v-api = { git = "https://github.com/oxidecomputer/v-api", branch = "main" }
-v-api-installer = { git = "https://github.com/oxidecomputer/v-api", branch = "main" }
-v-api-param = { git = "https://github.com/oxidecomputer/v-api", branch = "main" }
-v-api-permission-derive = { git = "https://github.com/oxidecomputer/v-api", branch = "main" }
-v-model = { git = "https://github.com/oxidecomputer/v-api", branch = "main" }
+v-api = { git = "https://github.com/oxidecomputer/v-api", rev = "v0.4.0-alpha.1" }
+v-api-param = { git = "https://github.com/oxidecomputer/v-api", rev = "v0.4.0-alpha.1" }
+v-api-permission-derive = { git = "https://github.com/oxidecomputer/v-api", rev = "v0.4.0-alpha.1" }
+v-model = { git = "https://github.com/oxidecomputer/v-api", rev = "v0.4.0-alpha.1" }
 vm-attest = { git = "https://github.com/oxidecomputer/vm-attest" }
 lib-vsock = { package = "vsock", version = "0.5.3" }
 x509-cert = "0.2.5"

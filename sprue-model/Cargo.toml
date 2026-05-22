@@ -20,4 +20,4 @@ sqlx = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, optional = true }
 tracing = { workspace = true }
-v-api-installer = { workspace = true }
+v-model = { workspace = true }

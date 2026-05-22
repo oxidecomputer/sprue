@@ -7,11 +7,12 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sprue_model::{BlobId, ServiceId};
 use std::collections::BTreeSet;
+use strum::EnumIter;
 use v_api::permissions::VPermission;
 use v_api_permission_derive::v_api;
 
 #[v_api(From(VPermission))]
-#[derive(Debug, Clone, Hash, PartialEq, Eq, Deserialize, Serialize, JsonSchema)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Deserialize, Serialize, JsonSchema, EnumIter)]
 pub enum ApiPermissions {
     #[v_api(
         contract(kind = append, variant = GetServices),
@@ -29,7 +30,12 @@ pub enum ApiPermissions {
         scope(to = "service:r", from = "service:r")
     )]
     GetServicesAssigned,
-    #[v_api(scope(to = "service:r", from = "service:r"))]
+    #[v_api(
+        implies(variant = GetService),
+        implies(variant = GetServices),
+        implies(variant = GetServicesAssigned),
+        scope(to = "service:r", from = "service:r")
+    )]
     GetServicesAll,
 
     #[v_api(scope(to = "service:w", from = "service:w"))]
@@ -50,7 +56,12 @@ pub enum ApiPermissions {
         scope(to = "service:w", from = "service:w")
     )]
     ManageServicesAssigned,
-    #[v_api(scope(to = "service:w", from = "service:w"))]
+    #[v_api(
+        implies(variant = ManageService),
+        implies(variant = ManageServices),
+        implies(variant = ManageServicesAssigned),
+        scope(to = "service:w", from = "service:w")
+    )]
     ManageServicesAll,
 
     #[v_api(
@@ -69,6 +80,11 @@ pub enum ApiPermissions {
         scope(to = "blob:r", from = "blob:r")
     )]
     GetBlobsAssigned,
-    #[v_api(scope(to = "blob:r", from = "blob:r"))]
+    #[v_api(
+        implies(variant = GetBlob),
+        implies(variant = GetBlobs),
+        implies(variant = GetBlobsAssigned),
+        scope(to = "blob:r", from = "blob:r")
+    )]
     GetBlobsAll,
 }

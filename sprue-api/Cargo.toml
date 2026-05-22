@@ -49,6 +49,7 @@ slog-async = { workspace = true }
 sprue-model = { path = "../sprue-model" }
 sqlx = { workspace = true }
 steno = { workspace = true }
+strum = { workspace = true }
 tap = { workspace = true }
 tracing = { workspace = true }
 tracing-appender = { workspace = true }

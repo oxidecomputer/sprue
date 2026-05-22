@@ -19,7 +19,7 @@ use thiserror::Error;
 use tokio::select;
 use v_api::{
     VContextBuilder, VContextBuilderError,
-    endpoints::login::oauth::{OAuthProviderName, google::GoogleOAuthProvider},
+    endpoints::login::oauth::{OAuthProviderName, remote::google::GoogleOAuthProvider},
 };
 use v_api_param::ParamResolutionError;
 use v_model::saga::view::SagaExecNodeId;
@@ -36,6 +36,7 @@ use crate::{
         service::ServiceContext,
     },
     initial_data::{InitError, InitialData},
+    permissions::ApiPermissions,
     sagas::{
         actions::{load_actions, push_backup::PushBackup},
         background::{SagaBackgroundConfig, SagaBackgroundSpawner},
@@ -95,27 +96,20 @@ pub async fn run_server(
         .with_storage_url(database_url_secret.expose_secret().to_string())
         .with_keys(config.jwt.keys)
         .with_saga_backend(node_id, None)
+        .with_additional_builtin_permissions(ApiPermissions::iter().collect())
         .build()
         .await?;
 
     // Install OAuth provider
     if let Some(google) = config.authn.oauth.google {
-        let device_secret = google
-            .device
-            .client_secret
-            .resolve(config.param_base_path.clone())?;
-        let web_secret = google
-            .web
-            .client_secret
-            .resolve(config.param_base_path.clone())?;
+        let google_resolved = google.resolve(config.param_base_path.clone())?;
+        let google_public_url = config.public_url.clone();
         v_ctx.insert_oauth_provider(
             OAuthProviderName::Google,
             Box::new(move || {
                 Box::new(GoogleOAuthProvider::new(
-                    google.device.client_id.clone(),
-                    device_secret.clone(),
-                    google.web.client_id.clone(),
-                    web_secret.clone(),
+                    google_resolved.clone(),
+                    google_public_url.clone(),
                     None,
                 ))
             }),

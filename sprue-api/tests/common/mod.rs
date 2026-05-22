@@ -160,9 +160,9 @@ impl SeededContext {
 
         let path_id = format!("{}-{}", test_name, test_id);
         let local_storage = PathBuf::from(format!("test-data/storage/local/{}", path_id));
-        fs::create_dir(absolute(&local_storage)?)?;
+        fs::create_dir_all(absolute(&local_storage)?)?;
         let remote_storage = PathBuf::from(format!("test-data/storage/remote/{}", path_id));
-        fs::create_dir(absolute(&remote_storage)?)?;
+        fs::create_dir_all(absolute(&remote_storage)?)?;
         let test_storage = vec![local_storage.clone(), remote_storage.clone()];
 
         let context = ApiContextBuilder::default()

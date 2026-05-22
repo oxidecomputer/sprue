@@ -4950,7 +4950,6 @@ dependencies = [
  "slog-async",
  "sprue-model",
  "sprue-sdk",
- "sqlx",
  "steno",
  "strum 0.28.0",
  "tap",
@@ -4971,7 +4970,7 @@ dependencies = [
 
 [[package]]
 name = "sprue-cli"
-version = "0.9.7"
+version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",

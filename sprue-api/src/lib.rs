@@ -8,6 +8,7 @@ use newtype_uuid::TypedUuid;
 use secrecy::ExposeSecret;
 use slog::Logger;
 use sprue_model::storage::postgres::PostgresStorage;
+use strum::IntoEnumIterator;
 use std::{
     path::PathBuf,
     process,

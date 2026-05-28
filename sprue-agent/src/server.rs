@@ -44,6 +44,7 @@ impl Drop for SocketGuard {
 
 #[derive(Clone)]
 pub struct SprueAgent {
+    service: String,
     server: String,
     registration_id: TypedUuidForServerRegistrationId,
     platform: Arc<dyn Platform + Sync>,
@@ -92,6 +93,22 @@ impl SprueService for SprueAgent {
                 tracing::error!(?err, "Failed to retrieve token");
                 SprueError::Failure(err.to_string())
             })
+        }
+    }
+    fn register_server(
+        self,
+        _context: tarpc::context::Context,
+    ) -> impl Future<Output = Result<TypedUuidForServerRegistrationId, SprueError>> {
+        async move {
+            let client = Client::new(&self.server);
+            let registration_id =
+                cmd::register_server(&client, &self.service, self.platform.as_ref())
+                    .await
+                    .map_err(|err| {
+                        tracing::error!(?err, "Failed to retrieve server");
+                        SprueError::Failure(err.to_string())
+                    })?;
+            Ok(registration_id)
         }
     }
     fn get_registration_id(
@@ -156,6 +173,7 @@ impl SprueAgentStarter {
             .map(server::BaseChannel::with_defaults)
             .map(|channel| {
                 let agent = SprueAgent {
+                    service: self.service.clone(),
                     server: self.server.clone(),
                     registration_id: registration_id.clone(),
                     platform: self.platform.clone(),

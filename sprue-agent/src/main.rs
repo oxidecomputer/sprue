@@ -10,7 +10,6 @@ use tarpc::context;
 use tarpc::tokio_serde::formats::Json;
 use tracing_appender::non_blocking::NonBlocking;
 use tracing_subscriber::EnvFilter;
-use uuid::Uuid;
 
 use crate::platform::OxidePlatform;
 use crate::server::SprueAgentStarter;
@@ -34,6 +33,10 @@ struct Args {
     #[clap(long)]
     mock_dir: Option<PathBuf>,
 
+    /// Socket to run on or run against
+    #[clap(long)]
+    socket: Option<PathBuf>,
+
     #[clap(subcommand)]
     command: Commands,
 }
@@ -41,10 +44,7 @@ struct Args {
 #[derive(Debug, Parser)]
 enum Commands {
     /// Retrieve an OIDC token from the sprue service
-    GetToken {
-        #[clap(short, long)]
-        id: Uuid,
-    },
+    GetToken,
     /// Register and store an arbitrary blob to remote backup storage
     Backup {
         /// Path to file to store
@@ -54,15 +54,7 @@ enum Commands {
         socket: Option<PathBuf>,
     },
     /// Register a server instance with the sprue service and prove its identity
-    ///
-    /// The instance, project, and silo identifiers are discovered automatically
-    /// via a platform attestation over vsock.  The only input the calling
-    /// application needs to supply is the service name it belongs to.
-    RegisterServer {
-        /// Service to register server for
-        #[clap(short, long)]
-        service: String,
-    },
+    RegisterServer,
     /// Serve the sprue agent as a standalone service
     Serve {
         /// The URL of the Sprue server
@@ -71,9 +63,6 @@ enum Commands {
         /// Name of the service to register as
         #[clap(long)]
         service: String,
-        /// Socket to run on
-        #[clap(long)]
-        socket: Option<PathBuf>,
     },
 }
 
@@ -95,26 +84,25 @@ fn build_platform(args: &Args) -> anyhow::Result<Box<dyn platform::Platform + Sy
 async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     let platform = build_platform(&args)?;
+    let socket = args.socket.unwrap_or(PathBuf::from(DEFAULT_SPRUE_SOCKET));
 
     match args.command {
-        Commands::GetToken { id } => {
-            // let token = cmd::get_token(&client, id, platform.as_ref()).await?;
-            // println!("{token}");
+        Commands::GetToken => {
+            let client = svc_client(&socket).await?;
+            let token = client.get_token(context::current()).await??;
+            println!("{}", token);
         }
         Commands::Backup { path, socket } => {
             let client = svc_client(&socket.unwrap_or(PathBuf::from(DEFAULT_SPRUE_SOCKET))).await?;
             let blob_id = client.backup(context::current(), path).await??;
             println!("Backup completed successfully. Created {}", blob_id);
         }
-        Commands::RegisterServer { service } => {
-            // cmd::register_server(&client, &service, platform.as_ref()).await?;
-            // println!("Server registered successfully");
+        Commands::RegisterServer => {
+            let client = svc_client(&socket).await?;
+            let id = client.register_server(context::current()).await??;
+            println!("{}", id);
         }
-        Commands::Serve {
-            server,
-            socket,
-            service,
-        } => {
+        Commands::Serve { server, service } => {
             let (writer, _guard) = NonBlocking::new(std::io::stdout());
             let _subscriber = tracing_subscriber::fmt()
                 .with_file(false)
@@ -124,14 +112,9 @@ async fn main() -> anyhow::Result<()> {
                 .json()
                 .init();
 
-            SprueAgentStarter::new(
-                server,
-                service,
-                socket.unwrap_or(PathBuf::from(DEFAULT_SPRUE_SOCKET)),
-                Arc::from(platform),
-            )
-            .serve()
-            .await?;
+            SprueAgentStarter::new(server, service, socket, Arc::from(platform))
+                .serve()
+                .await?;
         }
     }
 

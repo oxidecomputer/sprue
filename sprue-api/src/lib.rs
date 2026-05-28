@@ -152,6 +152,8 @@ pub async fn run_server(
                 let schema_text = policy_config.schema.resolve(param_path).map_err(|e| {
                     ServerError::Policy(format!("Failed to read schema file: {}", e))
                 })?;
+                tracing::info!("Constructing policy engine");
+
                 PolicyEngine::new(&policy_text.expose_secret(), &schema_text.expose_secret())
                     .map_err(|e| ServerError::Policy(e.to_string()))
             })

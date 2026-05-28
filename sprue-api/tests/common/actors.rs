@@ -64,7 +64,7 @@ impl MockUser {
                 &redirect_uri,
                 Medium::Email,
                 "all",
-                Some(scope),
+                scope,
                 Utc::now().add(Duration::seconds(60)),
                 &email,
             )

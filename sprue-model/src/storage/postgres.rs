@@ -8,7 +8,7 @@ use newtype_uuid::{GenericUuid, TypedUuid};
 use sqlx::{PgPool, Row};
 
 use super::{
-    BlobStateTransition, BlobStorage, DeploymentStorage, HealthCheckStorage,
+    BlobFilter, BlobStateTransition, BlobStorage, DeploymentStorage, HealthCheckStorage,
     IdempotentRequestStorage, ServerRegistrationStateTransition, ServerRegistrationStorage,
     ServiceStorage, Storage, StorageError, StorageResult, TokenRequestStateTransition,
     TokenRequestStorage,
@@ -813,18 +813,57 @@ impl BlobStorage for PostgresStorage {
         }
     }
 
-    async fn list_blobs(&self) -> StorageResult<Vec<BlobModel>> {
-        let rows = sqlx::query(
-            r#"
-            SELECT DISTINCT ON (b.id) b.id, b.service_id, b.server_registration_id, b.blob_time, b.size, b.total_size,
-                   b.created_at, b.updated_at, bs.state
-            FROM blob b
-            JOIN blob_state bs ON bs.blob_id = b.id
-            ORDER BY b.id, bs.created_at DESC
-            "#,
-        )
-        .fetch_all(&self.pool)
-        .await?;
+    async fn list_blobs(&self, filter: &BlobFilter) -> StorageResult<Vec<BlobModel>> {
+        // Build the query dynamically based on which filter fields are set.
+        // We use a CTE to get the latest state per blob first, then filter.
+        let mut sql = String::from(
+            "SELECT q.id, q.service_id, q.server_registration_id, q.blob_time, \
+             q.size, q.total_size, q.created_at, q.updated_at, q.state \
+             FROM ( \
+               SELECT DISTINCT ON (b.id) b.id, b.service_id, b.server_registration_id, \
+                      b.blob_time, b.size, b.total_size, b.created_at, b.updated_at, bs.state \
+               FROM blob b \
+               JOIN blob_state bs ON bs.blob_id = b.id \
+               ORDER BY b.id, bs.created_at DESC \
+             ) q",
+        );
+
+        let mut conditions: Vec<String> = Vec::new();
+        let mut param_idx: usize = 1;
+
+        if filter.service_id.is_some() {
+            conditions.push(format!("q.service_id = ${}", param_idx));
+            param_idx += 1;
+        }
+        if filter.server_registration_id.is_some() {
+            conditions.push(format!("q.server_registration_id = ${}", param_idx));
+            param_idx += 1;
+        }
+        if filter.state.is_some() {
+            conditions.push(format!("q.state = ${}", param_idx));
+        }
+
+        if !conditions.is_empty() {
+            sql.push_str(" WHERE ");
+            sql.push_str(&conditions.join(" AND "));
+        }
+
+        let mut query = sqlx::query(&sql);
+
+        if let Some(ref service_id) = filter.service_id {
+            query = query.bind(service_id.as_untyped_uuid());
+        }
+        if let Some(ref server_registration_id) = filter.server_registration_id {
+            query = query.bind(server_registration_id.as_untyped_uuid());
+        }
+        if let Some(ref state) = filter.state {
+            let state_json = serde_json::to_value(state).map_err(|e| {
+                StorageError::Internal(format!("Failed to serialize blob state filter: {}", e))
+            })?;
+            query = query.bind(state_json);
+        }
+
+        let rows = query.fetch_all(&self.pool).await?;
 
         let blobs = rows
             .iter()

@@ -20,6 +20,32 @@ use crate::{
 
 pub mod postgres;
 
+/// Filter criteria for listing blobs. All fields are optional — `None` means
+/// no constraint on that field. Multiple fields are combined with AND.
+#[derive(Clone, Debug, Default)]
+pub struct BlobFilter {
+    pub service_id: Option<TypedUuid<ServiceId>>,
+    pub server_registration_id: Option<TypedUuid<ServerRegistrationId>>,
+    pub state: Option<BlobState>,
+}
+
+impl BlobFilter {
+    pub fn service(mut self, service_id: TypedUuid<ServiceId>) -> Self {
+        self.service_id = Some(service_id);
+        self
+    }
+
+    pub fn server_registration(mut self, id: TypedUuid<ServerRegistrationId>) -> Self {
+        self.server_registration_id = Some(id);
+        self
+    }
+
+    pub fn state(mut self, state: BlobState) -> Self {
+        self.state = Some(state);
+        self
+    }
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum StorageError {
     #[error("Database error: {0}")]
@@ -227,8 +253,10 @@ pub trait BlobStorage: Send + Sync {
     /// Returns None if the blob does not exist
     async fn get_blob(&self, id: TypedUuid<BlobId>) -> StorageResult<Option<BlobModel>>;
 
-    /// List all blobs
-    async fn list_blobs(&self) -> StorageResult<Vec<BlobModel>>;
+    /// List blobs matching the given filter.
+    ///
+    /// An empty (default) filter returns all blobs.
+    async fn list_blobs(&self, filter: &BlobFilter) -> StorageResult<Vec<BlobModel>>;
 
     /// Update blob size (atomic)
     /// Returns None if the blob does not exist

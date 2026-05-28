@@ -2,5 +2,7 @@
 /scratch
 /target
 
+schema.cedar
+policy.cedar
 mappers.toml
 settings.toml

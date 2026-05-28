@@ -85,6 +85,13 @@ impl PolicyEngine {
             .try_into()
             .map_err(PolicyEngineError::PolicyConstruct)?;
 
+        tracing::info!(
+            ?principal,
+            ?action,
+            ?resource,
+            "Preparing to evaluate policy for server registration"
+        );
+
         let request = Request::new(
             principal.uid(),
             action,

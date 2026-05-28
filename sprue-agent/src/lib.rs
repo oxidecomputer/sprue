@@ -17,4 +17,5 @@ pub trait SprueService {
     async fn backup(path: PathBuf) -> Result<String, SprueError>;
     async fn get_token() -> Result<String, SprueError>;
     async fn get_registration_id() -> TypedUuidForServerRegistrationId;
+    async fn register_server() -> Result<TypedUuidForServerRegistrationId, SprueError>;
 }

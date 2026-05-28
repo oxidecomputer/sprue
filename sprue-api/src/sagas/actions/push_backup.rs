@@ -6,7 +6,10 @@ use std::sync::Arc;
 
 use newtype_uuid::TypedUuid;
 use serde::{Deserialize, Serialize};
-use sprue_model::{BlobId, storage::StorageError};
+use sprue_model::{
+    BlobId, BlobState, BlobUploadState,
+    storage::{BlobFilter, StorageError},
+};
 use steno::{ActionContext, ActionError, ActionRegistry, DagBuilder, Node, SagaDag, SagaName};
 use thiserror::Error;
 use v_api::response::ResourceError;
@@ -208,7 +211,13 @@ impl BackgroundSaga<PushBackupError> for PushBackup {
         ctx: &ApiContext,
     ) -> Result<Vec<Arc<SagaDag>>, PushBackupError> {
         let caller = self.system_caller(caller_id).into();
-        let blobs = ctx.blob.list_blobs(&caller).await?;
+        let blobs = ctx
+            .blob
+            .list_blobs(
+                &caller,
+                &BlobFilter::default().state(BlobState::Uploading(BlobUploadState::Complete)),
+            )
+            .await?;
 
         let mut dags = vec![];
         for blob in blobs {

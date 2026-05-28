@@ -18,7 +18,7 @@ use sprue_model::{
     Blob, BlobId, BlobState, BlobUploadState, InvalidBlobStateTransition, ServerRegistrationId,
     ServiceId,
     db::NewBlobModel,
-    storage::{BlobStorage, StorageError},
+    storage::{BlobFilter, BlobStorage, StorageError},
 };
 use v_api::response::{
     OptionalResource, ResourceError, ResourceErrorInner, ResourceResult, resource_restricted,
@@ -198,10 +198,14 @@ impl BlobContext {
         }
     }
 
-    pub async fn list_blobs(&self, caller: &BlobCaller) -> ResourceResult<Vec<Blob>, BlobError> {
+    pub async fn list_blobs(
+        &self,
+        caller: &BlobCaller,
+        filter: &BlobFilter,
+    ) -> ResourceResult<Vec<Blob>, BlobError> {
         let models = self
             .storage
-            .list_blobs()
+            .list_blobs(filter)
             .await
             .map_err(ResourceError::InternalError)
             .inner_err_into()?;

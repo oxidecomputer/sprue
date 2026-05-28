@@ -112,7 +112,7 @@ impl ApiContext {
         let jwt: Jwt<VmClaims> = Jwt::extract(rqctx).await?;
         Ok(ServerCaller {
             id: jwt.claims.sub,
-            service: jwt.claims.srv,
+            service: jwt.claims.svc,
             instance: jwt.claims.oxc.ins,
         })
     }

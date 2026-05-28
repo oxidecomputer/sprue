@@ -57,7 +57,7 @@ pub struct VmClaims {
     pub exp: i64,
     pub nbf: i64,
     pub jti: Uuid,
-    pub srv: TypedUuid<ServiceId>,
+    pub svc: TypedUuid<ServiceId>,
     pub oxc: OxideVmClaims,
 }
 
@@ -137,7 +137,7 @@ impl OidcContext {
             exp: Utc::now().timestamp() + (self.oidc.token.token_lifetime as i64),
             nbf: Utc::now().timestamp(),
             jti: Uuid::new_v4(),
-            srv: server.service_id,
+            svc: server.service_id,
             oxc: OxideVmClaims {
                 ins: server.instance_id,
                 prj: server.project_id,

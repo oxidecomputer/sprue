@@ -6,7 +6,7 @@ use dropshot::{HttpError, HttpResponseOk, Path, RequestContext, TypedBody, endpo
 use newtype_uuid::TypedUuid;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use sprue_model::{TokenRequest, TokenRequestId};
+use sprue_model::{ServerRegistrationState, TokenRequest, TokenRequestId};
 use v_api::ApiContext as VApiContext;
 
 use crate::{context::ApiContext, endpoints::service::ServerPath, schema::Attestation};
@@ -65,31 +65,39 @@ pub async fn prove_oidc_token_request(
         .service
         .get_server(ctx.system_caller(), path.server)
         .await?;
-    let attestation = body.attestation.into_inner();
-    let token_request = ctx.oidc.get_token_request(body.request).await?;
 
-    // Verify the attestation
-    ctx.server_identity
-        .verify_instance_attestation(
-            server.instance_id,
-            &token_request.nonce.as_deref().ok_or_else(|| {
-                HttpError::for_bad_request(
-                    None,
-                    "Request is not in a state that can be proven".to_string(),
-                )
-            })?,
-            &attestation,
-        )
-        .map_err(|err| {
-            tracing::info!(?err, "Failed to verify attestation");
-            HttpError::for_bad_request(None, "Invalid attestation".to_string())
+    if server.state == ServerRegistrationState::Accepted {
+        let attestation = body.attestation.into_inner();
+        let token_request = ctx.oidc.get_token_request(body.request).await?;
+
+        // Verify the attestation
+        ctx.server_identity
+            .verify_instance_attestation(
+                server.instance_id,
+                &token_request.nonce.as_deref().ok_or_else(|| {
+                    HttpError::for_bad_request(
+                        None,
+                        "Request is not in a state that can be proven".to_string(),
+                    )
+                })?,
+                &attestation,
+            )
+            .map_err(|err| {
+                tracing::info!(?err, "Failed to verify attestation");
+                HttpError::for_bad_request(None, "Invalid attestation".to_string())
+            })?;
+
+        let claims = ctx.oidc.generate_claims(&server, token_request).await?;
+        let token = ctx.v_ctx().sign_jwt(&claims).await.map_err(|err| {
+            tracing::error!(?err, "Unable to sign claims");
+            HttpError::for_internal_error("Failed to sign claims".to_string())
         })?;
 
-    let claims = ctx.oidc.generate_claims(&server, token_request).await?;
-    let token = ctx.v_ctx().sign_jwt(&claims).await.map_err(|err| {
-        tracing::error!(?err, "Unable to sign claims");
-        HttpError::for_internal_error("Failed to sign claims".to_string())
-    })?;
-
-    Ok(HttpResponseOk(OidcServerToken { token }))
+        Ok(HttpResponseOk(OidcServerToken { token }))
+    } else {
+        Err(HttpError::for_bad_request(
+            None,
+            "Server is not active".to_string(),
+        ))
+    }
 }

@@ -96,6 +96,7 @@ impl CliOAuthAdapter for OAuthAdapter {
                 return Ok(OAuthProvider {
                     provider,
                     info: OAuthProviderInfo::Pkce(resp.into_inner()),
+                    scope: vec!["full".to_string()],
                 });
             }
 
@@ -108,6 +109,7 @@ impl CliOAuthAdapter for OAuthAdapter {
                 return Ok(OAuthProvider {
                     provider,
                     info: OAuthProviderInfo::Device(resp.into_inner()),
+                    scope: vec!["full".to_string()],
                 });
             }
 
@@ -139,7 +141,7 @@ impl CliOAuthAdapter for OAuthAdapter {
                 })
                 .send()
                 .await
-                .map_err(|e| ContextError::Sdk(e.to_string()))?
+                .map_err(|err| ContextError::Sdk(err.to_string()))?
                 .into_inner();
             Ok(AdapterToken {
                 token: response.access_token,
@@ -167,7 +169,10 @@ impl CliOAuthAdapter for OAuthAdapter {
             let key = client
                 .create_api_user_token()
                 .user_id(user.info.id.clone())
-                .body_map(|body| body.expires_at(Utc::now().add(TimeDelta::try_days(365).unwrap())))
+                .body_map(|body| {
+                    body.permission_boundary(None)
+                        .expires_at(Utc::now().add(TimeDelta::try_days(365).unwrap()))
+                })
                 .send()
                 .await?
                 .into_inner();
@@ -205,6 +210,7 @@ impl CliMagicLinkAdapter for MagicLinkAdapter {
 pub struct OAuthProvider {
     provider: VLoginProvider,
     info: OAuthProviderInfo,
+    scope: Vec<String>,
 }
 
 pub enum OAuthProviderInfo {
@@ -252,7 +258,7 @@ impl CliOAuthProviderInfo for OAuthProvider {
         }
     }
     fn scopes(&self) -> &[String] {
-        &[]
+        &self.scope
     }
     fn device_authorization_endpoint(&self) -> Option<&str> {
         match &self.info {

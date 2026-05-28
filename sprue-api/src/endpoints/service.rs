@@ -10,19 +10,24 @@ use dropshot::{
 use newtype_uuid::TypedUuid;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use sprue_model::{
     Blob, Deployment, DeploymentId, HealthCheck, ProjectId, ServerRegistration,
-    ServerRegistrationId, ServerRegistrationInstanceId, Service, ServiceId, SiloId,
+    ServerRegistrationId, ServerRegistrationInstanceId, Service, ServiceIdentifier, SiloId,
 };
 use v_api::ApiContext as VApiContext;
-use vm_attest::VmInstanceAttestation;
 
-use crate::{context::ApiContext, context::policy::PolicyDecision, permissions::ApiPermissions};
+use crate::{
+    context::{ApiContext, policy::PolicyDecision},
+    permissions::ApiPermissions,
+    schema::Attestation,
+};
 
+/// Path extractor for endpoints under `/service/{service}`.
+///
+/// The `service` segment accepts either a service UUID or a service name.
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ServicePath {
-    service: TypedUuid<ServiceId>,
+    service: ServiceIdentifier,
 }
 
 /// Get a service by its id
@@ -37,9 +42,24 @@ pub async fn get_service(
     let ctx = rqctx.context();
     let caller = rqctx.v_ctx().get_caller(&rqctx).await?;
     let path = path.into_inner();
-    let service = ctx.service.get_service(&caller, path.service).await?;
+    let service = ctx.service.resolve_service(&caller, &path.service).await?;
 
     Ok(HttpResponseOk(service))
+}
+
+/// List services
+#[endpoint {
+    method = GET,
+    path = "/service",
+}]
+pub async fn list_services(
+    rqctx: RequestContext<ApiContext>,
+) -> Result<HttpResponseOk<Vec<Service>>, HttpError> {
+    let ctx = rqctx.context();
+    let caller = rqctx.v_ctx().get_caller(&rqctx).await?;
+    let services = ctx.service.list_services(&caller).await?;
+
+    Ok(HttpResponseOk(services))
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -86,10 +106,8 @@ pub async fn get_service_servers(
     let ctx = rqctx.context();
     let caller = rqctx.v_ctx().get_caller(&rqctx).await?;
     let path = path.into_inner();
-    let servers = ctx
-        .service
-        .get_service_servers(&caller, path.service)
-        .await?;
+    let service = ctx.service.resolve_service(&caller, &path.service).await?;
+    let servers = ctx.service.get_service_servers(&caller, service.id).await?;
 
     Ok(HttpResponseOk(servers))
 }
@@ -122,12 +140,16 @@ pub async fn register_server(
     let ctx = rqctx.context();
     let path = path.into_inner();
     let body = body.into_inner();
+    let service = ctx
+        .service
+        .resolve_service(&ctx.system_caller(), &path.service)
+        .await?;
     let nonce = ctx.server_identity.generate_nonce()?;
     let registration = ctx
         .service
         .register_server(
             ctx.system_caller(),
-            path.service,
+            service.id,
             body.instance,
             body.project_id,
             body.silo_id,
@@ -145,7 +167,7 @@ pub struct ServerPath {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ServerAttestation {
-    attestation: Value,
+    attestation: Attestation,
 }
 
 /// Prove the identity of a server
@@ -160,16 +182,11 @@ pub async fn prove_server(
 ) -> Result<HttpResponseUpdatedNoContent, HttpError> {
     let ctx = rqctx.context();
     let path = path.into_inner();
-    let body = body.into_inner();
+    let attestation = body.into_inner().attestation;
     let server = ctx
         .service
         .get_server(ctx.system_caller(), path.server)
         .await?;
-    let attestation: VmInstanceAttestation =
-        serde_json::from_value(body.attestation).map_err(|err| {
-            tracing::info!(?err, "Unable to deserialize attestation");
-            HttpError::for_bad_request(None, "Failed to deserialize attestation".to_string())
-        })?;
 
     // Verify the attestation
     ctx.server_identity
@@ -395,9 +412,10 @@ pub async fn create_deployment(
     let caller = rqctx.v_ctx().get_caller(&rqctx).await?;
     let path = path.into_inner();
     let body = body.into_inner();
+    let service = ctx.service.resolve_service(&caller, &path.service).await?;
     let deployment = ctx
         .service
-        .create_deployment(&caller, path.service, body.project_id, body.silo_id)
+        .create_deployment(&caller, service.id, body.project_id, body.silo_id)
         .await?;
 
     Ok(HttpResponseOk(deployment))
@@ -415,7 +433,8 @@ pub async fn list_deployments(
     let ctx = rqctx.context();
     let caller = rqctx.v_ctx().get_caller(&rqctx).await?;
     let path = path.into_inner();
-    let deployments = ctx.service.list_deployments(&caller, path.service).await?;
+    let service = ctx.service.resolve_service(&caller, &path.service).await?;
+    let deployments = ctx.service.list_deployments(&caller, service.id).await?;
 
     Ok(HttpResponseOk(deployments))
 }
@@ -423,7 +442,7 @@ pub async fn list_deployments(
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct DeploymentPath {
     #[allow(dead_code)]
-    service: TypedUuid<ServiceId>,
+    service: ServiceIdentifier,
     deployment: TypedUuid<DeploymentId>,
 }
 

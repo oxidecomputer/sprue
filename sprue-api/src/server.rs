@@ -13,8 +13,8 @@ use crate::{
         oidc::{prove_oidc_token_request, register_oidc_token_request},
         service::{
             accept_server, checkin_server, create_deployment, create_service, delete_deployment,
-            get_deployment, get_service, get_service_servers, list_deployments, prove_server,
-            register_blob, register_server, reject_server, terminate_server,
+            get_deployment, get_service, get_service_servers, list_deployments, list_services,
+            prove_server, register_blob, register_server, reject_server, terminate_server,
         },
     },
     permissions::ApiPermissions,
@@ -45,6 +45,9 @@ pub fn describe() -> ApiDescription<ApiContext> {
 
     description
         .register(get_service)
+        .expect("Register endpoint");
+    description
+        .register(list_services)
         .expect("Register endpoint");
     description
         .register(get_service_servers)

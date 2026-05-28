@@ -4,18 +4,39 @@ version.workspace = true
 edition.workspace = true
 publish.workspace = true
 
+[lib]
+name = "sprue_svc"
+path = "src/lib.rs"
+
+[[bin]]
+name = "sprue_agent"
+path = "src/main.rs"
+
+[features]
+local-dev = ["dice-verifier/mock"]
+
 [dependencies]
 anyhow = { workspace = true }
 base64 = { workspace = true }
+chrono = { workspace = true }
 clap = { workspace = true }
+dice-verifier = { workspace = true, optional = true }
+futures = { workspace = true }
+futures-util = { workspace = true }
 hex = { workspace = true }
 jsonwebtoken = { workspace = true }
 lib-vsock = { workspace = true }
+rand = { workspace = true }
+reqwest = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sprue-sdk = { path = "../sprue-sdk"}
+tarpc = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
+tokio-util = { workspace = true }
 tracing = { workspace = true }
+tracing-appender = { workspace = true }
+tracing-subscriber = { workspace = true }
 uuid = { workspace = true }
 vm-attest = { workspace = true }

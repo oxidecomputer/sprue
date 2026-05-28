@@ -71,7 +71,11 @@ fn decoding_key_from_jwk(jwk: &Jwk) -> Result<DecodingKey, JwtValidationError> {
 /// 3. Validates the JWT signature and claims using that key
 ///
 /// Returns the validated claims on success
-pub fn validate_jwt(token: &str, jwks: &Jwks) -> Result<VmClaims, JwtValidationError> {
+pub fn validate_jwt(
+    issuer: &str,
+    token: &str,
+    jwks: &Jwks,
+) -> Result<VmClaims, JwtValidationError> {
     // Decode the JWT header to get the key id
     let header = decode_header(token).map_err(JwtValidationError::DecodeHeader)?;
 
@@ -86,10 +90,11 @@ pub fn validate_jwt(token: &str, jwks: &Jwks) -> Result<VmClaims, JwtValidationE
 
     // Set up validation parameters
     let mut validation = Validation::new(Algorithm::RS256);
-    // The server sets issuer to "vm-attest-oidc"
-    validation.set_issuer(&["vm-attest-oidc"]);
-    // Validate the audience - we'll accept any audience that starts with the expected prefix
-    validation.validate_aud = false;
+    validation.set_issuer(&[issuer]);
+
+    // We expect the audience to match the issuer
+    validation.set_audience(&[issuer]);
+    validation.validate_aud = true;
 
     // Decode and validate the JWT
     let token_data = decode::<VmClaims>(token, &decoding_key, &validation)

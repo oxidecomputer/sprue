@@ -8,6 +8,7 @@ use newtype_uuid::TypedUuid;
 use secrecy::ExposeSecret;
 use slog::Logger;
 use sprue_model::storage::postgres::PostgresStorage;
+use sprue_svc::DEFAULT_SPRUE_SOCKET;
 use std::{
     path::PathBuf,
     process,
@@ -53,6 +54,7 @@ mod initial_data;
 pub mod permissions;
 mod policy;
 mod sagas;
+mod schema;
 mod server;
 
 pub use config::ServerConfig;
@@ -200,6 +202,9 @@ pub async fn run_server(
             Duration::from_secs(config.vm_identity.registration_duration),
         ))
         .saga_action_registry(Arc::new(saga_actions))
+        .sprue(Some(context::LazySprueClient::new(PathBuf::from(
+            DEFAULT_SPRUE_SOCKET,
+        ))))
         .v_ctx(v_ctx)
         .build()?;
 

@@ -283,7 +283,7 @@ pub mod types {
     ///      "type": "string",
     ///      "format": "date-time"
     ///    },
-    ///    "permissions": {
+    ///    "permission_boundary": {
     ///      "oneOf": [
     ///        {
     ///          "type": "null"
@@ -313,7 +313,7 @@ pub mod types {
     pub struct ApiKeyCreateParamsForApiPermissions {
         pub expires_at: ::chrono::DateTime<::chrono::offset::Utc>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
-        pub permissions: ::std::option::Option<PermissionsForApiPermissions>,
+        pub permission_boundary: ::std::option::Option<PermissionsForApiPermissions>,
     }
 
     impl ApiKeyCreateParamsForApiPermissions {
@@ -365,7 +365,7 @@ pub mod types {
     ///    "id": {
     ///      "$ref": "#/components/schemas/TypedUuidForApiKeyId"
     ///    },
-    ///    "permissions": {
+    ///    "permission_boundary": {
     ///      "oneOf": [
     ///        {
     ///          "type": "null"
@@ -396,7 +396,7 @@ pub mod types {
         pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
         pub id: TypedUuidForApiKeyId,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
-        pub permissions: ::std::option::Option<PermissionsForApiPermissions>,
+        pub permission_boundary: ::std::option::Option<PermissionsForApiPermissions>,
     }
 
     impl ApiKeyResponseForApiPermissions {
@@ -1475,6 +1475,135 @@ pub mod types {
         }
     }
 
+    /// `Attestation`
+    ///
+    /// <details><summary>JSON schema</summary>
+    ///
+    /// ```json
+    /// {
+    ///  "type": "object",
+    ///  "required": [
+    ///    "attestation",
+    ///    "cert_chain",
+    ///    "measurement_logs"
+    ///  ],
+    ///  "properties": {
+    ///    "attestation": {
+    ///      "type": "array",
+    ///      "items": {
+    ///        "type": "integer",
+    ///        "format": "uint8",
+    ///        "minimum": 0.0
+    ///      }
+
+    ///    },
+    ///    "cert_chain": {
+    ///      "type": "array",
+    ///      "items": {
+    ///        "type": "array",
+    ///        "items": {
+    ///          "type": "integer",
+    ///          "format": "uint8",
+    ///          "minimum": 0.0
+    ///        }
+
+    ///      }
+
+    ///    },
+    ///    "measurement_logs": {
+    ///      "type": "array",
+    ///      "items": {
+    ///        "type": "object",
+    ///        "required": [
+    ///          "data",
+    ///          "rot"
+    ///        ],
+    ///        "properties": {
+    ///          "data": {
+    ///            "type": "array",
+    ///            "items": {
+    ///              "type": "integer",
+    ///              "format": "uint8",
+    ///              "minimum": 0.0
+    ///            }
+
+    ///          },
+    ///          "rot": {
+    ///            "type": "string"
+    ///          }
+
+    ///        }
+
+    ///      }
+
+    ///    }
+
+    ///  }
+
+    /// }
+
+    /// ```
+    /// </details>
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
+    pub struct Attestation {
+        pub attestation: ::std::vec::Vec<u8>,
+        pub cert_chain: ::std::vec::Vec<::std::vec::Vec<u8>>,
+        pub measurement_logs: ::std::vec::Vec<AttestationMeasurementLogsItem>,
+    }
+
+    impl Attestation {
+        pub fn builder() -> builder::Attestation {
+            Default::default()
+        }
+    }
+
+    /// `AttestationMeasurementLogsItem`
+    ///
+    /// <details><summary>JSON schema</summary>
+    ///
+    /// ```json
+    /// {
+    ///  "type": "object",
+    ///  "required": [
+    ///    "data",
+    ///    "rot"
+    ///  ],
+    ///  "properties": {
+    ///    "data": {
+    ///      "type": "array",
+    ///      "items": {
+    ///        "type": "integer",
+    ///        "format": "uint8",
+    ///        "minimum": 0.0
+    ///      }
+
+    ///    },
+    ///    "rot": {
+    ///      "type": "string"
+    ///    }
+
+    ///  }
+
+    /// }
+
+    /// ```
+    /// </details>
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
+    pub struct AttestationMeasurementLogsItem {
+        pub data: ::std::vec::Vec<u8>,
+        pub rot: ::std::string::String,
+    }
+
+    impl AttestationMeasurementLogsItem {
+        pub fn builder() -> builder::AttestationMeasurementLogsItem {
+            Default::default()
+        }
+    }
+
     /// `Blob`
     ///
     /// <details><summary>JSON schema</summary>
@@ -2322,7 +2451,7 @@ pub mod types {
     ///    "key": {
     ///      "$ref": "#/components/schemas/SecretString"
     ///    },
-    ///    "permissions": {
+    ///    "permission_boundary": {
     ///      "oneOf": [
     ///        {
     ///          "type": "null"
@@ -2354,7 +2483,7 @@ pub mod types {
         pub id: TypedUuidForApiKeyId,
         pub key: SecretString,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
-        pub permissions: ::std::option::Option<PermissionsForApiPermissions>,
+        pub permission_boundary: ::std::option::Option<PermissionsForApiPermissions>,
     }
 
     impl InitialApiKeyResponseForApiPermissions {
@@ -3405,7 +3534,6 @@ pub mod types {
     ///  "required": [
     ///    "access_token",
     ///    "expires_in",
-    ///    "scope",
     ///    "token_type"
     ///  ],
     ///  "properties": {
@@ -3424,8 +3552,11 @@ pub mod types {
     ///    },
     ///    "scope": {
     ///      "description": "The scope granted to the access token (RFC 6749
-    /// §5.1).",
-    ///      "type": "string"
+    /// §5.1). A None value indicates all scopes (full permissions).",
+    ///      "type": [
+    ///        "string",
+    ///        "null"
+    ///      ]
     ///    },
     ///    "token_type": {
     ///      "type": "string"
@@ -3445,8 +3576,10 @@ pub mod types {
         pub expires_in: i64,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub idp_token: ::std::option::Option<::std::string::String>,
-        /// The scope granted to the access token (RFC 6749 §5.1).
-        pub scope: ::std::string::String,
+        /// The scope granted to the access token (RFC 6749 §5.1). A None value
+        /// indicates all scopes (full permissions).
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub scope: ::std::option::Option<::std::string::String>,
         pub token_type: ::std::string::String,
     }
 
@@ -3942,6 +4075,45 @@ pub mod types {
     #[serde(deny_unknown_fields)]
     pub enum OAuthSecretId {}
 
+    /// `OidcProveBody`
+    ///
+    /// <details><summary>JSON schema</summary>
+    ///
+    /// ```json
+    /// {
+    ///  "type": "object",
+    ///  "required": [
+    ///    "attestation",
+    ///    "request"
+    ///  ],
+    ///  "properties": {
+    ///    "attestation": {
+    ///      "$ref": "#/components/schemas/Attestation"
+    ///    },
+    ///    "request": {
+    ///      "$ref": "#/components/schemas/TypedUuidForTokenRequestId"
+    ///    }
+
+    ///  }
+
+    /// }
+
+    /// ```
+    /// </details>
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
+    pub struct OidcProveBody {
+        pub attestation: Attestation,
+        pub request: TypedUuidForTokenRequestId,
+    }
+
+    impl OidcProveBody {
+        pub fn builder() -> builder::OidcProveBody {
+            Default::default()
+        }
+    }
+
     /// `OidcServerToken`
     ///
     /// <details><summary>JSON schema</summary>
@@ -4303,13 +4475,11 @@ pub mod types {
     /// {
     ///  "type": "object",
     ///  "required": [
-    ///    "attestation",
-    ///    "request"
+    ///    "attestation"
     ///  ],
     ///  "properties": {
-    ///    "attestation": {},
-    ///    "request": {
-    ///      "$ref": "#/components/schemas/TypedUuidForTokenRequestId"
+    ///    "attestation": {
+    ///      "$ref": "#/components/schemas/Attestation"
     ///    }
 
     ///  }
@@ -4322,44 +4492,11 @@ pub mod types {
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
     pub struct ServerAttestation {
-        pub attestation: ::serde_json::Value,
-        pub request: TypedUuidForTokenRequestId,
+        pub attestation: Attestation,
     }
 
     impl ServerAttestation {
         pub fn builder() -> builder::ServerAttestation {
-            Default::default()
-        }
-    }
-
-    /// `ServerAttestation2`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "attestation"
-    ///  ],
-    ///  "properties": {
-    ///    "attestation": {}
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
-    #[derive(
-        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
-    )]
-    pub struct ServerAttestation2 {
-        pub attestation: ::serde_json::Value,
-    }
-
-    impl ServerAttestation2 {
-        pub fn builder() -> builder::ServerAttestation2 {
             Default::default()
         }
     }
@@ -4663,6 +4800,63 @@ pub mod types {
     )]
     #[serde(deny_unknown_fields)]
     pub enum ServiceId {}
+
+    /// `ServiceIdentifier`
+    ///
+    /// <details><summary>JSON schema</summary>
+    ///
+    /// ```json
+    /// {
+    ///  "type": "string"
+    /// }
+
+    /// ```
+    /// </details>
+    #[derive(
+        :: serde :: Deserialize,
+        :: serde :: Serialize,
+        Clone,
+        Debug,
+        Eq,
+        Hash,
+        Ord,
+        PartialEq,
+        PartialOrd,
+        schemars :: JsonSchema,
+    )]
+    #[serde(transparent)]
+    pub struct ServiceIdentifier(pub ::std::string::String);
+    impl ::std::ops::Deref for ServiceIdentifier {
+        type Target = ::std::string::String;
+        fn deref(&self) -> &::std::string::String {
+            &self.0
+        }
+    }
+
+    impl ::std::convert::From<ServiceIdentifier> for ::std::string::String {
+        fn from(value: ServiceIdentifier) -> Self {
+            value.0
+        }
+    }
+
+    impl ::std::convert::From<::std::string::String> for ServiceIdentifier {
+        fn from(value: ::std::string::String) -> Self {
+            Self(value)
+        }
+    }
+
+    impl ::std::str::FromStr for ServiceIdentifier {
+        type Err = ::std::convert::Infallible;
+        fn from_str(value: &str) -> ::std::result::Result<Self, Self::Err> {
+            Ok(Self(value.to_string()))
+        }
+    }
+
+    impl ::std::fmt::Display for ServiceIdentifier {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            self.0.fmt(f)
+        }
+    }
 
     /// `SiloId`
     ///
@@ -6829,7 +7023,7 @@ pub mod types {
                 ::chrono::DateTime<::chrono::offset::Utc>,
                 ::std::string::String,
             >,
-            permissions: ::std::result::Result<
+            permission_boundary: ::std::result::Result<
                 ::std::option::Option<super::PermissionsForApiPermissions>,
                 ::std::string::String,
             >,
@@ -6839,7 +7033,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     expires_at: Err("no value supplied for expires_at".to_string()),
-                    permissions: Ok(Default::default()),
+                    permission_boundary: Ok(Default::default()),
                 }
             }
         }
@@ -6855,16 +7049,16 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for expires_at: {e}"));
                 self
             }
-            pub fn permissions<T>(mut self, value: T) -> Self
+            pub fn permission_boundary<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<
                         ::std::option::Option<super::PermissionsForApiPermissions>,
                     >,
                 T::Error: ::std::fmt::Display,
             {
-                self.permissions = value
-                    .try_into()
-                    .map_err(|e| format!("error converting supplied value for permissions: {e}"));
+                self.permission_boundary = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for permission_boundary: {e}")
+                });
                 self
             }
         }
@@ -6878,7 +7072,7 @@ pub mod types {
             ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
                     expires_at: value.expires_at?,
-                    permissions: value.permissions?,
+                    permission_boundary: value.permission_boundary?,
                 })
             }
         }
@@ -6889,7 +7083,7 @@ pub mod types {
             fn from(value: super::ApiKeyCreateParamsForApiPermissions) -> Self {
                 Self {
                     expires_at: Ok(value.expires_at),
-                    permissions: Ok(value.permissions),
+                    permission_boundary: Ok(value.permission_boundary),
                 }
             }
         }
@@ -6901,7 +7095,7 @@ pub mod types {
                 ::std::string::String,
             >,
             id: ::std::result::Result<super::TypedUuidForApiKeyId, ::std::string::String>,
-            permissions: ::std::result::Result<
+            permission_boundary: ::std::result::Result<
                 ::std::option::Option<super::PermissionsForApiPermissions>,
                 ::std::string::String,
             >,
@@ -6912,7 +7106,7 @@ pub mod types {
                 Self {
                     created_at: Err("no value supplied for created_at".to_string()),
                     id: Err("no value supplied for id".to_string()),
-                    permissions: Ok(Default::default()),
+                    permission_boundary: Ok(Default::default()),
                 }
             }
         }
@@ -6938,16 +7132,16 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for id: {e}"));
                 self
             }
-            pub fn permissions<T>(mut self, value: T) -> Self
+            pub fn permission_boundary<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<
                         ::std::option::Option<super::PermissionsForApiPermissions>,
                     >,
                 T::Error: ::std::fmt::Display,
             {
-                self.permissions = value
-                    .try_into()
-                    .map_err(|e| format!("error converting supplied value for permissions: {e}"));
+                self.permission_boundary = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for permission_boundary: {e}")
+                });
                 self
             }
         }
@@ -6962,7 +7156,7 @@ pub mod types {
                 Ok(Self {
                     created_at: value.created_at?,
                     id: value.id?,
-                    permissions: value.permissions?,
+                    permission_boundary: value.permission_boundary?,
                 })
             }
         }
@@ -6974,7 +7168,7 @@ pub mod types {
                 Self {
                     created_at: Ok(value.created_at),
                     id: Ok(value.id),
-                    permissions: Ok(value.permissions),
+                    permission_boundary: Ok(value.permission_boundary),
                 }
             }
         }
@@ -7699,6 +7893,146 @@ pub mod types {
                 Self {
                     group_ids: Ok(value.group_ids),
                     permissions: Ok(value.permissions),
+                }
+            }
+        }
+
+        #[derive(Clone, Debug)]
+        pub struct Attestation {
+            attestation: ::std::result::Result<::std::vec::Vec<u8>, ::std::string::String>,
+            cert_chain:
+                ::std::result::Result<::std::vec::Vec<::std::vec::Vec<u8>>, ::std::string::String>,
+            measurement_logs: ::std::result::Result<
+                ::std::vec::Vec<super::AttestationMeasurementLogsItem>,
+                ::std::string::String,
+            >,
+        }
+
+        impl ::std::default::Default for Attestation {
+            fn default() -> Self {
+                Self {
+                    attestation: Err("no value supplied for attestation".to_string()),
+                    cert_chain: Err("no value supplied for cert_chain".to_string()),
+                    measurement_logs: Err("no value supplied for measurement_logs".to_string()),
+                }
+            }
+        }
+
+        impl Attestation {
+            pub fn attestation<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<u8>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.attestation = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for attestation: {e}"));
+                self
+            }
+            pub fn cert_chain<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<::std::vec::Vec<u8>>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.cert_chain = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for cert_chain: {e}"));
+                self
+            }
+            pub fn measurement_logs<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<super::AttestationMeasurementLogsItem>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.measurement_logs = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for measurement_logs: {e}")
+                });
+                self
+            }
+        }
+
+        impl ::std::convert::TryFrom<Attestation> for super::Attestation {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: Attestation,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    attestation: value.attestation?,
+                    cert_chain: value.cert_chain?,
+                    measurement_logs: value.measurement_logs?,
+                })
+            }
+        }
+
+        impl ::std::convert::From<super::Attestation> for Attestation {
+            fn from(value: super::Attestation) -> Self {
+                Self {
+                    attestation: Ok(value.attestation),
+                    cert_chain: Ok(value.cert_chain),
+                    measurement_logs: Ok(value.measurement_logs),
+                }
+            }
+        }
+
+        #[derive(Clone, Debug)]
+        pub struct AttestationMeasurementLogsItem {
+            data: ::std::result::Result<::std::vec::Vec<u8>, ::std::string::String>,
+            rot: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+
+        impl ::std::default::Default for AttestationMeasurementLogsItem {
+            fn default() -> Self {
+                Self {
+                    data: Err("no value supplied for data".to_string()),
+                    rot: Err("no value supplied for rot".to_string()),
+                }
+            }
+        }
+
+        impl AttestationMeasurementLogsItem {
+            pub fn data<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<u8>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.data = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for data: {e}"));
+                self
+            }
+            pub fn rot<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.rot = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for rot: {e}"));
+                self
+            }
+        }
+
+        impl ::std::convert::TryFrom<AttestationMeasurementLogsItem>
+            for super::AttestationMeasurementLogsItem
+        {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: AttestationMeasurementLogsItem,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    data: value.data?,
+                    rot: value.rot?,
+                })
+            }
+        }
+
+        impl ::std::convert::From<super::AttestationMeasurementLogsItem>
+            for AttestationMeasurementLogsItem
+        {
+            fn from(value: super::AttestationMeasurementLogsItem) -> Self {
+                Self {
+                    data: Ok(value.data),
+                    rot: Ok(value.rot),
                 }
             }
         }
@@ -8585,7 +8919,7 @@ pub mod types {
             >,
             id: ::std::result::Result<super::TypedUuidForApiKeyId, ::std::string::String>,
             key: ::std::result::Result<super::SecretString, ::std::string::String>,
-            permissions: ::std::result::Result<
+            permission_boundary: ::std::result::Result<
                 ::std::option::Option<super::PermissionsForApiPermissions>,
                 ::std::string::String,
             >,
@@ -8597,7 +8931,7 @@ pub mod types {
                     created_at: Err("no value supplied for created_at".to_string()),
                     id: Err("no value supplied for id".to_string()),
                     key: Err("no value supplied for key".to_string()),
-                    permissions: Ok(Default::default()),
+                    permission_boundary: Ok(Default::default()),
                 }
             }
         }
@@ -8633,16 +8967,16 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for key: {e}"));
                 self
             }
-            pub fn permissions<T>(mut self, value: T) -> Self
+            pub fn permission_boundary<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<
                         ::std::option::Option<super::PermissionsForApiPermissions>,
                     >,
                 T::Error: ::std::fmt::Display,
             {
-                self.permissions = value
-                    .try_into()
-                    .map_err(|e| format!("error converting supplied value for permissions: {e}"));
+                self.permission_boundary = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for permission_boundary: {e}")
+                });
                 self
             }
         }
@@ -8658,7 +8992,7 @@ pub mod types {
                     created_at: value.created_at?,
                     id: value.id?,
                     key: value.key?,
-                    permissions: value.permissions?,
+                    permission_boundary: value.permission_boundary?,
                 })
             }
         }
@@ -8671,7 +9005,7 @@ pub mod types {
                     created_at: Ok(value.created_at),
                     id: Ok(value.id),
                     key: Ok(value.key),
-                    permissions: Ok(value.permissions),
+                    permission_boundary: Ok(value.permission_boundary),
                 }
             }
         }
@@ -9946,7 +10280,10 @@ pub mod types {
                 ::std::option::Option<::std::string::String>,
                 ::std::string::String,
             >,
-            scope: ::std::result::Result<::std::string::String, ::std::string::String>,
+            scope: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
             token_type: ::std::result::Result<::std::string::String, ::std::string::String>,
         }
 
@@ -9956,7 +10293,7 @@ pub mod types {
                     access_token: Err("no value supplied for access_token".to_string()),
                     expires_in: Err("no value supplied for expires_in".to_string()),
                     idp_token: Ok(Default::default()),
-                    scope: Err("no value supplied for scope".to_string()),
+                    scope: Ok(Default::default()),
                     token_type: Err("no value supplied for token_type".to_string()),
                 }
             }
@@ -9995,7 +10332,7 @@ pub mod types {
             }
             pub fn scope<T>(mut self, value: T) -> Self
             where
-                T: ::std::convert::TryInto<::std::string::String>,
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
                 T::Error: ::std::fmt::Display,
             {
                 self.scope = value
@@ -10645,6 +10982,66 @@ pub mod types {
         }
 
         #[derive(Clone, Debug)]
+        pub struct OidcProveBody {
+            attestation: ::std::result::Result<super::Attestation, ::std::string::String>,
+            request:
+                ::std::result::Result<super::TypedUuidForTokenRequestId, ::std::string::String>,
+        }
+
+        impl ::std::default::Default for OidcProveBody {
+            fn default() -> Self {
+                Self {
+                    attestation: Err("no value supplied for attestation".to_string()),
+                    request: Err("no value supplied for request".to_string()),
+                }
+            }
+        }
+
+        impl OidcProveBody {
+            pub fn attestation<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::Attestation>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.attestation = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for attestation: {e}"));
+                self
+            }
+            pub fn request<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::TypedUuidForTokenRequestId>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.request = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for request: {e}"));
+                self
+            }
+        }
+
+        impl ::std::convert::TryFrom<OidcProveBody> for super::OidcProveBody {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: OidcProveBody,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    attestation: value.attestation?,
+                    request: value.request?,
+                })
+            }
+        }
+
+        impl ::std::convert::From<super::OidcProveBody> for OidcProveBody {
+            fn from(value: super::OidcProveBody) -> Self {
+                Self {
+                    attestation: Ok(value.attestation),
+                    request: Ok(value.request),
+                }
+            }
+        }
+
+        #[derive(Clone, Debug)]
         pub struct OidcServerToken {
             token: ::std::result::Result<::std::string::String, ::std::string::String>,
         }
@@ -10981,16 +11378,13 @@ pub mod types {
 
         #[derive(Clone, Debug)]
         pub struct ServerAttestation {
-            attestation: ::std::result::Result<::serde_json::Value, ::std::string::String>,
-            request:
-                ::std::result::Result<super::TypedUuidForTokenRequestId, ::std::string::String>,
+            attestation: ::std::result::Result<super::Attestation, ::std::string::String>,
         }
 
         impl ::std::default::Default for ServerAttestation {
             fn default() -> Self {
                 Self {
                     attestation: Err("no value supplied for attestation".to_string()),
-                    request: Err("no value supplied for request".to_string()),
                 }
             }
         }
@@ -10998,22 +11392,12 @@ pub mod types {
         impl ServerAttestation {
             pub fn attestation<T>(mut self, value: T) -> Self
             where
-                T: ::std::convert::TryInto<::serde_json::Value>,
+                T: ::std::convert::TryInto<super::Attestation>,
                 T::Error: ::std::fmt::Display,
             {
                 self.attestation = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for attestation: {e}"));
-                self
-            }
-            pub fn request<T>(mut self, value: T) -> Self
-            where
-                T: ::std::convert::TryInto<super::TypedUuidForTokenRequestId>,
-                T::Error: ::std::fmt::Display,
-            {
-                self.request = value
-                    .try_into()
-                    .map_err(|e| format!("error converting supplied value for request: {e}"));
                 self
             }
         }
@@ -11025,59 +11409,12 @@ pub mod types {
             ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
                     attestation: value.attestation?,
-                    request: value.request?,
                 })
             }
         }
 
         impl ::std::convert::From<super::ServerAttestation> for ServerAttestation {
             fn from(value: super::ServerAttestation) -> Self {
-                Self {
-                    attestation: Ok(value.attestation),
-                    request: Ok(value.request),
-                }
-            }
-        }
-
-        #[derive(Clone, Debug)]
-        pub struct ServerAttestation2 {
-            attestation: ::std::result::Result<::serde_json::Value, ::std::string::String>,
-        }
-
-        impl ::std::default::Default for ServerAttestation2 {
-            fn default() -> Self {
-                Self {
-                    attestation: Err("no value supplied for attestation".to_string()),
-                }
-            }
-        }
-
-        impl ServerAttestation2 {
-            pub fn attestation<T>(mut self, value: T) -> Self
-            where
-                T: ::std::convert::TryInto<::serde_json::Value>,
-                T::Error: ::std::fmt::Display,
-            {
-                self.attestation = value
-                    .try_into()
-                    .map_err(|e| format!("error converting supplied value for attestation: {e}"));
-                self
-            }
-        }
-
-        impl ::std::convert::TryFrom<ServerAttestation2> for super::ServerAttestation2 {
-            type Error = super::error::ConversionError;
-            fn try_from(
-                value: ServerAttestation2,
-            ) -> ::std::result::Result<Self, super::error::ConversionError> {
-                Ok(Self {
-                    attestation: value.attestation?,
-                })
-            }
-        }
-
-        impl ::std::convert::From<super::ServerAttestation2> for ServerAttestation2 {
-            fn from(value: super::ServerAttestation2) -> Self {
                 Self {
                     attestation: Ok(value.attestation),
                 }
@@ -12498,6 +12835,19 @@ impl Client {
     /// ```
     pub fn terminate_server(&self) -> builder::TerminateServer<'_> {
         builder::TerminateServer::new(self)
+    }
+
+    /// List services
+    ///
+    /// Sends a `GET` request to `/service`
+    ///
+    /// ```ignore
+    /// let response = client.list_services()
+    ///    .send()
+    ///    .await;
+    /// ```
+    pub fn list_services(&self) -> builder::ListServices<'_> {
+        builder::ListServices::new(self)
     }
 
     /// Create a new service
@@ -17634,7 +17984,7 @@ pub mod builder {
     pub struct ProveOidcTokenRequest<'a> {
         client: &'a super::Client,
         server: Result<types::TypedUuidForServerRegistrationId, String>,
-        body: Result<types::builder::ServerAttestation, String>,
+        body: Result<types::builder::OidcProveBody, String>,
     }
 
     impl<'a> ProveOidcTokenRequest<'a> {
@@ -17658,21 +18008,19 @@ pub mod builder {
 
         pub fn body<V>(mut self, value: V) -> Self
         where
-            V: std::convert::TryInto<types::ServerAttestation>,
-            <V as std::convert::TryInto<types::ServerAttestation>>::Error: std::fmt::Display,
+            V: std::convert::TryInto<types::OidcProveBody>,
+            <V as std::convert::TryInto<types::OidcProveBody>>::Error: std::fmt::Display,
         {
             self.body = value
                 .try_into()
                 .map(From::from)
-                .map_err(|s| format!("conversion to `ServerAttestation` for body failed: {}", s));
+                .map_err(|s| format!("conversion to `OidcProveBody` for body failed: {}", s));
             self
         }
 
         pub fn body_map<F>(mut self, f: F) -> Self
         where
-            F: std::ops::FnOnce(
-                    types::builder::ServerAttestation,
-                ) -> types::builder::ServerAttestation,
+            F: std::ops::FnOnce(types::builder::OidcProveBody) -> types::builder::OidcProveBody,
         {
             self.body = self.body.map(f);
             self
@@ -17689,7 +18037,7 @@ pub mod builder {
             } = self;
             let server = server.map_err(Error::InvalidRequest)?;
             let body = body
-                .and_then(|v| types::ServerAttestation::try_from(v).map_err(|e| e.to_string()))
+                .and_then(|v| types::OidcProveBody::try_from(v).map_err(|e| e.to_string()))
                 .map_err(Error::InvalidRequest)?;
             let url = format!(
                 "{}/server/{}/oidc/token/prove",
@@ -17739,7 +18087,7 @@ pub mod builder {
     pub struct ProveServer<'a> {
         client: &'a super::Client,
         server: Result<types::TypedUuidForServerRegistrationId, String>,
-        body: Result<types::builder::ServerAttestation2, String>,
+        body: Result<types::builder::ServerAttestation, String>,
     }
 
     impl<'a> ProveServer<'a> {
@@ -17763,21 +18111,21 @@ pub mod builder {
 
         pub fn body<V>(mut self, value: V) -> Self
         where
-            V: std::convert::TryInto<types::ServerAttestation2>,
-            <V as std::convert::TryInto<types::ServerAttestation2>>::Error: std::fmt::Display,
+            V: std::convert::TryInto<types::ServerAttestation>,
+            <V as std::convert::TryInto<types::ServerAttestation>>::Error: std::fmt::Display,
         {
             self.body = value
                 .try_into()
                 .map(From::from)
-                .map_err(|s| format!("conversion to `ServerAttestation2` for body failed: {}", s));
+                .map_err(|s| format!("conversion to `ServerAttestation` for body failed: {}", s));
             self
         }
 
         pub fn body_map<F>(mut self, f: F) -> Self
         where
             F: std::ops::FnOnce(
-                    types::builder::ServerAttestation2,
-                ) -> types::builder::ServerAttestation2,
+                    types::builder::ServerAttestation,
+                ) -> types::builder::ServerAttestation,
         {
             self.body = self.body.map(f);
             self
@@ -17792,7 +18140,7 @@ pub mod builder {
             } = self;
             let server = server.map_err(Error::InvalidRequest)?;
             let body = body
-                .and_then(|v| types::ServerAttestation2::try_from(v).map_err(|e| e.to_string()))
+                .and_then(|v| types::ServerAttestation::try_from(v).map_err(|e| e.to_string()))
                 .map_err(Error::InvalidRequest)?;
             let url = format!(
                 "{}/server/{}/prove",
@@ -17977,6 +18325,60 @@ pub mod builder {
         }
     }
 
+    /// Builder for [`Client::list_services`]
+    ///
+    /// [`Client::list_services`]: super::Client::list_services
+    #[derive(Debug, Clone)]
+    pub struct ListServices<'a> {
+        client: &'a super::Client,
+    }
+
+    impl<'a> ListServices<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self { client: client }
+        }
+
+        /// Sends a `GET` request to `/service`
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<::std::vec::Vec<types::Service>>, Error<types::Error>> {
+            let Self { client } = self;
+            let url = format!("{}/service", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "list_services",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                400u16..=499u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                500u16..=599u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+
     /// Builder for [`Client::create_service`]
     ///
     /// [`Client::create_service`]: super::Client::create_service
@@ -18063,7 +18465,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct GetService<'a> {
         client: &'a super::Client,
-        service: Result<types::TypedUuidForServiceId, String>,
+        service: Result<types::ServiceIdentifier, String>,
     }
 
     impl<'a> GetService<'a> {
@@ -18076,11 +18478,11 @@ pub mod builder {
 
         pub fn service<V>(mut self, value: V) -> Self
         where
-            V: std::convert::TryInto<types::TypedUuidForServiceId>,
+            V: std::convert::TryInto<types::ServiceIdentifier>,
         {
-            self.service = value.try_into().map_err(|_| {
-                "conversion to `TypedUuidForServiceId` for service failed".to_string()
-            });
+            self.service = value
+                .try_into()
+                .map_err(|_| "conversion to `ServiceIdentifier` for service failed".to_string());
             self
         }
 
@@ -18134,7 +18536,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct ListDeployments<'a> {
         client: &'a super::Client,
-        service: Result<types::TypedUuidForServiceId, String>,
+        service: Result<types::ServiceIdentifier, String>,
     }
 
     impl<'a> ListDeployments<'a> {
@@ -18147,11 +18549,11 @@ pub mod builder {
 
         pub fn service<V>(mut self, value: V) -> Self
         where
-            V: std::convert::TryInto<types::TypedUuidForServiceId>,
+            V: std::convert::TryInto<types::ServiceIdentifier>,
         {
-            self.service = value.try_into().map_err(|_| {
-                "conversion to `TypedUuidForServiceId` for service failed".to_string()
-            });
+            self.service = value
+                .try_into()
+                .map_err(|_| "conversion to `ServiceIdentifier` for service failed".to_string());
             self
         }
 
@@ -18208,7 +18610,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct CreateDeployment<'a> {
         client: &'a super::Client,
-        service: Result<types::TypedUuidForServiceId, String>,
+        service: Result<types::ServiceIdentifier, String>,
         body: Result<types::builder::CreateDeploymentBody, String>,
     }
 
@@ -18223,11 +18625,11 @@ pub mod builder {
 
         pub fn service<V>(mut self, value: V) -> Self
         where
-            V: std::convert::TryInto<types::TypedUuidForServiceId>,
+            V: std::convert::TryInto<types::ServiceIdentifier>,
         {
-            self.service = value.try_into().map_err(|_| {
-                "conversion to `TypedUuidForServiceId` for service failed".to_string()
-            });
+            self.service = value
+                .try_into()
+                .map_err(|_| "conversion to `ServiceIdentifier` for service failed".to_string());
             self
         }
 
@@ -18313,7 +18715,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct GetDeployment<'a> {
         client: &'a super::Client,
-        service: Result<types::TypedUuidForServiceId, String>,
+        service: Result<types::ServiceIdentifier, String>,
         deployment: Result<types::TypedUuidForDeploymentId, String>,
     }
 
@@ -18328,11 +18730,11 @@ pub mod builder {
 
         pub fn service<V>(mut self, value: V) -> Self
         where
-            V: std::convert::TryInto<types::TypedUuidForServiceId>,
+            V: std::convert::TryInto<types::ServiceIdentifier>,
         {
-            self.service = value.try_into().map_err(|_| {
-                "conversion to `TypedUuidForServiceId` for service failed".to_string()
-            });
+            self.service = value
+                .try_into()
+                .map_err(|_| "conversion to `ServiceIdentifier` for service failed".to_string());
             self
         }
 
@@ -18403,7 +18805,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct DeleteDeployment<'a> {
         client: &'a super::Client,
-        service: Result<types::TypedUuidForServiceId, String>,
+        service: Result<types::ServiceIdentifier, String>,
         deployment: Result<types::TypedUuidForDeploymentId, String>,
     }
 
@@ -18418,11 +18820,11 @@ pub mod builder {
 
         pub fn service<V>(mut self, value: V) -> Self
         where
-            V: std::convert::TryInto<types::TypedUuidForServiceId>,
+            V: std::convert::TryInto<types::ServiceIdentifier>,
         {
-            self.service = value.try_into().map_err(|_| {
-                "conversion to `TypedUuidForServiceId` for service failed".to_string()
-            });
+            self.service = value
+                .try_into()
+                .map_err(|_| "conversion to `ServiceIdentifier` for service failed".to_string());
             self
         }
 
@@ -18493,7 +18895,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct RegisterServer<'a> {
         client: &'a super::Client,
-        service: Result<types::TypedUuidForServiceId, String>,
+        service: Result<types::ServiceIdentifier, String>,
         body: Result<types::builder::RegisterServerBody, String>,
     }
 
@@ -18508,11 +18910,11 @@ pub mod builder {
 
         pub fn service<V>(mut self, value: V) -> Self
         where
-            V: std::convert::TryInto<types::TypedUuidForServiceId>,
+            V: std::convert::TryInto<types::ServiceIdentifier>,
         {
-            self.service = value.try_into().map_err(|_| {
-                "conversion to `TypedUuidForServiceId` for service failed".to_string()
-            });
+            self.service = value
+                .try_into()
+                .map_err(|_| "conversion to `ServiceIdentifier` for service failed".to_string());
             self
         }
 
@@ -18598,7 +19000,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct GetServiceServers<'a> {
         client: &'a super::Client,
-        service: Result<types::TypedUuidForServiceId, String>,
+        service: Result<types::ServiceIdentifier, String>,
     }
 
     impl<'a> GetServiceServers<'a> {
@@ -18611,11 +19013,11 @@ pub mod builder {
 
         pub fn service<V>(mut self, value: V) -> Self
         where
-            V: std::convert::TryInto<types::TypedUuidForServiceId>,
+            V: std::convert::TryInto<types::ServiceIdentifier>,
         {
-            self.service = value.try_into().map_err(|_| {
-                "conversion to `TypedUuidForServiceId` for service failed".to_string()
-            });
+            self.service = value
+                .try_into()
+                .map_err(|_| "conversion to `ServiceIdentifier` for service failed".to_string());
             self
         }
 

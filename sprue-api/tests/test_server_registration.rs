@@ -45,7 +45,7 @@ async fn test_server_registration() {
     let registration = vm
         .client
         .register_server()
-        .service(service.id.clone())
+        .service(service.id.to_string())
         .body_map(|body| {
             body.instance(vm.conf.uuid)
                 .project_id(vm.conf().project)
@@ -67,7 +67,7 @@ async fn test_server_registration() {
     vm.client
         .prove_server()
         .server(registration.id.clone())
-        .body_map(|body| body.attestation(serde_json::to_value(attestation).unwrap()))
+        .body_map(|body| body.attestation(attestation))
         .send()
         .await
         .unwrap();
@@ -84,7 +84,7 @@ async fn test_server_registration() {
     let servers = user
         .client
         .get_service_servers()
-        .service(service.id)
+        .service(service.id.to_string())
         .send()
         .await
         .unwrap()

@@ -21,4 +21,5 @@ sqlx = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, optional = true }
 tracing = { workspace = true }
+uuid = { workspace = true }
 v-model = { workspace = true }

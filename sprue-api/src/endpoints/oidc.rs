@@ -6,12 +6,10 @@ use dropshot::{HttpError, HttpResponseOk, Path, RequestContext, TypedBody, endpo
 use newtype_uuid::TypedUuid;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use sprue_model::{TokenRequest, TokenRequestId};
 use v_api::ApiContext as VApiContext;
-use vm_attest::VmInstanceAttestation;
 
-use crate::{context::ApiContext, endpoints::service::ServerPath};
+use crate::{context::ApiContext, endpoints::service::ServerPath, schema::Attestation};
 
 /// Register a request for a server OIDC token.
 ///
@@ -37,9 +35,9 @@ pub async fn register_oidc_token_request(
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
-pub struct ServerAttestation {
+pub struct OidcProveBody {
     request: TypedUuid<TokenRequestId>,
-    attestation: Value,
+    attestation: Attestation,
 }
 
 #[derive(Debug, Serialize, JsonSchema)]
@@ -58,7 +56,7 @@ pub struct OidcServerToken {
 pub async fn prove_oidc_token_request(
     rqctx: RequestContext<ApiContext>,
     path: Path<ServerPath>,
-    body: TypedBody<ServerAttestation>,
+    body: TypedBody<OidcProveBody>,
 ) -> Result<HttpResponseOk<OidcServerToken>, HttpError> {
     let ctx = rqctx.context();
     let path = path.into_inner();
@@ -67,11 +65,7 @@ pub async fn prove_oidc_token_request(
         .service
         .get_server(ctx.system_caller(), path.server)
         .await?;
-    let attestation: VmInstanceAttestation =
-        serde_json::from_value(body.attestation).map_err(|err| {
-            tracing::info!(?err, "Unable to deserialize attestation");
-            HttpError::for_bad_request(None, "Failed to deserialize attestation".to_string())
-        })?;
+    let attestation = body.attestation.into_inner();
     let token_request = ctx.oidc.get_token_request(body.request).await?;
 
     // Verify the attestation

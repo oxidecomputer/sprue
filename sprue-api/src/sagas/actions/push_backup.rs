@@ -10,7 +10,7 @@ use sprue_model::{BlobId, storage::StorageError};
 use steno::{ActionContext, ActionError, ActionRegistry, DagBuilder, Node, SagaDag, SagaName};
 use thiserror::Error;
 use v_api::response::ResourceError;
-use v_model::UserId;
+use v_model::{Permissions, UserId};
 
 use crate::{
     context::{ApiContext, blob::BlobError},
@@ -154,6 +154,8 @@ pub struct PushBackup;
 impl RegisterActions for PushBackup {
     fn register_actions(registry: &mut ActionRegistry<SprueSaga>) {
         registry.register(actions::CLAIM_BACKUP.clone());
+        registry.register(actions::TRANSFER_BLOB.clone());
+        registry.register(actions::COMPLETE_TRANSFER.clone());
     }
 }
 impl SagaRuntime for PushBackup {
@@ -164,7 +166,10 @@ impl SagaRuntime for PushBackup {
     fn system_caller(&self, caller_id: TypedUuid<UserId>) -> SagaActionCaller<ApiPermissions> {
         SagaActionCaller {
             id: caller_id,
-            permissions: v_model::Permissions::default(),
+            permissions: Permissions::from([
+                ApiPermissions::GetBlobsAll,
+                ApiPermissions::ManageBlobsAll,
+            ]),
         }
     }
 }

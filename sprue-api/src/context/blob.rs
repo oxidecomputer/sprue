@@ -69,29 +69,17 @@ impl From<Caller<ApiPermissions>> for BlobCaller {
 impl BlobCaller {
     pub fn can_read(&self, blob: &Blob) -> bool {
         match self {
-            Self::Saga(saga) => saga.permissions.any(
-                [
-                    ApiPermissions::GetBlob(blob.id),
-                    ApiPermissions::GetBlobsAll,
-                ]
-                .iter(),
-            ),
+            Self::Saga(saga) => saga.permissions.can(&ApiPermissions::GetBlob(blob.id)),
             Self::Server(server) => server.id == blob.server_registration_id,
-            Self::User(user) => user.any(
-                [
-                    ApiPermissions::GetBlob(blob.id),
-                    ApiPermissions::GetBlobsAll,
-                ]
-                .iter(),
-            ),
+            Self::User(user) => user.can(&ApiPermissions::GetBlob(blob.id)),
         }
     }
 
     pub fn can_manage(&self, blob: &Blob) -> bool {
         match self {
-            Self::Saga(_) => false,
+            Self::Saga(saga) => saga.permissions.can(&ApiPermissions::ManageBlobsAll),
             Self::Server(server) => server.id == blob.server_registration_id,
-            Self::User(_) => false,
+            Self::User(user) => user.can(&ApiPermissions::ManageBlobsAll),
         }
     }
 }

@@ -6,8 +6,8 @@ use chrono::Utc;
 use newtype_uuid::TypedUuid;
 use serde::{Deserialize, Serialize};
 use sprue_model::{
-    InvalidTokenRequestStateTransition, ServerRegistration, ServerRegistrationId,
-    ServerRegistrationInstanceId, ServiceId, TokenRequest, TokenRequestId,
+    InvalidTokenRequestStateTransition, ProjectId, ServerRegistration, ServerRegistrationId,
+    ServerRegistrationInstanceId, ServiceId, SiloId, TokenRequest, TokenRequestId,
     db::NewTokenRequestModel,
     storage::{StorageError, TokenRequestStorage},
 };
@@ -58,14 +58,14 @@ pub struct VmClaims {
     pub nbf: i64,
     pub jti: Uuid,
     pub srv: TypedUuid<ServiceId>,
-    pub ox: OxideVmClaims,
+    pub oxc: OxideVmClaims,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct OxideVmClaims {
     pub ins: TypedUuid<ServerRegistrationInstanceId>,
-    pub prj: Option<Uuid>,
-    pub slo: Option<Uuid>,
+    pub prj: TypedUuid<ProjectId>,
+    pub slo: TypedUuid<SiloId>,
 }
 
 impl OidcContext {
@@ -132,16 +132,16 @@ impl OidcContext {
     fn create_claims(&self, server: &ServerRegistration) -> VmClaims {
         VmClaims {
             iss: self.issuer.to_string(),
-            aud: self.oidc.token.audience.to_string(),
+            aud: self.issuer.to_string(),
             sub: server.id,
             exp: Utc::now().timestamp() + (self.oidc.token.token_lifetime as i64),
             nbf: Utc::now().timestamp(),
             jti: Uuid::new_v4(),
             srv: server.service_id,
-            ox: OxideVmClaims {
+            oxc: OxideVmClaims {
                 ins: server.instance_id,
-                prj: None,
-                slo: None,
+                prj: server.project_id,
+                slo: server.silo_id,
             },
         }
     }

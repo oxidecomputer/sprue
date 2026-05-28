@@ -52,9 +52,9 @@ pub enum ServerIdentityError {
     #[error("Failed to deserialize VM data")]
     ParseVmData(#[source] serde_json::Error),
     #[error("Failed to verify attestation")]
-    VerifyAttestation(#[from] VerifyAttestationError),
+    VerifyAttestation(VerifyAttestationError),
     #[error("Failed to verify certificate chain")]
-    VerifyChain(#[from] PkiPathSignatureVerifierError),
+    VerifyChain(PkiPathSignatureVerifierError),
     #[error("Malformed VM data")]
     VmData(#[source] Utf8Error),
     #[error("Wrong instance id")]
@@ -113,9 +113,12 @@ impl ServerIdentityContext {
                 ServerIdentityError::ParseCertificate
             })?);
         }
-        let cert_chain_pem = cert_chain_pem;
+
+        // Verify certificate chain against known root certificates
+        tracing::debug!(?cert_chain_pem, roots = ?self.root_certs, "Verifying certificate chain against known root certificates");
         let verified_root =
-            dice_verifier::verify_cert_chain(&cert_chain_pem, Some(&self.root_certs))?;
+            dice_verifier::verify_cert_chain(&cert_chain_pem, Some(&self.root_certs))
+                .map_err(ServerIdentityError::VerifyChain)?;
 
         let organization =
             get_cert_organization(verified_root).ok_or(ServerIdentityError::MissingOrganization)?;
@@ -167,7 +170,8 @@ impl ServerIdentityContext {
         let (ox_attest, _): (Attestation, _) = hubpack::deserialize(&attestation.attestation)?;
         tracing::info!("Deserialized attestation");
 
-        dice_verifier::verify_attestation(&cert_chain_pem[0], &ox_attest, &log, &qualifying_data)?;
+        dice_verifier::verify_attestation(&cert_chain_pem[0], &ox_attest, &log, &qualifying_data)
+            .map_err(ServerIdentityError::VerifyAttestation)?;
         tracing::info!("Verified attestation");
 
         for log in &attestation.measurement_logs {

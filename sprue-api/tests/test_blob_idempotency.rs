@@ -43,7 +43,7 @@ async fn test_upload_blob() {
     let registration = vm
         .client
         .register_server()
-        .service(service.id.0)
+        .service(service.id.to_string())
         .body_map(|body| {
             body.instance(vm.conf.uuid)
                 .project_id(vm.conf().project)
@@ -60,7 +60,7 @@ async fn test_upload_blob() {
     vm.client
         .prove_server()
         .server(registration.id.0)
-        .body_map(|body| body.attestation(serde_json::to_value(attestation).unwrap()))
+        .body_map(|body| body.attestation(attestation))
         .send()
         .await
         .unwrap();
@@ -95,7 +95,7 @@ async fn test_upload_blob() {
         .prove_oidc_token_request()
         .server(registration.id.0)
         .body_map(|body| {
-            body.attestation(serde_json::to_value(token_attestation).unwrap())
+            body.attestation(token_attestation)
                 .request(token_request.id.0)
         })
         .send()

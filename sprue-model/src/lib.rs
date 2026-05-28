@@ -2,8 +2,10 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+use std::fmt;
+
 use chrono::{DateTime, Utc};
-use newtype_uuid::{TypedUuid, TypedUuidKind, TypedUuidTag};
+use newtype_uuid::{GenericUuid, TypedUuid, TypedUuidKind, TypedUuidTag};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use thiserror::Error;
@@ -25,6 +27,62 @@ impl TypedUuidKind for ServiceId {
     fn tag() -> TypedUuidTag {
         const TAG: TypedUuidTag = TypedUuidTag::new("service");
         TAG
+    }
+}
+
+/// A service identifier that can be either a UUID or a name.
+///
+/// When deserializing from a string (e.g. a URL path segment), the value is
+/// first parsed as a UUID. If that fails it is treated as a service name.
+/// This allows API callers to use either form interchangeably.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ServiceIdentifier {
+    Id(TypedUuid<ServiceId>),
+    Name(String),
+}
+
+impl fmt::Display for ServiceIdentifier {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ServiceIdentifier::Id(id) => write!(f, "{}", id),
+            ServiceIdentifier::Name(name) => write!(f, "{}", name),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for ServiceIdentifier {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        if let Ok(uuid) = s.parse::<uuid::Uuid>() {
+            Ok(ServiceIdentifier::Id(TypedUuid::from_untyped_uuid(uuid)))
+        } else {
+            Ok(ServiceIdentifier::Name(s))
+        }
+    }
+}
+
+impl Serialize for ServiceIdentifier {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            ServiceIdentifier::Id(id) => serializer.serialize_str(&id.to_string()),
+            ServiceIdentifier::Name(name) => serializer.serialize_str(name),
+        }
+    }
+}
+
+impl JsonSchema for ServiceIdentifier {
+    fn schema_name() -> String {
+        "ServiceIdentifier".to_string()
+    }
+
+    fn json_schema(generator: &mut schemars::r#gen::SchemaGenerator) -> schemars::schema::Schema {
+        String::json_schema(generator)
     }
 }
 

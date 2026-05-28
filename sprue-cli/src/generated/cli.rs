@@ -81,6 +81,7 @@ impl<T: CliConfig> Cli<T> {
             CliCommand::ProveServer => Self::cli_prove_server(),
             CliCommand::RejectServer => Self::cli_reject_server(),
             CliCommand::TerminateServer => Self::cli_terminate_server(),
+            CliCommand::ListServices => Self::cli_list_services(),
             CliCommand::CreateService => Self::cli_create_service(),
             CliCommand::GetService => Self::cli_get_service(),
             CliCommand::ListDeployments => Self::cli_list_deployments(),
@@ -1450,6 +1451,10 @@ impl<T: CliConfig> Cli<T> {
             .about("Remove a server from the pool of representative instances of a service")
     }
 
+    pub fn cli_list_services() -> ::clap::Command {
+        ::clap::Command::new("").about("List services")
+    }
+
     pub fn cli_create_service() -> ::clap::Command {
         ::clap::Command::new("")
             .arg(
@@ -1480,7 +1485,7 @@ impl<T: CliConfig> Cli<T> {
             .arg(
                 ::clap::Arg::new("service")
                     .long("service")
-                    .value_parser(::clap::value_parser!(types::TypedUuidForServiceId))
+                    .value_parser(::clap::value_parser!(types::ServiceIdentifier))
                     .required(true),
             )
             .about("Get a service by its id")
@@ -1491,7 +1496,7 @@ impl<T: CliConfig> Cli<T> {
             .arg(
                 ::clap::Arg::new("service")
                     .long("service")
-                    .value_parser(::clap::value_parser!(types::TypedUuidForServiceId))
+                    .value_parser(::clap::value_parser!(types::ServiceIdentifier))
                     .required(true),
             )
             .about("List all deployments for a service")
@@ -1508,7 +1513,7 @@ impl<T: CliConfig> Cli<T> {
             .arg(
                 ::clap::Arg::new("service")
                     .long("service")
-                    .value_parser(::clap::value_parser!(types::TypedUuidForServiceId))
+                    .value_parser(::clap::value_parser!(types::ServiceIdentifier))
                     .required(true),
             )
             .arg(
@@ -1548,7 +1553,7 @@ impl<T: CliConfig> Cli<T> {
             .arg(
                 ::clap::Arg::new("service")
                     .long("service")
-                    .value_parser(::clap::value_parser!(types::TypedUuidForServiceId))
+                    .value_parser(::clap::value_parser!(types::ServiceIdentifier))
                     .required(true),
             )
             .about("Get a deployment by its id")
@@ -1565,7 +1570,7 @@ impl<T: CliConfig> Cli<T> {
             .arg(
                 ::clap::Arg::new("service")
                     .long("service")
-                    .value_parser(::clap::value_parser!(types::TypedUuidForServiceId))
+                    .value_parser(::clap::value_parser!(types::ServiceIdentifier))
                     .required(true),
             )
             .about("Delete a deployment from a service")
@@ -1590,7 +1595,7 @@ impl<T: CliConfig> Cli<T> {
             .arg(
                 ::clap::Arg::new("service")
                     .long("service")
-                    .value_parser(::clap::value_parser!(types::TypedUuidForServiceId))
+                    .value_parser(::clap::value_parser!(types::ServiceIdentifier))
                     .required(true),
             )
             .arg(
@@ -1626,7 +1631,7 @@ impl<T: CliConfig> Cli<T> {
             .arg(
                 ::clap::Arg::new("service")
                     .long("service")
-                    .value_parser(::clap::value_parser!(types::TypedUuidForServiceId))
+                    .value_parser(::clap::value_parser!(types::ServiceIdentifier))
                     .required(true),
             )
             .about("Get all servers registered for a service")
@@ -1725,6 +1730,7 @@ impl<T: CliConfig> Cli<T> {
             CliCommand::ProveServer => self.execute_prove_server(matches).await,
             CliCommand::RejectServer => self.execute_reject_server(matches).await,
             CliCommand::TerminateServer => self.execute_terminate_server(matches).await,
+            CliCommand::ListServices => self.execute_list_services(matches).await,
             CliCommand::CreateService => self.execute_create_service(matches).await,
             CliCommand::GetService => self.execute_get_service(matches).await,
             CliCommand::ListDeployments => self.execute_list_deployments(matches).await,
@@ -3393,7 +3399,7 @@ impl<T: CliConfig> Cli<T> {
         if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
             let body_txt = std::fs::read_to_string(value)
                 .with_context(|| format!("failed to read {}", value.display()))?;
-            let body_value = serde_json::from_str::<types::ServerAttestation>(&body_txt)
+            let body_value = serde_json::from_str::<types::OidcProveBody>(&body_txt)
                 .with_context(|| format!("failed to parse {}", value.display()))?;
             request = request.body(body_value);
         }
@@ -3422,7 +3428,7 @@ impl<T: CliConfig> Cli<T> {
         if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
             let body_txt = std::fs::read_to_string(value)
                 .with_context(|| format!("failed to read {}", value.display()))?;
-            let body_value = serde_json::from_str::<types::ServerAttestation2>(&body_txt)
+            let body_value = serde_json::from_str::<types::ServerAttestation>(&body_txt)
                 .with_context(|| format!("failed to parse {}", value.display()))?;
             request = request.body(body_value);
         }
@@ -3485,6 +3491,22 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
+    pub async fn execute_list_services(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+        let mut request = self.client.list_services();
+        self.config.execute_list_services(matches, &mut request)?;
+        let result = request.send().await;
+        match result {
+            Ok(r) => {
+                self.config.success_item(&r);
+                Ok(())
+            }
+            Err(r) => {
+                self.config.error(&r);
+                Err(anyhow::Error::new(r))
+            }
+        }
+    }
+
     pub async fn execute_create_service(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
         let mut request = self.client.create_service();
         if let Some(value) = matches.get_one::<::std::string::String>("name") {
@@ -3515,7 +3537,7 @@ impl<T: CliConfig> Cli<T> {
 
     pub async fn execute_get_service(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
         let mut request = self.client.get_service();
-        if let Some(value) = matches.get_one::<types::TypedUuidForServiceId>("service") {
+        if let Some(value) = matches.get_one::<types::ServiceIdentifier>("service") {
             request = request.service(value.clone());
         }
 
@@ -3538,7 +3560,7 @@ impl<T: CliConfig> Cli<T> {
         matches: &::clap::ArgMatches,
     ) -> anyhow::Result<()> {
         let mut request = self.client.list_deployments();
-        if let Some(value) = matches.get_one::<types::TypedUuidForServiceId>("service") {
+        if let Some(value) = matches.get_one::<types::ServiceIdentifier>("service") {
             request = request.service(value.clone());
         }
 
@@ -3566,7 +3588,7 @@ impl<T: CliConfig> Cli<T> {
             request = request.body_map(|body| body.project_id(value.clone()))
         }
 
-        if let Some(value) = matches.get_one::<types::TypedUuidForServiceId>("service") {
+        if let Some(value) = matches.get_one::<types::ServiceIdentifier>("service") {
             request = request.service(value.clone());
         }
 
@@ -3603,7 +3625,7 @@ impl<T: CliConfig> Cli<T> {
             request = request.deployment(value.clone());
         }
 
-        if let Some(value) = matches.get_one::<types::TypedUuidForServiceId>("service") {
+        if let Some(value) = matches.get_one::<types::ServiceIdentifier>("service") {
             request = request.service(value.clone());
         }
 
@@ -3630,7 +3652,7 @@ impl<T: CliConfig> Cli<T> {
             request = request.deployment(value.clone());
         }
 
-        if let Some(value) = matches.get_one::<types::TypedUuidForServiceId>("service") {
+        if let Some(value) = matches.get_one::<types::ServiceIdentifier>("service") {
             request = request.service(value.clone());
         }
 
@@ -3664,7 +3686,7 @@ impl<T: CliConfig> Cli<T> {
             request = request.body_map(|body| body.project_id(value.clone()))
         }
 
-        if let Some(value) = matches.get_one::<types::TypedUuidForServiceId>("service") {
+        if let Some(value) = matches.get_one::<types::ServiceIdentifier>("service") {
             request = request.service(value.clone());
         }
 
@@ -3699,7 +3721,7 @@ impl<T: CliConfig> Cli<T> {
         matches: &::clap::ArgMatches,
     ) -> anyhow::Result<()> {
         let mut request = self.client.get_service_servers();
-        if let Some(value) = matches.get_one::<types::TypedUuidForServiceId>("service") {
+        if let Some(value) = matches.get_one::<types::ServiceIdentifier>("service") {
             request = request.service(value.clone());
         }
 
@@ -4227,6 +4249,14 @@ pub trait CliConfig {
         Ok(())
     }
 
+    fn execute_list_services(
+        &self,
+        matches: &::clap::ArgMatches,
+        request: &mut builder::ListServices,
+    ) -> anyhow::Result<()> {
+        Ok(())
+    }
+
     fn execute_create_service(
         &self,
         matches: &::clap::ArgMatches,
@@ -4355,6 +4385,7 @@ pub enum CliCommand {
     ProveServer,
     RejectServer,
     TerminateServer,
+    ListServices,
     CreateService,
     GetService,
     ListDeployments,
@@ -4429,6 +4460,7 @@ impl CliCommand {
             CliCommand::ProveServer,
             CliCommand::RejectServer,
             CliCommand::TerminateServer,
+            CliCommand::ListServices,
             CliCommand::CreateService,
             CliCommand::GetService,
             CliCommand::ListDeployments,
@@ -4439,5 +4471,80 @@ impl CliCommand {
             CliCommand::GetServiceServers,
         ]
         .into_iter()
+    }
+
+    pub fn operation_id(&self) -> &'static str {
+        match self {
+            CliCommand::JwksJson => "jwks_json",
+            CliCommand::OpenidConfiguration => "openid_configuration",
+            CliCommand::ListApiUsers => "list_api_users",
+            CliCommand::CreateApiUser => "create_api_user",
+            CliCommand::GetApiUser => "get_api_user",
+            CliCommand::UpdateApiUser => "update_api_user",
+            CliCommand::SetApiUserContactEmail => "set_api_user_contact_email",
+            CliCommand::AddApiUserToGroup => "add_api_user_to_group",
+            CliCommand::RemoveApiUserFromGroup => "remove_api_user_from_group",
+            CliCommand::LinkProvider => "link_provider",
+            CliCommand::AddApiUserPermission => "add_api_user_permission",
+            CliCommand::RemoveApiUserPermission => "remove_api_user_permission",
+            CliCommand::ListApiUserTokens => "list_api_user_tokens",
+            CliCommand::CreateApiUserToken => "create_api_user_token",
+            CliCommand::GetApiUserToken => "get_api_user_token",
+            CliCommand::DeleteApiUserToken => "delete_api_user_token",
+            CliCommand::CreateLinkToken => "create_link_token",
+            CliCommand::CancelBlobUpload => "cancel_blob_upload",
+            CliCommand::CompleteBlobUpload => "complete_blob_upload",
+            CliCommand::ResetBlobUpload => "reset_blob_upload",
+            CliCommand::WriteBlobUpload => "write_blob_upload",
+            CliCommand::GetGroups => "get_groups",
+            CliCommand::CreateGroup => "create_group",
+            CliCommand::UpdateGroup => "update_group",
+            CliCommand::DeleteGroup => "delete_group",
+            CliCommand::GetGroupMembers => "get_group_members",
+            CliCommand::MagicLinkExchange => "magic_link_exchange",
+            CliCommand::MagicLinkSend => "magic_link_send",
+            CliCommand::AuthzCodeRedirect => "authz_code_redirect",
+            CliCommand::AuthzCodeCallback => "authz_code_callback",
+            CliCommand::AuthzCodeExchange => "authz_code_exchange",
+            CliCommand::GetDeviceProvider => "get_device_provider",
+            CliCommand::DeviceAuthz => "device_authz",
+            CliCommand::ExchangeDeviceToken => "exchange_device_token",
+            CliCommand::GetWebPkceProvider => "get_web_pkce_provider",
+            CliCommand::ListMagicLinks => "list_magic_links",
+            CliCommand::CreateMagicLink => "create_magic_link",
+            CliCommand::GetMagicLink => "get_magic_link",
+            CliCommand::CreateMagicLinkRedirectUri => "create_magic_link_redirect_uri",
+            CliCommand::DeleteMagicLinkRedirectUri => "delete_magic_link_redirect_uri",
+            CliCommand::CreateMagicLinkSecret => "create_magic_link_secret",
+            CliCommand::DeleteMagicLinkSecret => "delete_magic_link_secret",
+            CliCommand::GetMappers => "get_mappers",
+            CliCommand::CreateMapper => "create_mapper",
+            CliCommand::DeleteMapper => "delete_mapper",
+            CliCommand::ListOauthClients => "list_oauth_clients",
+            CliCommand::CreateOauthClient => "create_oauth_client",
+            CliCommand::GetOauthClient => "get_oauth_client",
+            CliCommand::CreateOauthClientRedirectUri => "create_oauth_client_redirect_uri",
+            CliCommand::DeleteOauthClientRedirectUri => "delete_oauth_client_redirect_uri",
+            CliCommand::CreateOauthClientSecret => "create_oauth_client_secret",
+            CliCommand::DeleteOauthClientSecret => "delete_oauth_client_secret",
+            CliCommand::GetSelf => "get_self",
+            CliCommand::AcceptServer => "accept_server",
+            CliCommand::RegisterBlob => "register_blob",
+            CliCommand::CheckinServer => "checkin_server",
+            CliCommand::RegisterOidcTokenRequest => "register_oidc_token_request",
+            CliCommand::ProveOidcTokenRequest => "prove_oidc_token_request",
+            CliCommand::ProveServer => "prove_server",
+            CliCommand::RejectServer => "reject_server",
+            CliCommand::TerminateServer => "terminate_server",
+            CliCommand::ListServices => "list_services",
+            CliCommand::CreateService => "create_service",
+            CliCommand::GetService => "get_service",
+            CliCommand::ListDeployments => "list_deployments",
+            CliCommand::CreateDeployment => "create_deployment",
+            CliCommand::GetDeployment => "get_deployment",
+            CliCommand::DeleteDeployment => "delete_deployment",
+            CliCommand::RegisterServer => "register_server",
+            CliCommand::GetServiceServers => "get_service_servers",
+        }
     }
 }

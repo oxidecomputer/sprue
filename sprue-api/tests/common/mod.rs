@@ -183,7 +183,6 @@ impl SeededContext {
                     v_ctx.issuer(),
                     OidcConfig {
                         token: OidcTokenConfig {
-                            audience: v_ctx.issuer(),
                             token_lifetime: 30,
                             token_request_duration: 10,
                         },

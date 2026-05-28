@@ -58,6 +58,7 @@ fn cmd_path<'a>(cmd: &CliCommand) -> Option<&'a str> {
     match cmd {
         CliCommand::CreateService => Some("service create"),
         CliCommand::GetService => Some("service get"),
+        CliCommand::ListServices => Some("service list"),
         CliCommand::GetServiceServers => Some("service server list"),
 
         CliCommand::CreateDeployment => Some("deployment create"),

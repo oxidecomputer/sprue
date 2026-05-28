@@ -12,6 +12,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 reqwest = { workspace = true }
 uuid = { workspace = true }
+vm-attest = { workspace = true }
 
 [package.metadata.cargo-machete]
 ignored = ["schemars", "serde"]

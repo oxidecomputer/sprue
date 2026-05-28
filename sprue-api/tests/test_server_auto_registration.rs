@@ -84,7 +84,7 @@ async fn test_server_auto_registration() {
     // accept the registration automatically.
     user.client
         .create_deployment()
-        .service(service.id.clone())
+        .service(service.id.to_string())
         .body_map(|body| body.project_id(vm.conf().project).silo_id(vm.conf().silo))
         .send()
         .await
@@ -94,7 +94,7 @@ async fn test_server_auto_registration() {
     let registration = vm
         .client
         .register_server()
-        .service(service.id.clone())
+        .service(service.id.to_string())
         .body_map(|body| {
             body.instance(vm.conf.uuid)
                 .project_id(vm.conf().project)
@@ -116,7 +116,7 @@ async fn test_server_auto_registration() {
     vm.client
         .prove_server()
         .server(registration.id.clone())
-        .body_map(|body| body.attestation(serde_json::to_value(attestation).unwrap()))
+        .body_map(|body| body.attestation(attestation))
         .send()
         .await
         .unwrap();
@@ -126,7 +126,7 @@ async fn test_server_auto_registration() {
     let servers = user
         .client
         .get_service_servers()
-        .service(service.id)
+        .service(service.id.to_string())
         .send()
         .await
         .unwrap()

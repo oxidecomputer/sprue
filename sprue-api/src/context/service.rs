@@ -10,7 +10,8 @@ use v_model::permissions::Caller;
 
 use sprue_model::{
     Deployment, DeploymentId, HealthCheck, InvalidStateTransition, ProjectId, ServerRegistration,
-    ServerRegistrationId, ServerRegistrationInstanceId, Service, ServiceId, SiloId,
+    ServerRegistrationId, ServerRegistrationInstanceId, Service, ServiceId, ServiceIdentifier,
+    SiloId,
     db::{NewDeploymentModel, NewHealthCheckModel, NewServerRegistrationModel, NewServiceModel},
     storage::{
         DeploymentStorage, HealthCheckStorage, ServerRegistrationStorage, ServiceStorage,
@@ -57,6 +58,29 @@ impl ServiceContext {
         }
     }
 
+    pub async fn resolve_service(
+        &self,
+        caller: &Caller<ApiPermissions>,
+        identifier: &ServiceIdentifier,
+    ) -> ResourceResult<Service, ServiceError> {
+        match identifier {
+            ServiceIdentifier::Id(id) => self.get_service(caller, *id).await,
+            ServiceIdentifier::Name(name) => {
+                let service: Service = self
+                    .storage
+                    .get_service_by_name(name)
+                    .await
+                    .optional()?
+                    .into();
+                if caller.can(&ApiPermissions::GetService(service.id)) {
+                    Ok(service)
+                } else {
+                    resource_restricted()
+                }
+            }
+        }
+    }
+
     pub async fn get_service(
         &self,
         caller: &Caller<ApiPermissions>,
@@ -78,6 +102,28 @@ impl ServiceContext {
         } else {
             resource_restricted()
         }
+    }
+
+    pub async fn list_services(
+        &self,
+        caller: &Caller<ApiPermissions>,
+    ) -> ResourceResult<Vec<Service>, ServiceError> {
+        let services = self
+            .storage
+            .list_services()
+            .await
+            .map_err(ResourceError::InternalError)
+            .inner_err_into()?;
+        Ok(services
+            .into_iter()
+            .filter_map(|s| {
+                if caller.can(&ApiPermissions::GetService(s.id)) {
+                    Some(s.into())
+                } else {
+                    None
+                }
+            })
+            .collect())
     }
 
     pub async fn create_service(
@@ -162,10 +208,9 @@ impl ServiceContext {
         silo_id: TypedUuid<SiloId>,
         nonce: String,
     ) -> ResourceResult<ServerRegistration, ServiceError> {
-        let service = self.get_service(caller, service).await?;
         if caller.any(
             [
-                ApiPermissions::ManageService(service.id),
+                ApiPermissions::ManageService(service),
                 ApiPermissions::ManageServicesAll,
             ]
             .iter(),
@@ -181,7 +226,7 @@ impl ServiceContext {
                 None => Ok(self
                     .storage
                     .create_server_registration(&NewServerRegistrationModel {
-                        service_id: service.id,
+                        service_id: service,
                         instance_id: instance,
                         project_id,
                         silo_id,

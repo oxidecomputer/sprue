@@ -87,4 +87,6 @@ pub enum ApiPermissions {
         scope(to = "blob:r", from = "blob:r")
     )]
     GetBlobsAll,
+    #[v_api(scope(to = "blob:w", from = "blob:w"))]
+    ManageBlobsAll,
 }

@@ -6,9 +6,12 @@ use derive_builder::Builder;
 use dropshot::{HttpError, RequestContext};
 use newtype_uuid::TypedUuid;
 use sprue_model::{ServerRegistrationId, ServerRegistrationInstanceId, ServiceId};
-use std::{collections::HashMap, fmt::Debug, sync::Arc};
+use sprue_svc::SprueServiceClient;
+use std::{collections::HashMap, fmt::Debug, path::PathBuf, sync::Arc};
 use steno::ActionRegistry;
+use tarpc::tokio_serde::formats::Json;
 use thiserror::Error;
+use tokio::sync::OnceCell;
 use v_api::{
     ApiContext as VApiContext, VContext,
     authn::jwt::{Jwt, JwtError},
@@ -50,11 +53,14 @@ pub struct ApiContext {
     pub blob: BlobContext,
     pub idempotency: IdempotencyContext,
     pub oidc: OidcContext,
+    #[builder(default)]
     pub policy: Option<PolicyEngine>,
     pub server_identity: ServerIdentityContext,
     pub service: ServiceContext,
     pub saga_action_registry: Arc<ActionRegistry<SprueSaga>>,
     v_ctx: Arc<VContext<ApiPermissions>>,
+    #[builder(default)]
+    sprue: Option<LazySprueClient>,
 }
 
 impl Debug for ApiContext {
@@ -92,6 +98,13 @@ impl ApiContext {
         &self.system_caller
     }
 
+    pub async fn sprue_client(&self) -> Option<&SprueServiceClient> {
+        match &self.sprue {
+            Some(lazy) => lazy.get().await.ok(),
+            None => None,
+        }
+    }
+
     pub async fn get_server_caller(
         &self,
         rqctx: &RequestContext<ApiContext>,
@@ -100,7 +113,7 @@ impl ApiContext {
         Ok(ServerCaller {
             id: jwt.claims.sub,
             service: jwt.claims.srv,
-            instance: jwt.claims.ox.ins,
+            instance: jwt.claims.oxc.ins,
         })
     }
 }
@@ -116,5 +129,37 @@ impl From<ApiContextError> for HttpError {
     fn from(err: ApiContextError) -> Self {
         tracing::warn!(?err, "Api context error");
         HttpError::for_internal_error("Internal server error".to_string())
+    }
+}
+
+/// A lazily-initialized connection to the sprue-agent unix socket.
+///
+/// The sprue-agent may not be running when sprue-api starts, so the tarpc
+/// transport is established on first use rather than at startup.
+#[derive(Clone)]
+pub struct LazySprueClient {
+    socket_path: PathBuf,
+    client: Arc<OnceCell<SprueServiceClient>>,
+}
+
+impl LazySprueClient {
+    pub fn new(socket_path: PathBuf) -> Self {
+        Self {
+            socket_path,
+            client: Arc::new(OnceCell::new()),
+        }
+    }
+
+    pub async fn get(&self) -> Result<&SprueServiceClient, anyhow::Error> {
+        self.client
+            .get_or_try_init(|| async {
+                tracing::info!(path = ?self.socket_path, "Connecting to sprue-agent");
+                let transport =
+                    tarpc::serde_transport::unix::connect(&self.socket_path, Json::default).await?;
+                let client =
+                    SprueServiceClient::new(tarpc::client::Config::default(), transport).spawn();
+                Ok(client)
+            })
+            .await
     }
 }

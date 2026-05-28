@@ -2173,7 +2173,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ServerAttestation"
+                "$ref": "#/components/schemas/OidcProveBody"
               }
             }
           },
@@ -2217,7 +2217,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ServerAttestation2"
+                "$ref": "#/components/schemas/ServerAttestation"
               }
             }
           },
@@ -2291,6 +2291,32 @@
       }
     },
     "/service": {
+      "get": {
+        "summary": "List services",
+        "operationId": "list_services",
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Array_of_Service",
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Service"
+                  }
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
       "post": {
         "summary": "Create a new service",
         "operationId": "create_service",
@@ -2334,7 +2360,7 @@
             "name": "service",
             "required": true,
             "schema": {
-              "$ref": "#/components/schemas/TypedUuidForServiceId"
+              "$ref": "#/components/schemas/ServiceIdentifier"
             }
           }
         ],
@@ -2368,7 +2394,7 @@
             "name": "service",
             "required": true,
             "schema": {
-              "$ref": "#/components/schemas/TypedUuidForServiceId"
+              "$ref": "#/components/schemas/ServiceIdentifier"
             }
           }
         ],
@@ -2405,7 +2431,7 @@
             "name": "service",
             "required": true,
             "schema": {
-              "$ref": "#/components/schemas/TypedUuidForServiceId"
+              "$ref": "#/components/schemas/ServiceIdentifier"
             }
           }
         ],
@@ -2457,7 +2483,7 @@
             "name": "service",
             "required": true,
             "schema": {
-              "$ref": "#/components/schemas/TypedUuidForServiceId"
+              "$ref": "#/components/schemas/ServiceIdentifier"
             }
           }
         ],
@@ -2497,7 +2523,7 @@
             "name": "service",
             "required": true,
             "schema": {
-              "$ref": "#/components/schemas/TypedUuidForServiceId"
+              "$ref": "#/components/schemas/ServiceIdentifier"
             }
           }
         ],
@@ -2525,7 +2551,7 @@
             "name": "service",
             "required": true,
             "schema": {
-              "$ref": "#/components/schemas/TypedUuidForServiceId"
+              "$ref": "#/components/schemas/ServiceIdentifier"
             }
           }
         ],
@@ -2569,7 +2595,7 @@
             "name": "service",
             "required": true,
             "schema": {
-              "$ref": "#/components/schemas/TypedUuidForServiceId"
+              "$ref": "#/components/schemas/ServiceIdentifier"
             }
           }
         ],
@@ -2692,7 +2718,7 @@
             "type": "string",
             "format": "date-time"
           },
-          "permissions": {
+          "permission_boundary": {
             "nullable": true,
             "allOf": [
               {
@@ -2718,7 +2744,7 @@
           "id": {
             "$ref": "#/components/schemas/TypedUuidForApiKeyId"
           },
-          "permissions": {
+          "permission_boundary": {
             "nullable": true,
             "allOf": [
               {
@@ -3411,6 +3437,58 @@
           "updated_at"
         ]
       },
+      "Attestation": {
+        "type": "object",
+        "properties": {
+          "attestation": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "uint8",
+              "minimum": 0
+            }
+          },
+          "cert_chain": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "uint8",
+                "minimum": 0
+              }
+            }
+          },
+          "measurement_logs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "format": "uint8",
+                    "minimum": 0
+                  }
+                },
+                "rot": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "data",
+                "rot"
+              ]
+            }
+          }
+        },
+        "required": [
+          "attestation",
+          "cert_chain",
+          "measurement_logs"
+        ]
+      },
       "Blob": {
         "type": "object",
         "properties": {
@@ -3713,7 +3791,7 @@
           "key": {
             "$ref": "#/components/schemas/SecretString"
           },
-          "permissions": {
+          "permission_boundary": {
             "nullable": true,
             "allOf": [
               {
@@ -4130,7 +4208,8 @@
             "type": "string"
           },
           "scope": {
-            "description": "The scope granted to the access token (RFC 6749 §5.1).",
+            "nullable": true,
+            "description": "The scope granted to the access token (RFC 6749 §5.1). A None value indicates all scopes (full permissions).",
             "type": "string"
           },
           "token_type": {
@@ -4140,7 +4219,6 @@
         "required": [
           "access_token",
           "expires_in",
-          "scope",
           "token_type"
         ]
       },
@@ -4313,6 +4391,21 @@
       "OAuthSecretId": {
         "not": {}
       },
+      "OidcProveBody": {
+        "type": "object",
+        "properties": {
+          "attestation": {
+            "$ref": "#/components/schemas/Attestation"
+          },
+          "request": {
+            "$ref": "#/components/schemas/TypedUuidForTokenRequestId"
+          }
+        },
+        "required": [
+          "attestation",
+          "request"
+        ]
+      },
       "OidcServerToken": {
         "type": "object",
         "properties": {
@@ -4412,20 +4505,9 @@
       "ServerAttestation": {
         "type": "object",
         "properties": {
-          "attestation": {},
-          "request": {
-            "$ref": "#/components/schemas/TypedUuidForTokenRequestId"
+          "attestation": {
+            "$ref": "#/components/schemas/Attestation"
           }
-        },
-        "required": [
-          "attestation",
-          "request"
-        ]
-      },
-      "ServerAttestation2": {
-        "type": "object",
-        "properties": {
-          "attestation": {}
         },
         "required": [
           "attestation"
@@ -4881,6 +4963,9 @@
           "google",
           "zendesk"
         ]
+      },
+      "ServiceIdentifier": {
+        "type": "string"
       }
     },
     "responses": {

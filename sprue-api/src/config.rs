@@ -48,7 +48,6 @@ pub struct OidcConfig {
 
 #[derive(Debug, Deserialize)]
 pub struct OidcTokenConfig {
-    pub audience: String,
     pub token_lifetime: u32,
     pub token_request_duration: u64,
 }

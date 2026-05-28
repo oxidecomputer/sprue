@@ -56,7 +56,7 @@ impl SagaBackgroundSpawner {
             Self {
                 caller: Caller {
                     id: TypedUuid::new_v4(),
-                    permissions: Permissions::default(),
+                    permissions: Permissions::from([ApiPermissions::ManageSagasAll]),
                     extensions: HashMap::default(),
                 },
                 api_ctx,

@@ -2,16 +2,23 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use anyhow::Context;
 use clap::Parser;
-use lib_vsock::{VMADDR_CID_HOST, VsockAddr, VsockStream};
+use sprue_svc::{DEFAULT_SPRUE_SOCKET, SprueServiceClient};
+use std::path::Path;
+use std::{path::PathBuf, sync::Arc};
+use tarpc::context;
+use tarpc::tokio_serde::formats::Json;
+use tracing_appender::non_blocking::NonBlocking;
+use tracing_subscriber::EnvFilter;
 use uuid::Uuid;
-use vm_attest::{QualifyingData, VmInstanceAttester};
 
-use crate::oidc::validate_jwt;
-use crate::vsock::VmInstanceRotVsockClient;
+use crate::platform::OxidePlatform;
+use crate::server::SprueAgentStarter;
 
+mod cmd;
 mod oidc;
+mod platform;
+mod server;
 mod vsock;
 
 static VM_ATTESTATION_PORT: u32 = 605;
@@ -19,9 +26,14 @@ static VM_ATTESTATION_PORT: u32 = 605;
 #[derive(Debug, Parser)]
 #[clap(author, version, about, long_about = None)]
 struct Args {
-    /// The URL of the sprue server
-    #[clap(short, long)]
-    server: String,
+    /// Path to a directory containing mock attestation fixtures for local
+    /// development (cert-chain.pem, log.bin, alias.key, vm.json).
+    ///
+    /// Only available when built with the `local-dev` feature.
+    #[cfg(feature = "local-dev")]
+    #[clap(long)]
+    mock_dir: Option<PathBuf>,
+
     #[clap(subcommand)]
     command: Commands,
 }
@@ -30,95 +42,104 @@ struct Args {
 enum Commands {
     /// Retrieve an OIDC token from the sprue service
     GetToken {
-        /// Registraiton id
+        #[clap(short, long)]
         id: Uuid,
     },
-    /// Register a server instance with the sprue service
+    /// Register and store an arbitrary blob to remote backup storage
+    Backup {
+        /// Path to file to store
+        path: PathBuf,
+        /// Socket the Sprue agent is listening on
+        #[clap(long)]
+        socket: Option<PathBuf>,
+    },
+    /// Register a server instance with the sprue service and prove its identity
+    ///
+    /// The instance, project, and silo identifiers are discovered automatically
+    /// via a platform attestation over vsock.  The only input the calling
+    /// application needs to supply is the service name it belongs to.
     RegisterServer {
-        /// Instance id
-        id: Uuid,
         /// Service to register server for
+        #[clap(short, long)]
         service: String,
     },
-    /// Accept a server registration with the sprue service
-    AcceptServer {
-        /// Registration id
-        id: Uuid,
+    /// Serve the sprue agent as a standalone service
+    Serve {
+        /// The URL of the Sprue server
+        #[clap(short, long)]
+        server: String,
+        /// Name of the service to register as
+        #[clap(long)]
+        service: String,
+        /// Socket to run on
+        #[clap(long)]
+        socket: Option<PathBuf>,
     },
+}
+
+fn build_platform(args: &Args) -> anyhow::Result<Box<dyn platform::Platform + Sync>> {
+    #[cfg(feature = "local-dev")]
+    if let Some(ref dir) = args.mock_dir {
+        tracing::info!(
+            ?dir,
+            "Using mock attestation platform for local development"
+        );
+        return Ok(Box::new(platform::mock::MockPlatform::from_test_data(dir)?));
+    }
+
+    let _ = args; // suppress unused warning when local-dev is off
+    Ok(Box::new(OxidePlatform))
 }
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
-    let client = sprue_sdk::Client::new(&args.server);
+    let platform = build_platform(&args)?;
 
     match args.command {
         Commands::GetToken { id } => {
-            // Send our id to the server to register a token flow and receive back a nonce to prove
-            // ownership of this challenge
-            let response = client
-                .register_oidc_token_request()
-                .server(id)
-                .send()
-                .await?;
-
-            // Convert the nonce into a 32 byte array which is used by the attestation API
-            let server_nonce: [u8; 32] = response
-                .nonce
-                .as_ref()
-                .map(hex::decode)
-                .ok_or_else(|| anyhow::anyhow!("No nonce returned"))??
-                .try_into()
-                .map_err(|v: Vec<u8>| anyhow::anyhow!("expected 32 bytes, got {}", v.len()))?;
-            let qualifying_data = QualifyingData::from(server_nonce);
-
-            // Communicate over the known VM attestation port to retrieve a platform attestation
-            let addr = VsockAddr::new(VMADDR_CID_HOST, VM_ATTESTATION_PORT);
-            let stream = VsockStream::connect(&addr).context("vsock stream connect")?;
-            let vm_instance_rot = VmInstanceRotVsockClient::new(stream);
-            let attestation = vm_instance_rot.attest(&qualifying_data)?;
-            let serialized = serde_json::to_value(attestation)?;
-
-            // Send the attestation back to the server to complete the challenge. The server will
-            // verify that the id of the vm in the attestation matches the id of the vm we sent.
-            let token_response = client
-                .prove_oidc_token_request()
-                .server(id)
-                .body_map(|body| body.attestation(serialized))
-                .send()
-                .await?;
-
-            let token = token_response.into_inner().token;
-
-            // Fetch the JWKS from the server to validate the token
-            let jwks_response = client.jwks_json().send().await?;
-            let jwks = jwks_response.into_inner();
-
-            // Validate the JWT against the JWKS
-            let claims = validate_jwt(&token, &jwks)?;
-
-            println!("Token validated successfully!");
-            println!();
-            println!("  Subject (VM ID): {}", claims.sub);
-            println!("  Issuer: {}", claims.iss);
-            println!("  Audience: {}", claims.aud);
-            println!();
-            println!("  Token: {}", token);
+            // let token = cmd::get_token(&client, id, platform.as_ref()).await?;
+            // println!("{token}");
         }
-        Commands::RegisterServer { id, service } => {
-            let response = client
-                .register_server()
-                .service(service)
-                .body_map(|body| body.instance(id))
-                .send()
-                .await?;
-            println!("{:?}", response);
+        Commands::Backup { path, socket } => {
+            let client = svc_client(&socket.unwrap_or(PathBuf::from(DEFAULT_SPRUE_SOCKET))).await?;
+            let blob_id = client.backup(context::current(), path).await??;
+            println!("Backup completed successfully. Created {}", blob_id);
         }
-        Commands::AcceptServer { id } => {
-            let response = client.accept_server().server(id).send().await?;
-            println!("{:?}", response);
+        Commands::RegisterServer { service } => {
+            // cmd::register_server(&client, &service, platform.as_ref()).await?;
+            // println!("Server registered successfully");
+        }
+        Commands::Serve {
+            server,
+            socket,
+            service,
+        } => {
+            let (writer, _guard) = NonBlocking::new(std::io::stdout());
+            let _subscriber = tracing_subscriber::fmt()
+                .with_file(false)
+                .with_line_number(false)
+                .with_env_filter(EnvFilter::from_default_env())
+                .with_writer(writer)
+                .json()
+                .init();
+
+            SprueAgentStarter::new(
+                server,
+                service,
+                socket.unwrap_or(PathBuf::from(DEFAULT_SPRUE_SOCKET)),
+                Arc::from(platform),
+            )
+            .serve()
+            .await?;
         }
     }
 
     Ok(())
+}
+
+async fn svc_client(socket: &Path) -> anyhow::Result<SprueServiceClient> {
+    let transport = tarpc::serde_transport::unix::connect(&socket, Json::default).await?;
+    let client = SprueServiceClient::new(tarpc::client::Config::default(), transport).spawn();
+    Ok(client)
 }

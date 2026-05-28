@@ -422,6 +422,7 @@ pub mod types {
     ///        "ManageServicesAll",
     ///        "GetBlobsAssigned",
     ///        "GetBlobsAll",
+    ///        "ManageBlobsAll",
     ///        "CreateApiUser",
     ///        "GetApiUserSelf",
     ///        "GetApiUsersAssigned",
@@ -937,6 +938,7 @@ pub mod types {
         ManageServicesAll,
         GetBlobsAssigned,
         GetBlobsAll,
+        ManageBlobsAll,
         CreateApiUser,
         GetApiUserSelf,
         GetApiUsersAssigned,
@@ -3534,6 +3536,7 @@ pub mod types {
     ///  "required": [
     ///    "access_token",
     ///    "expires_in",
+    ///    "scope",
     ///    "token_type"
     ///  ],
     ///  "properties": {
@@ -3551,12 +3554,10 @@ pub mod types {
     ///      ]
     ///    },
     ///    "scope": {
-    ///      "description": "The scope granted to the access token (RFC 6749
-    /// §5.1). A None value indicates all scopes (full permissions).",
-    ///      "type": [
-    ///        "string",
-    ///        "null"
-    ///      ]
+    ///      "description": "The scope granted to the access token per RFC 6749
+    /// §5.1. An empty string indicates no permissions. Use \"full\" for all
+    /// permissions.",
+    ///      "type": "string"
     ///    },
     ///    "token_type": {
     ///      "type": "string"
@@ -3576,10 +3577,9 @@ pub mod types {
         pub expires_in: i64,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub idp_token: ::std::option::Option<::std::string::String>,
-        /// The scope granted to the access token (RFC 6749 §5.1). A None value
-        /// indicates all scopes (full permissions).
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
-        pub scope: ::std::option::Option<::std::string::String>,
+        /// The scope granted to the access token per RFC 6749 §5.1. An empty
+        /// string indicates no permissions. Use "full" for all permissions.
+        pub scope: ::std::string::String,
         pub token_type: ::std::string::String,
     }
 
@@ -10280,10 +10280,7 @@ pub mod types {
                 ::std::option::Option<::std::string::String>,
                 ::std::string::String,
             >,
-            scope: ::std::result::Result<
-                ::std::option::Option<::std::string::String>,
-                ::std::string::String,
-            >,
+            scope: ::std::result::Result<::std::string::String, ::std::string::String>,
             token_type: ::std::result::Result<::std::string::String, ::std::string::String>,
         }
 
@@ -10293,7 +10290,7 @@ pub mod types {
                     access_token: Err("no value supplied for access_token".to_string()),
                     expires_in: Err("no value supplied for expires_in".to_string()),
                     idp_token: Ok(Default::default()),
-                    scope: Ok(Default::default()),
+                    scope: Err("no value supplied for scope".to_string()),
                     token_type: Err("no value supplied for token_type".to_string()),
                 }
             }
@@ -10332,7 +10329,7 @@ pub mod types {
             }
             pub fn scope<T>(mut self, value: T) -> Self
             where
-                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T: ::std::convert::TryInto<::std::string::String>,
                 T::Error: ::std::fmt::Display,
             {
                 self.scope = value
@@ -12708,6 +12705,20 @@ impl Client {
     /// ```
     pub fn get_self(&self) -> builder::GetSelf<'_> {
         builder::GetSelf::new(self)
+    }
+
+    /// Delete a server registration
+    ///
+    /// Sends a `DELETE` request to `/server/{server}`
+    ///
+    /// ```ignore
+    /// let response = client.delete_server()
+    ///    .server(server)
+    ///    .send()
+    ///    .await;
+    /// ```
+    pub fn delete_server(&self) -> builder::DeleteServer<'_> {
+        builder::DeleteServer::new(self)
     }
 
     /// Accept a server's request to be added as a representative instance of a
@@ -17618,6 +17629,77 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
+                400u16..=499u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                500u16..=599u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+
+    /// Builder for [`Client::delete_server`]
+    ///
+    /// [`Client::delete_server`]: super::Client::delete_server
+    #[derive(Debug, Clone)]
+    pub struct DeleteServer<'a> {
+        client: &'a super::Client,
+        server: Result<types::TypedUuidForServerRegistrationId, String>,
+    }
+
+    impl<'a> DeleteServer<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                server: Err("server was not initialized".to_string()),
+            }
+        }
+
+        pub fn server<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::TypedUuidForServerRegistrationId>,
+        {
+            self.server = value.try_into().map_err(|_| {
+                "conversion to `TypedUuidForServerRegistrationId` for server failed".to_string()
+            });
+            self
+        }
+
+        /// Sends a `DELETE` request to `/server/{server}`
+        pub async fn send(self) -> Result<ResponseValue<()>, Error<types::Error>> {
+            let Self { client, server } = self;
+            let server = server.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/server/{}",
+                client.baseurl,
+                encode_path(&server.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .delete(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "delete_server",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                204u16 => Ok(ResponseValue::empty(response)),
                 400u16..=499u16 => Err(Error::ErrorResponse(
                     ResponseValue::from_response(response).await?,
                 )),

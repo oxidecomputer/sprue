@@ -2003,6 +2003,33 @@
         }
       }
     },
+    "/server/{server}": {
+      "delete": {
+        "summary": "Delete a server registration",
+        "operationId": "delete_server",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "server",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TypedUuidForServerRegistrationId"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "resource updated"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
     "/server/{server}/accept": {
       "post": {
         "summary": "Accept a server's request to be added as a representative instance of a service",
@@ -2770,6 +2797,7 @@
               "ManageServicesAll",
               "GetBlobsAssigned",
               "GetBlobsAll",
+              "ManageBlobsAll",
               "CreateApiUser",
               "GetApiUserSelf",
               "GetApiUsersAssigned",
@@ -4208,8 +4236,7 @@
             "type": "string"
           },
           "scope": {
-            "nullable": true,
-            "description": "The scope granted to the access token (RFC 6749 §5.1). A None value indicates all scopes (full permissions).",
+            "description": "The scope granted to the access token per RFC 6749 §5.1. An empty string indicates no permissions. Use \"full\" for all permissions.",
             "type": "string"
           },
           "token_type": {
@@ -4219,6 +4246,7 @@
         "required": [
           "access_token",
           "expires_in",
+          "scope",
           "token_type"
         ]
       },

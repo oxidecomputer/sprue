@@ -72,6 +72,7 @@ fn cmd_path<'a>(cmd: &CliCommand) -> Option<&'a str> {
         CliCommand::RejectServer => Some("server reject"),
         CliCommand::TerminateServer => Some("server terminate"),
         CliCommand::CheckinServer => Some("server checkin"),
+        CliCommand::DeleteServer => Some("server delete"),
 
         CliCommand::RegisterOidcTokenRequest => Some("oidc token register"),
         CliCommand::ProveOidcTokenRequest => Some("oidc token prove"),

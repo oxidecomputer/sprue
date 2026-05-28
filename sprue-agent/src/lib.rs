@@ -14,6 +14,7 @@ pub enum SprueError {
 
 #[tarpc::service]
 pub trait SprueService {
+    async fn checkin() -> Result<(), SprueError>;
     async fn backup(path: PathBuf) -> Result<String, SprueError>;
     async fn get_token() -> Result<String, SprueError>;
     async fn get_registration_id() -> TypedUuidForServerRegistrationId;

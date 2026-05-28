@@ -306,6 +306,23 @@ pub async fn reject_server(
     Ok(HttpResponseUpdatedNoContent())
 }
 
+/// Delete a server registration
+#[endpoint {
+    method = DELETE,
+    path = "/server/{server}",
+}]
+pub async fn delete_server(
+    rqctx: RequestContext<ApiContext>,
+    path: Path<ServerPath>,
+) -> Result<HttpResponseUpdatedNoContent, HttpError> {
+    let ctx = rqctx.context();
+    let caller = rqctx.v_ctx().get_caller(&rqctx).await?;
+    let path = path.into_inner();
+    let server = ctx.service.get_server(&caller, path.server).await?;
+    ctx.service.delete_server(&caller, &server).await?;
+    Ok(HttpResponseUpdatedNoContent())
+}
+
 /// Remove a server from the pool of representative instances of a service
 #[endpoint {
     method = POST,

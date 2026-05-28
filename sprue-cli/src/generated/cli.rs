@@ -73,6 +73,7 @@ impl<T: CliConfig> Cli<T> {
             CliCommand::CreateOauthClientSecret => Self::cli_create_oauth_client_secret(),
             CliCommand::DeleteOauthClientSecret => Self::cli_delete_oauth_client_secret(),
             CliCommand::GetSelf => Self::cli_get_self(),
+            CliCommand::DeleteServer => Self::cli_delete_server(),
             CliCommand::AcceptServer => Self::cli_accept_server(),
             CliCommand::RegisterBlob => Self::cli_register_blob(),
             CliCommand::CheckinServer => Self::cli_checkin_server(),
@@ -1242,6 +1243,19 @@ impl<T: CliConfig> Cli<T> {
         ::clap::Command::new("").about("View details for the calling user")
     }
 
+    pub fn cli_delete_server() -> ::clap::Command {
+        ::clap::Command::new("")
+            .arg(
+                ::clap::Arg::new("server")
+                    .long("server")
+                    .value_parser(::clap::value_parser!(
+                        types::TypedUuidForServerRegistrationId
+                    ))
+                    .required(true),
+            )
+            .about("Delete a server registration")
+    }
+
     pub fn cli_accept_server() -> ::clap::Command {
         ::clap::Command::new("")
             .arg(
@@ -1718,6 +1732,7 @@ impl<T: CliConfig> Cli<T> {
                 self.execute_delete_oauth_client_secret(matches).await
             }
             CliCommand::GetSelf => self.execute_get_self(matches).await,
+            CliCommand::DeleteServer => self.execute_delete_server(matches).await,
             CliCommand::AcceptServer => self.execute_accept_server(matches).await,
             CliCommand::RegisterBlob => self.execute_register_blob(matches).await,
             CliCommand::CheckinServer => self.execute_checkin_server(matches).await,
@@ -3263,6 +3278,26 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
+    pub async fn execute_delete_server(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+        let mut request = self.client.delete_server();
+        if let Some(value) = matches.get_one::<types::TypedUuidForServerRegistrationId>("server") {
+            request = request.server(value.clone());
+        }
+
+        self.config.execute_delete_server(matches, &mut request)?;
+        let result = request.send().await;
+        match result {
+            Ok(r) => {
+                self.config.success_no_item(&r);
+                Ok(())
+            }
+            Err(r) => {
+                self.config.error(&r);
+                Err(anyhow::Error::new(r))
+            }
+        }
+    }
+
     pub async fn execute_accept_server(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
         let mut request = self.client.accept_server();
         if let Some(value) = matches.get_one::<types::TypedUuidForServerRegistrationId>("server") {
@@ -4185,6 +4220,14 @@ pub trait CliConfig {
         Ok(())
     }
 
+    fn execute_delete_server(
+        &self,
+        matches: &::clap::ArgMatches,
+        request: &mut builder::DeleteServer,
+    ) -> anyhow::Result<()> {
+        Ok(())
+    }
+
     fn execute_accept_server(
         &self,
         matches: &::clap::ArgMatches,
@@ -4377,6 +4420,7 @@ pub enum CliCommand {
     CreateOauthClientSecret,
     DeleteOauthClientSecret,
     GetSelf,
+    DeleteServer,
     AcceptServer,
     RegisterBlob,
     CheckinServer,
@@ -4452,6 +4496,7 @@ impl CliCommand {
             CliCommand::CreateOauthClientSecret,
             CliCommand::DeleteOauthClientSecret,
             CliCommand::GetSelf,
+            CliCommand::DeleteServer,
             CliCommand::AcceptServer,
             CliCommand::RegisterBlob,
             CliCommand::CheckinServer,
@@ -4528,6 +4573,7 @@ impl CliCommand {
             CliCommand::CreateOauthClientSecret => "create_oauth_client_secret",
             CliCommand::DeleteOauthClientSecret => "delete_oauth_client_secret",
             CliCommand::GetSelf => "get_self",
+            CliCommand::DeleteServer => "delete_server",
             CliCommand::AcceptServer => "accept_server",
             CliCommand::RegisterBlob => "register_blob",
             CliCommand::CheckinServer => "checkin_server",

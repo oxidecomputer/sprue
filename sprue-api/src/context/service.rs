@@ -86,13 +86,7 @@ impl ServiceContext {
         caller: &Caller<ApiPermissions>,
         service: TypedUuid<ServiceId>,
     ) -> ResourceResult<Service, ServiceError> {
-        if caller.any(
-            [
-                ApiPermissions::GetService(service),
-                ApiPermissions::GetServicesAll,
-            ]
-            .iter(),
-        ) {
+        if caller.can(&ApiPermissions::GetService(service)) {
             Ok(self
                 .storage
                 .get_service_by_id(service)
@@ -151,13 +145,7 @@ impl ServiceContext {
         caller: &Caller<ApiPermissions>,
         service: TypedUuid<ServiceId>,
     ) -> ResourceResult<Vec<ServerRegistration>, ServiceError> {
-        if caller.any(
-            [
-                ApiPermissions::GetService(service),
-                ApiPermissions::GetServicesAll,
-            ]
-            .iter(),
-        ) {
+        if caller.can(&ApiPermissions::GetService(service)) {
             let registrations = self
                 .storage
                 .list_server_registrations_by_service_id(service)
@@ -186,13 +174,7 @@ impl ServiceContext {
             .optional()?
             .into();
 
-        if caller.any(
-            [
-                ApiPermissions::GetService(server.service_id),
-                ApiPermissions::GetServicesAll,
-            ]
-            .iter(),
-        ) {
+        if caller.can(&ApiPermissions::GetService(server.service_id)) {
             Ok(server)
         } else {
             resource_restricted()
@@ -208,13 +190,7 @@ impl ServiceContext {
         silo_id: TypedUuid<SiloId>,
         nonce: String,
     ) -> ResourceResult<ServerRegistration, ServiceError> {
-        if caller.any(
-            [
-                ApiPermissions::ManageService(service),
-                ApiPermissions::ManageServicesAll,
-            ]
-            .iter(),
-        ) {
+        if caller.can(&ApiPermissions::ManageService(service)) {
             let existing = self
                 .storage
                 .get_server_registration_by_instance_id(instance)
@@ -249,13 +225,7 @@ impl ServiceContext {
         caller: &Caller<ApiPermissions>,
         server: &ServerRegistration,
     ) -> ResourceResult<(), ServiceError> {
-        if caller.any(
-            [
-                ApiPermissions::ManageService(server.service_id),
-                ApiPermissions::ManageServicesAll,
-            ]
-            .iter(),
-        ) {
+        if caller.can(&ApiPermissions::ManageService(server.service_id)) {
             Ok(self
                 .storage
                 .update_server_registration_state(
@@ -279,13 +249,7 @@ impl ServiceContext {
         caller: &Caller<ApiPermissions>,
         server: &ServerRegistration,
     ) -> ResourceResult<(), ServiceError> {
-        if caller.any(
-            [
-                ApiPermissions::ManageService(server.service_id),
-                ApiPermissions::ManageServicesAll,
-            ]
-            .iter(),
-        ) {
+        if caller.can(&ApiPermissions::ManageService(server.service_id)) {
             Ok(self
                 .storage
                 .update_server_registration_state(
@@ -309,13 +273,7 @@ impl ServiceContext {
         caller: &Caller<ApiPermissions>,
         server: &ServerRegistration,
     ) -> ResourceResult<(), ServiceError> {
-        if caller.any(
-            [
-                ApiPermissions::ManageService(server.service_id),
-                ApiPermissions::ManageServicesAll,
-            ]
-            .iter(),
-        ) {
+        if caller.can(&ApiPermissions::ManageService(server.service_id)) {
             Ok(self
                 .storage
                 .update_server_registration_state(
@@ -334,18 +292,28 @@ impl ServiceContext {
         }
     }
 
+    pub async fn delete_server(
+        &self,
+        caller: &Caller<ApiPermissions>,
+        server: &ServerRegistration,
+    ) -> ResourceResult<(), ServiceError> {
+        if caller.can(&ApiPermissions::ManageService(server.service_id)) {
+            Ok(self
+                .storage
+                .delete_server_registration(server.id)
+                .await
+                .optional()?)
+        } else {
+            resource_restricted()
+        }
+    }
+
     pub async fn terminate_server(
         &self,
         caller: &Caller<ApiPermissions>,
         server: &ServerRegistration,
     ) -> ResourceResult<(), ServiceError> {
-        if caller.any(
-            [
-                ApiPermissions::ManageService(server.service_id),
-                ApiPermissions::ManageServicesAll,
-            ]
-            .iter(),
-        ) {
+        if caller.can(&ApiPermissions::ManageService(server.service_id)) {
             Ok(self
                 .storage
                 .update_server_registration_state(
@@ -394,13 +362,7 @@ impl ServiceContext {
         project_id: TypedUuid<ProjectId>,
         silo_id: TypedUuid<SiloId>,
     ) -> ResourceResult<Deployment, ServiceError> {
-        if caller.any(
-            [
-                ApiPermissions::ManageService(service_id),
-                ApiPermissions::ManageServicesAll,
-            ]
-            .iter(),
-        ) {
+        if caller.can(&ApiPermissions::ManageService(service_id)) {
             Ok(self
                 .storage
                 .create_deployment(&NewDeploymentModel {
@@ -429,13 +391,7 @@ impl ServiceContext {
             .optional()?
             .into();
 
-        if caller.any(
-            [
-                ApiPermissions::GetService(deployment.service_id),
-                ApiPermissions::GetServicesAll,
-            ]
-            .iter(),
-        ) {
+        if caller.can(&ApiPermissions::GetService(deployment.service_id)) {
             Ok(deployment)
         } else {
             resource_restricted()
@@ -447,13 +403,7 @@ impl ServiceContext {
         caller: &Caller<ApiPermissions>,
         service_id: TypedUuid<ServiceId>,
     ) -> ResourceResult<Vec<Deployment>, ServiceError> {
-        if caller.any(
-            [
-                ApiPermissions::GetService(service_id),
-                ApiPermissions::GetServicesAll,
-            ]
-            .iter(),
-        ) {
+        if caller.can(&ApiPermissions::GetService(service_id)) {
             let deployments = self
                 .storage
                 .list_deployments_by_service_id(service_id)
@@ -475,13 +425,7 @@ impl ServiceContext {
         caller: &Caller<ApiPermissions>,
         deployment: &Deployment,
     ) -> ResourceResult<(), ServiceError> {
-        if caller.any(
-            [
-                ApiPermissions::ManageService(deployment.service_id),
-                ApiPermissions::ManageServicesAll,
-            ]
-            .iter(),
-        ) {
+        if caller.can(&ApiPermissions::ManageService(deployment.service_id)) {
             Ok(self
                 .storage
                 .delete_deployment(deployment.id)

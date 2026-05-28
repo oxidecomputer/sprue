@@ -21,6 +21,37 @@ pub mod storage;
 #[cfg(feature = "test-util")]
 pub mod test_util;
 
+/// Implements sqlx `Type`, `Encode`, and `Decode` for a type stored as JSONB
+/// in PostgreSQL. The type must implement `Serialize` and `Deserialize`.
+macro_rules! impl_sqlx_jsonb {
+    ($ty:ty) => {
+        impl sqlx::Type<sqlx::Postgres> for $ty {
+            fn type_info() -> sqlx::postgres::PgTypeInfo {
+                sqlx::postgres::PgTypeInfo::with_name("jsonb")
+            }
+        }
+
+        impl<'q> sqlx::Encode<'q, sqlx::Postgres> for $ty {
+            fn encode_by_ref(
+                &self,
+                buf: &mut sqlx::postgres::PgArgumentBuffer,
+            ) -> Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
+                sqlx::Encode::<sqlx::Postgres>::encode_by_ref(&sqlx::types::Json(self), buf)
+            }
+        }
+
+        impl<'r> sqlx::Decode<'r, sqlx::Postgres> for $ty {
+            fn decode(
+                value: sqlx::postgres::PgValueRef<'r>,
+            ) -> Result<Self, sqlx::error::BoxDynError> {
+                let sqlx::types::Json(inner) =
+                    <sqlx::types::Json<Self> as sqlx::Decode<sqlx::Postgres>>::decode(value)?;
+                Ok(inner)
+            }
+        }
+    };
+}
+
 #[derive(JsonSchema)]
 pub enum ServiceId {}
 impl TypedUuidKind for ServiceId {
@@ -188,6 +219,8 @@ pub enum ServerRegistrationState {
     Expired,
 }
 
+impl_sqlx_jsonb!(ServerRegistrationState);
+
 #[derive(Debug, Error)]
 #[error("invalid state transition")]
 pub struct InvalidStateTransition {
@@ -315,6 +348,8 @@ pub enum TokenRequestState {
     Terminated,
     Expired,
 }
+
+impl_sqlx_jsonb!(TokenRequestState);
 
 #[derive(Debug, Error)]
 #[error("invalid token request state transition")]
@@ -460,6 +495,8 @@ pub enum BlobTransferState {
     Failed,
 }
 
+impl_sqlx_jsonb!(BlobState);
+
 #[derive(Debug, Error)]
 #[error("invalid token request state transition")]
 pub struct InvalidBlobStateTransition {
@@ -593,6 +630,8 @@ pub enum IdempotentRequestState {
     Processing,
     Complete,
 }
+
+impl_sqlx_jsonb!(IdempotentRequestState);
 
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct IdempotentRequest<T> {

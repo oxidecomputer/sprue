@@ -310,12 +310,6 @@ impl ServerRegistrationStorage for PostgresStorage {
     ) -> StorageResult<ServerRegistrationModel> {
         let now = Utc::now();
         let pending_state = ServerRegistrationState::Pending;
-        let state_json = serde_json::to_value(pending_state).map_err(|e| {
-            StorageError::Internal(format!(
-                "Failed to serialize server registration state: {}",
-                e
-            ))
-        })?;
 
         let mut tx = self.pool.begin().await?;
 
@@ -357,7 +351,7 @@ impl ServerRegistrationStorage for PostgresStorage {
             "#,
         )
         .bind(registration_id.as_untyped_uuid())
-        .bind(&state_json)
+        .bind(pending_state)
         .bind(now)
         .execute(&mut *tx)
         .await?;
@@ -391,12 +385,13 @@ impl ServerRegistrationStorage for PostgresStorage {
             SELECT sr.id, sr.service_id, sr.instance_id, sr.project_id, sr.silo_id, sr.nonce, sr.expires_at, sr.created_at, sr.updated_at, srs.state
             FROM server_registration sr
             JOIN server_registration_state srs ON srs.server_registration_id = sr.id
-            WHERE sr.id = $1
+            WHERE sr.id = $1 AND srs.state != $2
             ORDER BY srs.created_at DESC
             LIMIT 1
             "#,
         )
         .bind(id.as_untyped_uuid())
+        .bind(ServerRegistrationState::Expired)
         .fetch_optional(&self.pool)
         .await?;
 
@@ -407,14 +402,7 @@ impl ServerRegistrationStorage for PostgresStorage {
                 let instance_id_uuid: sqlx::types::Uuid = row.try_get("instance_id")?;
                 let project_id_uuid: sqlx::types::Uuid = row.try_get("project_id")?;
                 let silo_id_uuid: sqlx::types::Uuid = row.try_get("silo_id")?;
-                let state_json: serde_json::Value = row.try_get("state")?;
-                let state: ServerRegistrationState =
-                    serde_json::from_value(state_json).map_err(|e| {
-                        StorageError::Internal(format!(
-                            "Failed to deserialize server registration state: {}",
-                            e
-                        ))
-                    })?;
+                let state: ServerRegistrationState = row.try_get("state")?;
 
                 Ok(Some(ServerRegistrationModel {
                     id: TypedUuid::from_untyped_uuid(id_uuid),
@@ -442,12 +430,13 @@ impl ServerRegistrationStorage for PostgresStorage {
             SELECT sr.id, sr.service_id, sr.instance_id, sr.project_id, sr.silo_id, sr.nonce, sr.expires_at, sr.created_at, sr.updated_at, srs.state
             FROM server_registration sr
             JOIN server_registration_state srs ON srs.server_registration_id = sr.id
-            WHERE sr.instance_id = $1
+            WHERE sr.instance_id = $1 AND srs.state != $2
             ORDER BY srs.created_at DESC
             LIMIT 1
             "#,
         )
         .bind(instance_id.as_untyped_uuid())
+        .bind(ServerRegistrationState::Expired)
         .fetch_optional(&self.pool)
         .await?;
 
@@ -458,14 +447,7 @@ impl ServerRegistrationStorage for PostgresStorage {
                 let instance_id_uuid: sqlx::types::Uuid = row.try_get("instance_id")?;
                 let project_id_uuid: sqlx::types::Uuid = row.try_get("project_id")?;
                 let silo_id_uuid: sqlx::types::Uuid = row.try_get("silo_id")?;
-                let state_json: serde_json::Value = row.try_get("state")?;
-                let state: ServerRegistrationState =
-                    serde_json::from_value(state_json).map_err(|e| {
-                        StorageError::Internal(format!(
-                            "Failed to deserialize server registration state: {}",
-                            e
-                        ))
-                    })?;
+                let state: ServerRegistrationState = row.try_get("state")?;
 
                 Ok(Some(ServerRegistrationModel {
                     id: TypedUuid::from_untyped_uuid(id_uuid),
@@ -493,11 +475,12 @@ impl ServerRegistrationStorage for PostgresStorage {
             SELECT DISTINCT ON (sr.id) sr.id, sr.service_id, sr.instance_id, sr.project_id, sr.silo_id, sr.nonce, sr.expires_at, sr.created_at, sr.updated_at, srs.state
             FROM server_registration sr
             JOIN server_registration_state srs ON srs.server_registration_id = sr.id
-            WHERE sr.service_id = $1
+            WHERE sr.service_id = $1 AND srs.state != $2
             ORDER BY sr.id, srs.created_at DESC
             "#,
         )
         .bind(service_id.as_untyped_uuid())
+        .bind(ServerRegistrationState::Expired)
         .fetch_all(&self.pool)
         .await?;
 
@@ -509,14 +492,7 @@ impl ServerRegistrationStorage for PostgresStorage {
                 let instance_id_uuid: sqlx::types::Uuid = row.try_get("instance_id")?;
                 let project_id_uuid: sqlx::types::Uuid = row.try_get("project_id")?;
                 let silo_id_uuid: sqlx::types::Uuid = row.try_get("silo_id")?;
-                let state_json: serde_json::Value = row.try_get("state")?;
-                let state: ServerRegistrationState =
-                    serde_json::from_value(state_json).map_err(|e| {
-                        sqlx::Error::Decode(Box::new(std::io::Error::new(
-                            std::io::ErrorKind::InvalidData,
-                            format!("Failed to deserialize server registration state: {}", e),
-                        )))
-                    })?;
+                let state: ServerRegistrationState = row.try_get("state")?;
 
                 Ok(ServerRegistrationModel {
                     id: TypedUuid::from_untyped_uuid(id_uuid),
@@ -542,12 +518,6 @@ impl ServerRegistrationStorage for PostgresStorage {
         from_state: ServerRegistrationState,
         to_state: ServerRegistrationState,
     ) -> StorageResult<Option<()>> {
-        let from_state_json = serde_json::to_value(from_state).map_err(|e| {
-            StorageError::Internal(format!("Failed to serialize from_state: {}", e))
-        })?;
-        let to_state_json = serde_json::to_value(to_state)
-            .map_err(|e| StorageError::Internal(format!("Failed to serialize to_state: {}", e)))?;
-
         let now = Utc::now();
 
         // Use a CTE to atomically check the current state, insert the new state
@@ -588,9 +558,9 @@ impl ServerRegistrationStorage for PostgresStorage {
             "#,
         )
         .bind(id.as_untyped_uuid())
-        .bind(&to_state_json)
+        .bind(to_state)
         .bind(now)
-        .bind(&from_state_json)
+        .bind(from_state)
         .fetch_one(&self.pool)
         .await?;
 
@@ -602,14 +572,7 @@ impl ServerRegistrationStorage for PostgresStorage {
         }
 
         if !was_inserted {
-            let actual_state_json: serde_json::Value = row.try_get("actual_state")?;
-            let actual: ServerRegistrationState = serde_json::from_value(actual_state_json)
-                .map_err(|e| {
-                    StorageError::Internal(format!(
-                        "Failed to deserialize actual server registration state: {}",
-                        e
-                    ))
-                })?;
+            let actual: ServerRegistrationState = row.try_get("actual_state")?;
             return Err(StorageError::InvalidServerRegistrationStateTransition {
                 server_registration_id: id,
                 expected: from_state,
@@ -644,14 +607,7 @@ impl ServerRegistrationStorage for PostgresStorage {
         let transitions = rows
             .iter()
             .map(|row| {
-                let state_json: serde_json::Value = row.try_get("state")?;
-                let state: ServerRegistrationState =
-                    serde_json::from_value(state_json).map_err(|e| {
-                        sqlx::Error::Decode(Box::new(std::io::Error::new(
-                            std::io::ErrorKind::InvalidData,
-                            format!("Failed to deserialize server registration state: {}", e),
-                        )))
-                    })?;
+                let state: ServerRegistrationState = row.try_get("state")?;
                 Ok(ServerRegistrationStateTransition {
                     state,
                     created_at: row.try_get("created_at")?,
@@ -710,9 +666,6 @@ impl BlobStorage for PostgresStorage {
     async fn create_blob(&self, blob: &NewBlobModel) -> StorageResult<BlobModel> {
         let now = Utc::now();
         let pending_state = BlobState::Pending;
-        let state_json = serde_json::to_value(pending_state).map_err(|e| {
-            StorageError::Internal(format!("Failed to serialize blob state: {}", e))
-        })?;
 
         let mut tx = self.pool.begin().await?;
 
@@ -745,7 +698,7 @@ impl BlobStorage for PostgresStorage {
             "#,
         )
         .bind(blob_id.as_untyped_uuid())
-        .bind(&state_json)
+        .bind(pending_state)
         .bind(now)
         .execute(&mut *tx)
         .await?;
@@ -790,10 +743,7 @@ impl BlobStorage for PostgresStorage {
                 let service_id_uuid: sqlx::types::Uuid = row.try_get("service_id")?;
                 let server_registration_id_uuid: sqlx::types::Uuid =
                     row.try_get("server_registration_id")?;
-                let state_json: serde_json::Value = row.try_get("state")?;
-                let state: BlobState = serde_json::from_value(state_json).map_err(|e| {
-                    StorageError::Internal(format!("Failed to deserialize blob state: {}", e))
-                })?;
+                let state: BlobState = row.try_get("state")?;
 
                 Ok(Some(BlobModel {
                     id: TypedUuid::from_untyped_uuid(id_uuid),
@@ -857,10 +807,7 @@ impl BlobStorage for PostgresStorage {
             query = query.bind(server_registration_id.as_untyped_uuid());
         }
         if let Some(ref state) = filter.state {
-            let state_json = serde_json::to_value(state).map_err(|e| {
-                StorageError::Internal(format!("Failed to serialize blob state filter: {}", e))
-            })?;
-            query = query.bind(state_json);
+            query = query.bind(state);
         }
 
         let rows = query.fetch_all(&self.pool).await?;
@@ -872,13 +819,7 @@ impl BlobStorage for PostgresStorage {
                 let service_id_uuid: sqlx::types::Uuid = row.try_get("service_id")?;
                 let server_registration_id_uuid: sqlx::types::Uuid =
                     row.try_get("server_registration_id")?;
-                let state_json: serde_json::Value = row.try_get("state")?;
-                let state: BlobState = serde_json::from_value(state_json).map_err(|e| {
-                    sqlx::Error::Decode(Box::new(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
-                        format!("Failed to deserialize blob state: {}", e),
-                    )))
-                })?;
+                let state: BlobState = row.try_get("state")?;
 
                 Ok(BlobModel {
                     id: TypedUuid::from_untyped_uuid(id_uuid),
@@ -932,11 +873,6 @@ impl BlobStorage for PostgresStorage {
         to_state: BlobState,
     ) -> StorageResult<Option<()>> {
         let now = Utc::now();
-        let from_state_json = serde_json::to_value(from_state).map_err(|e| {
-            StorageError::Internal(format!("Failed to serialize from_state: {}", e))
-        })?;
-        let to_state_json = serde_json::to_value(to_state)
-            .map_err(|e| StorageError::Internal(format!("Failed to serialize to_state: {}", e)))?;
 
         // Use a CTE to atomically check the current state, insert the new state
         // transition, and update the blob in a single query.
@@ -970,9 +906,9 @@ impl BlobStorage for PostgresStorage {
             "#,
         )
         .bind(id.as_untyped_uuid())
-        .bind(&to_state_json)
+        .bind(to_state)
         .bind(now)
-        .bind(&from_state_json)
+        .bind(from_state)
         .fetch_one(&self.pool)
         .await?;
 
@@ -984,10 +920,7 @@ impl BlobStorage for PostgresStorage {
         }
 
         if !was_inserted {
-            let actual_state_json: serde_json::Value = row.try_get("actual_state")?;
-            let actual: BlobState = serde_json::from_value(actual_state_json).map_err(|e| {
-                StorageError::Internal(format!("Failed to deserialize actual blob state: {}", e))
-            })?;
+            let actual: BlobState = row.try_get("actual_state")?;
             return Err(StorageError::InvalidBlobStateTransition {
                 blob_id: id,
                 expected: from_state,
@@ -1022,13 +955,7 @@ impl BlobStorage for PostgresStorage {
         let transitions = rows
             .iter()
             .map(|row| {
-                let state_json: serde_json::Value = row.try_get("state")?;
-                let state: BlobState = serde_json::from_value(state_json).map_err(|e| {
-                    sqlx::Error::Decode(Box::new(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
-                        format!("Failed to deserialize blob state: {}", e),
-                    )))
-                })?;
+                let state: BlobState = row.try_get("state")?;
                 Ok(BlobStateTransition {
                     state,
                     created_at: row.try_get("created_at")?,
@@ -1064,13 +991,7 @@ impl BlobStorage for PostgresStorage {
                 let service_id_uuid: sqlx::types::Uuid = row.try_get("service_id")?;
                 let server_registration_id_uuid: sqlx::types::Uuid =
                     row.try_get("server_registration_id")?;
-                let state_json: serde_json::Value = row.try_get("state")?;
-                let state: BlobState = serde_json::from_value(state_json).map_err(|e| {
-                    sqlx::Error::Decode(Box::new(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
-                        format!("Failed to deserialize blob state: {}", e),
-                    )))
-                })?;
+                let state: BlobState = row.try_get("state")?;
 
                 Ok(BlobModel {
                     id: TypedUuid::from_untyped_uuid(id_uuid),
@@ -1202,12 +1123,6 @@ impl IdempotentRequestStorage for PostgresStorage {
     ) -> StorageResult<IdempotentRequestModel> {
         let now = Utc::now();
         let processing_state = IdempotentRequestState::Processing;
-        let state_json = serde_json::to_value(&processing_state).map_err(|e| {
-            StorageError::Internal(format!(
-                "Failed to serialize idempotent request state: {}",
-                e
-            ))
-        })?;
 
         let mut tx = self.pool.begin().await?;
 
@@ -1248,7 +1163,7 @@ impl IdempotentRequestStorage for PostgresStorage {
             "#,
         )
         .bind(request_id.as_untyped_uuid())
-        .bind(&state_json)
+        .bind(&processing_state)
         .bind(now)
         .execute(&mut *tx)
         .await?;
@@ -1296,14 +1211,7 @@ impl IdempotentRequestStorage for PostgresStorage {
                 let id_uuid: sqlx::types::Uuid = row.try_get("id")?;
                 let server_registration_id_uuid: sqlx::types::Uuid =
                     row.try_get("server_registration_id")?;
-                let state_json: serde_json::Value = row.try_get("state")?;
-                let state: IdempotentRequestState =
-                    serde_json::from_value(state_json).map_err(|e| {
-                        StorageError::Internal(format!(
-                            "Failed to deserialize idempotent request state: {}",
-                            e
-                        ))
-                    })?;
+                let state: IdempotentRequestState = row.try_get("state")?;
                 let response: Option<serde_json::Value> = row.try_get("response")?;
 
                 Ok(Some(IdempotentRequestModel {
@@ -1329,20 +1237,8 @@ impl IdempotentRequestStorage for PostgresStorage {
         response: Option<serde_json::Value>,
     ) -> StorageResult<Option<()>> {
         let now = Utc::now();
-        let processing_state_json = serde_json::to_value(&IdempotentRequestState::Processing)
-            .map_err(|e| {
-                StorageError::Internal(format!(
-                    "Failed to serialize idempotent request state: {}",
-                    e
-                ))
-            })?;
-        let complete_state_json =
-            serde_json::to_value(&IdempotentRequestState::Complete).map_err(|e| {
-                StorageError::Internal(format!(
-                    "Failed to serialize idempotent request state: {}",
-                    e
-                ))
-            })?;
+        let processing_state = IdempotentRequestState::Processing;
+        let complete_state = IdempotentRequestState::Complete;
 
         // Use a CTE to atomically:
         // 1. Check the current state is Processing
@@ -1380,13 +1276,13 @@ impl IdempotentRequestStorage for PostgresStorage {
         .bind(id.as_untyped_uuid())
         .bind(&response)
         .bind(now)
-        .bind(&processing_state_json)
-        .bind(&complete_state_json)
+        .bind(processing_state)
+        .bind(complete_state)
         .fetch_one(&self.pool)
         .await?;
 
         let request_exists: bool = row.try_get("request_exists")?;
-        let current_state: Option<serde_json::Value> = row.try_get("current_state")?;
+        let current_state: Option<IdempotentRequestState> = row.try_get("current_state")?;
         let completed: bool = row.try_get("completed")?;
 
         if !request_exists {
@@ -1432,9 +1328,6 @@ impl TokenRequestStorage for PostgresStorage {
     ) -> StorageResult<TokenRequestModel> {
         let now = Utc::now();
         let pending_state = TokenRequestState::Pending;
-        let state_json = serde_json::to_value(pending_state).map_err(|e| {
-            StorageError::Internal(format!("Failed to serialize token request state: {}", e))
-        })?;
 
         let mut tx = self.pool.begin().await?;
 
@@ -1465,7 +1358,7 @@ impl TokenRequestStorage for PostgresStorage {
             "#,
         )
         .bind(token_request_id.as_untyped_uuid())
-        .bind(&state_json)
+        .bind(pending_state)
         .bind(now)
         .execute(&mut *tx)
         .await?;
@@ -1508,13 +1401,7 @@ impl TokenRequestStorage for PostgresStorage {
                 let id_uuid: sqlx::types::Uuid = row.try_get("id")?;
                 let server_registration_id_uuid: sqlx::types::Uuid =
                     row.try_get("server_registration_id")?;
-                let state_json: serde_json::Value = row.try_get("state")?;
-                let state: TokenRequestState = serde_json::from_value(state_json).map_err(|e| {
-                    StorageError::Internal(format!(
-                        "Failed to deserialize token request state: {}",
-                        e
-                    ))
-                })?;
+                let state: TokenRequestState = row.try_get("state")?;
 
                 Ok(Some(TokenRequestModel {
                     id: TypedUuid::from_untyped_uuid(id_uuid),
@@ -1555,13 +1442,7 @@ impl TokenRequestStorage for PostgresStorage {
                 let id_uuid: sqlx::types::Uuid = row.try_get("id")?;
                 let server_registration_id_uuid: sqlx::types::Uuid =
                     row.try_get("server_registration_id")?;
-                let state_json: serde_json::Value = row.try_get("state")?;
-                let state: TokenRequestState = serde_json::from_value(state_json).map_err(|e| {
-                    sqlx::Error::Decode(Box::new(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
-                        format!("Failed to deserialize token request state: {}", e),
-                    )))
-                })?;
+                let state: TokenRequestState = row.try_get("state")?;
 
                 Ok(TokenRequestModel {
                     id: TypedUuid::from_untyped_uuid(id_uuid),
@@ -1587,11 +1468,6 @@ impl TokenRequestStorage for PostgresStorage {
         to_state: TokenRequestState,
     ) -> StorageResult<Option<()>> {
         let now = Utc::now();
-        let from_state_json = serde_json::to_value(from_state).map_err(|e| {
-            StorageError::Internal(format!("Failed to serialize from_state: {}", e))
-        })?;
-        let to_state_json = serde_json::to_value(to_state)
-            .map_err(|e| StorageError::Internal(format!("Failed to serialize to_state: {}", e)))?;
 
         // Use a CTE to atomically check the current state, insert the new state
         // transition, and update the token request in a single query.
@@ -1632,9 +1508,9 @@ impl TokenRequestStorage for PostgresStorage {
             "#,
         )
         .bind(id.as_untyped_uuid())
-        .bind(&to_state_json)
+        .bind(to_state)
         .bind(now)
-        .bind(&from_state_json)
+        .bind(from_state)
         .fetch_one(&self.pool)
         .await?;
 
@@ -1646,14 +1522,7 @@ impl TokenRequestStorage for PostgresStorage {
         }
 
         if !was_inserted {
-            let actual_state_json: serde_json::Value = row.try_get("actual_state")?;
-            let actual: TokenRequestState =
-                serde_json::from_value(actual_state_json).map_err(|e| {
-                    StorageError::Internal(format!(
-                        "Failed to deserialize actual token request state: {}",
-                        e
-                    ))
-                })?;
+            let actual: TokenRequestState = row.try_get("actual_state")?;
             return Err(StorageError::InvalidTokenRequestStateTransition {
                 token_request_id: id,
                 expected: from_state,
@@ -1688,13 +1557,7 @@ impl TokenRequestStorage for PostgresStorage {
         let transitions = rows
             .iter()
             .map(|row| {
-                let state_json: serde_json::Value = row.try_get("state")?;
-                let state: TokenRequestState = serde_json::from_value(state_json).map_err(|e| {
-                    sqlx::Error::Decode(Box::new(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
-                        format!("Failed to deserialize token request state: {}", e),
-                    )))
-                })?;
+                let state: TokenRequestState = row.try_get("state")?;
                 Ok(TokenRequestStateTransition {
                     state,
                     created_at: row.try_get("created_at")?,

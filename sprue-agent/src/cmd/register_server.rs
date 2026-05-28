@@ -42,9 +42,7 @@ pub async fn register_server(
                 // We need to wait for the registration to be approved as we were not automatically
                 // approved based on identiy
             }
-            ServerRegistrationState::Pending
-            | ServerRegistrationState::Terminated
-            | ServerRegistrationState::Expired => {
+            ServerRegistrationState::Pending => {
                 let registration = response.registration;
 
                 // Perform an attestation with the server's challenge to prove the server's identity
@@ -65,6 +63,14 @@ pub async fn register_server(
                     .await?;
 
                 return Ok(registration.id);
+            }
+            ServerRegistrationState::Expired => {
+                // This server registration expired. We need to wait for the next tick to retry.
+            }
+            ServerRegistrationState::Terminated => {
+                anyhow::bail!(
+                    "Server registration terminated. This server can no longer be registered."
+                );
             }
         }
 

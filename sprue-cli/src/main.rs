@@ -29,6 +29,8 @@ mod auth;
 mod config;
 mod context;
 mod generated;
+#[cfg(feature = "ui")]
+mod ui;
 
 #[derive(Debug, Default)]
 struct Tree<'a> {
@@ -59,6 +61,7 @@ fn cmd_path<'a>(cmd: &CliCommand) -> Option<&'a str> {
         CliCommand::CreateService => Some("service create"),
         CliCommand::GetService => Some("service get"),
         CliCommand::ListServices => Some("service list"),
+        CliCommand::DeleteService => Some("service delete"),
         CliCommand::GetServiceServers => Some("service server list"),
 
         CliCommand::CreateDeployment => Some("deployment create"),
@@ -72,6 +75,7 @@ fn cmd_path<'a>(cmd: &CliCommand) -> Option<&'a str> {
         CliCommand::RejectServer => Some("server reject"),
         CliCommand::TerminateServer => Some("server terminate"),
         CliCommand::CheckinServer => Some("server checkin"),
+        CliCommand::ListServerBlobs => Some("server blob list"),
         CliCommand::DeleteServer => Some("server delete"),
 
         CliCommand::RegisterOidcTokenRequest => Some("oidc token register"),
@@ -151,6 +155,7 @@ fn cmd_path<'a>(cmd: &CliCommand) -> Option<&'a str> {
         CliCommand::GetDeviceProvider => None,
         CliCommand::GetWebPkceProvider => None,
         CliCommand::JwksJson => None,
+        CliCommand::ListServerCheckins => None,
     }
 }
 
@@ -218,6 +223,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     .value_parser(value_parser!(Shell)),
             ),
     );
+    cmd = if cfg!(feature = "ui") {
+        cmd.subcommand(Command::new("ui").about("Launch interactive TUI explorer"))
+    } else {
+        cmd
+    };
     cmd =
         cmd.subcommand(Command::new("version").about("Prints version information about the CLI."));
 
@@ -263,6 +273,19 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 .unwrap()
                 .run(&mut ctx)
                 .await?;
+        }
+        #[cfg(feature = "ui")]
+        Some(("ui", _)) => {
+            let client = ctx.client();
+            if client.is_none() {
+                println!(
+                    "A host must be configured. Run `sprue-cli config set host <HOST>` to configure a host."
+                );
+                std::process::exit(1);
+            }
+            ui::run(client.unwrap())
+                .await
+                .map_err(|e| anyhow!("TUI error: {}", e))?;
         }
         _ => {
             while let Some((sub_name, sub_matches)) = sm.subcommand() {

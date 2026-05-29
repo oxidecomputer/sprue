@@ -2057,6 +2057,63 @@
         }
       }
     },
+    "/server/{server}/blob": {
+      "get": {
+        "summary": "List blobs for a server",
+        "operationId": "list_server_blobs",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "server",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TypedUuidForServerRegistrationId"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "description": "Maximum number of items returned by a single call",
+            "schema": {
+              "nullable": true,
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_token",
+            "description": "Token returned by previous call to retrieve the subsequent page",
+            "schema": {
+              "nullable": true,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlobResultsPage"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-dropshot-pagination": {
+          "required": []
+        }
+      }
+    },
     "/server/{server}/blob/register": {
       "post": {
         "summary": "Register a new blob request to upload a blob to",
@@ -2103,6 +2160,61 @@
       }
     },
     "/server/{server}/checkin": {
+      "get": {
+        "summary": "List health check records for a server",
+        "operationId": "list_server_checkins",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "server",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TypedUuidForServerRegistrationId"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "description": "Maximum number of items returned by a single call",
+            "schema": {
+              "nullable": true,
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_token",
+            "description": "Token returned by previous call to retrieve the subsequent page",
+            "schema": {
+              "nullable": true,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthCheckResultsPage"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-dropshot-pagination": {
+          "required": []
+        }
+      },
       "post": {
         "summary": "Report a check in of a server for aliveness checks",
         "operationId": "checkin_server",
@@ -2401,6 +2513,31 @@
                 }
               }
             }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a service",
+        "operationId": "delete_service",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "service",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ServiceIdentifier"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "resource updated"
           },
           "4XX": {
             "$ref": "#/components/responses/Error"
@@ -3568,6 +3705,27 @@
       "BlobId": {
         "not": {}
       },
+      "BlobResultsPage": {
+        "description": "A single page of results",
+        "type": "object",
+        "properties": {
+          "items": {
+            "description": "list of items on this page of results",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Blob"
+            }
+          },
+          "next_page": {
+            "nullable": true,
+            "description": "token used to fetch the next page of results (if any)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
       "BlobState": {
         "oneOf": [
           {
@@ -3633,16 +3791,16 @@
       "CreateDeploymentBody": {
         "type": "object",
         "properties": {
-          "project_id": {
+          "project": {
             "$ref": "#/components/schemas/TypedUuidForProjectId"
           },
-          "silo_id": {
+          "silo": {
             "$ref": "#/components/schemas/TypedUuidForSiloId"
           }
         },
         "required": [
-          "project_id",
-          "silo_id"
+          "project",
+          "silo"
         ]
       },
       "CreateMapper": {
@@ -3805,6 +3963,27 @@
       },
       "HealthCheckId": {
         "not": {}
+      },
+      "HealthCheckResultsPage": {
+        "description": "A single page of results",
+        "type": "object",
+        "properties": {
+          "items": {
+            "description": "list of items on this page of results",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HealthCheck"
+            }
+          },
+          "next_page": {
+            "nullable": true,
+            "description": "token used to fetch the next page of results (if any)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "items"
+        ]
       },
       "InitialApiKeyResponse_for_ApiPermissions": {
         "type": "object",

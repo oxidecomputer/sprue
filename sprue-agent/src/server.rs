@@ -308,15 +308,19 @@ pub struct SprueAgentStarter {
 }
 
 impl SprueAgentStarter {
-    pub fn new(
-        server: String,
-        service: String,
+    pub fn new<T, S>(
+        server: T,
+        service: S,
         socket: PathBuf,
         platform: Arc<dyn Platform + Sync>,
-    ) -> Self {
+    ) -> Self
+    where
+        T: ToString,
+        S: ToString,
+    {
         Self {
-            server,
-            service,
+            server: server.to_string(),
+            service: service.to_string(),
             socket,
             platform,
         }
@@ -416,7 +420,7 @@ impl SprueAgentStarter {
                     }
                 };
 
-                tokio::time::sleep(Duration::from_secs(60)).await;
+                tokio::time::sleep(Duration::from_secs(5)).await;
             }
         };
 

@@ -85,7 +85,7 @@ async fn test_server_auto_registration() {
     user.client
         .create_deployment()
         .service(service.id.to_string())
-        .body_map(|body| body.project_id(vm.conf().project).silo_id(vm.conf().silo))
+        .body_map(|body| body.project(vm.conf().project).silo(vm.conf().silo))
         .send()
         .await
         .unwrap();

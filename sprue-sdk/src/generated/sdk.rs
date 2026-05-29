@@ -1709,6 +1709,58 @@ pub mod types {
     #[serde(deny_unknown_fields)]
     pub enum BlobId {}
 
+    /// A single page of results
+    ///
+    /// <details><summary>JSON schema</summary>
+    ///
+    /// ```json
+    /// {
+    ///  "description": "A single page of results",
+    ///  "type": "object",
+    ///  "required": [
+    ///    "items"
+    ///  ],
+    ///  "properties": {
+    ///    "items": {
+    ///      "description": "list of items on this page of results",
+    ///      "type": "array",
+    ///      "items": {
+    ///        "$ref": "#/components/schemas/Blob"
+    ///      }
+
+    ///    },
+    ///    "next_page": {
+    ///      "description": "token used to fetch the next page of results (if
+    /// any)",
+    ///      "type": [
+    ///        "string",
+    ///        "null"
+    ///      ]
+    ///    }
+
+    ///  }
+
+    /// }
+
+    /// ```
+    /// </details>
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
+    pub struct BlobResultsPage {
+        /// list of items on this page of results
+        pub items: ::std::vec::Vec<Blob>,
+        /// token used to fetch the next page of results (if any)
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub next_page: ::std::option::Option<::std::string::String>,
+    }
+
+    impl BlobResultsPage {
+        pub fn builder() -> builder::BlobResultsPage {
+            Default::default()
+        }
+    }
+
     /// `BlobState`
     ///
     /// <details><summary>JSON schema</summary>
@@ -1980,14 +2032,14 @@ pub mod types {
     /// {
     ///  "type": "object",
     ///  "required": [
-    ///    "project_id",
-    ///    "silo_id"
+    ///    "project",
+    ///    "silo"
     ///  ],
     ///  "properties": {
-    ///    "project_id": {
+    ///    "project": {
     ///      "$ref": "#/components/schemas/TypedUuidForProjectId"
     ///    },
-    ///    "silo_id": {
+    ///    "silo": {
     ///      "$ref": "#/components/schemas/TypedUuidForSiloId"
     ///    }
 
@@ -2001,8 +2053,8 @@ pub mod types {
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
     pub struct CreateDeploymentBody {
-        pub project_id: TypedUuidForProjectId,
-        pub silo_id: TypedUuidForSiloId,
+        pub project: TypedUuidForProjectId,
+        pub silo: TypedUuidForSiloId,
     }
 
     impl CreateDeploymentBody {
@@ -2429,6 +2481,58 @@ pub mod types {
     )]
     #[serde(deny_unknown_fields)]
     pub enum HealthCheckId {}
+
+    /// A single page of results
+    ///
+    /// <details><summary>JSON schema</summary>
+    ///
+    /// ```json
+    /// {
+    ///  "description": "A single page of results",
+    ///  "type": "object",
+    ///  "required": [
+    ///    "items"
+    ///  ],
+    ///  "properties": {
+    ///    "items": {
+    ///      "description": "list of items on this page of results",
+    ///      "type": "array",
+    ///      "items": {
+    ///        "$ref": "#/components/schemas/HealthCheck"
+    ///      }
+
+    ///    },
+    ///    "next_page": {
+    ///      "description": "token used to fetch the next page of results (if
+    /// any)",
+    ///      "type": [
+    ///        "string",
+    ///        "null"
+    ///      ]
+    ///    }
+
+    ///  }
+
+    /// }
+
+    /// ```
+    /// </details>
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
+    pub struct HealthCheckResultsPage {
+        /// list of items on this page of results
+        pub items: ::std::vec::Vec<HealthCheck>,
+        /// token used to fetch the next page of results (if any)
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub next_page: ::std::option::Option<::std::string::String>,
+    }
+
+    impl HealthCheckResultsPage {
+        pub fn builder() -> builder::HealthCheckResultsPage {
+            Default::default()
+        }
+    }
 
     /// `InitialApiKeyResponseForApiPermissions`
     ///
@@ -8207,6 +8311,68 @@ pub mod types {
         }
 
         #[derive(Clone, Debug)]
+        pub struct BlobResultsPage {
+            items: ::std::result::Result<::std::vec::Vec<super::Blob>, ::std::string::String>,
+            next_page: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+        }
+
+        impl ::std::default::Default for BlobResultsPage {
+            fn default() -> Self {
+                Self {
+                    items: Err("no value supplied for items".to_string()),
+                    next_page: Ok(Default::default()),
+                }
+            }
+        }
+
+        impl BlobResultsPage {
+            pub fn items<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<super::Blob>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.items = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for items: {e}"));
+                self
+            }
+            pub fn next_page<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.next_page = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for next_page: {e}"));
+                self
+            }
+        }
+
+        impl ::std::convert::TryFrom<BlobResultsPage> for super::BlobResultsPage {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: BlobResultsPage,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    items: value.items?,
+                    next_page: value.next_page?,
+                })
+            }
+        }
+
+        impl ::std::convert::From<super::BlobResultsPage> for BlobResultsPage {
+            fn from(value: super::BlobResultsPage) -> Self {
+                Self {
+                    items: Ok(value.items),
+                    next_page: Ok(value.next_page),
+                }
+            }
+        }
+
+        #[derive(Clone, Debug)]
         pub struct CheckinBody {
             checked_in_at: ::std::result::Result<
                 ::chrono::DateTime<::chrono::offset::Utc>,
@@ -8256,38 +8422,38 @@ pub mod types {
 
         #[derive(Clone, Debug)]
         pub struct CreateDeploymentBody {
-            project_id: ::std::result::Result<super::TypedUuidForProjectId, ::std::string::String>,
-            silo_id: ::std::result::Result<super::TypedUuidForSiloId, ::std::string::String>,
+            project: ::std::result::Result<super::TypedUuidForProjectId, ::std::string::String>,
+            silo: ::std::result::Result<super::TypedUuidForSiloId, ::std::string::String>,
         }
 
         impl ::std::default::Default for CreateDeploymentBody {
             fn default() -> Self {
                 Self {
-                    project_id: Err("no value supplied for project_id".to_string()),
-                    silo_id: Err("no value supplied for silo_id".to_string()),
+                    project: Err("no value supplied for project".to_string()),
+                    silo: Err("no value supplied for silo".to_string()),
                 }
             }
         }
 
         impl CreateDeploymentBody {
-            pub fn project_id<T>(mut self, value: T) -> Self
+            pub fn project<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<super::TypedUuidForProjectId>,
                 T::Error: ::std::fmt::Display,
             {
-                self.project_id = value
+                self.project = value
                     .try_into()
-                    .map_err(|e| format!("error converting supplied value for project_id: {e}"));
+                    .map_err(|e| format!("error converting supplied value for project: {e}"));
                 self
             }
-            pub fn silo_id<T>(mut self, value: T) -> Self
+            pub fn silo<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<super::TypedUuidForSiloId>,
                 T::Error: ::std::fmt::Display,
             {
-                self.silo_id = value
+                self.silo = value
                     .try_into()
-                    .map_err(|e| format!("error converting supplied value for silo_id: {e}"));
+                    .map_err(|e| format!("error converting supplied value for silo: {e}"));
                 self
             }
         }
@@ -8298,8 +8464,8 @@ pub mod types {
                 value: CreateDeploymentBody,
             ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
-                    project_id: value.project_id?,
-                    silo_id: value.silo_id?,
+                    project: value.project?,
+                    silo: value.silo?,
                 })
             }
         }
@@ -8307,8 +8473,8 @@ pub mod types {
         impl ::std::convert::From<super::CreateDeploymentBody> for CreateDeploymentBody {
             fn from(value: super::CreateDeploymentBody) -> Self {
                 Self {
-                    project_id: Ok(value.project_id),
-                    silo_id: Ok(value.silo_id),
+                    project: Ok(value.project),
+                    silo: Ok(value.silo),
                 }
             }
         }
@@ -8907,6 +9073,69 @@ pub mod types {
                     created_at: Ok(value.created_at),
                     id: Ok(value.id),
                     server_registration_id: Ok(value.server_registration_id),
+                }
+            }
+        }
+
+        #[derive(Clone, Debug)]
+        pub struct HealthCheckResultsPage {
+            items:
+                ::std::result::Result<::std::vec::Vec<super::HealthCheck>, ::std::string::String>,
+            next_page: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+        }
+
+        impl ::std::default::Default for HealthCheckResultsPage {
+            fn default() -> Self {
+                Self {
+                    items: Err("no value supplied for items".to_string()),
+                    next_page: Ok(Default::default()),
+                }
+            }
+        }
+
+        impl HealthCheckResultsPage {
+            pub fn items<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<super::HealthCheck>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.items = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for items: {e}"));
+                self
+            }
+            pub fn next_page<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.next_page = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for next_page: {e}"));
+                self
+            }
+        }
+
+        impl ::std::convert::TryFrom<HealthCheckResultsPage> for super::HealthCheckResultsPage {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: HealthCheckResultsPage,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    items: value.items?,
+                    next_page: value.next_page?,
+                })
+            }
+        }
+
+        impl ::std::convert::From<super::HealthCheckResultsPage> for HealthCheckResultsPage {
+            fn from(value: super::HealthCheckResultsPage) -> Self {
+                Self {
+                    items: Ok(value.items),
+                    next_page: Ok(value.next_page),
                 }
             }
         }
@@ -12736,6 +12965,27 @@ impl Client {
         builder::AcceptServer::new(self)
     }
 
+    /// List blobs for a server
+    ///
+    /// Sends a `GET` request to `/server/{server}/blob`
+    ///
+    /// Arguments:
+    /// - `server`
+    /// - `limit`: Maximum number of items returned by a single call
+    /// - `page_token`: Token returned by previous call to retrieve the
+    ///   subsequent page
+    /// ```ignore
+    /// let response = client.list_server_blobs()
+    ///    .server(server)
+    ///    .limit(limit)
+    ///    .page_token(page_token)
+    ///    .send()
+    ///    .await;
+    /// ```
+    pub fn list_server_blobs(&self) -> builder::ListServerBlobs<'_> {
+        builder::ListServerBlobs::new(self)
+    }
+
     /// Register a new blob request to upload a blob to
     ///
     /// Returns a blob instance that the requesting server is authorized to
@@ -12752,6 +13002,27 @@ impl Client {
     /// ```
     pub fn register_blob(&self) -> builder::RegisterBlob<'_> {
         builder::RegisterBlob::new(self)
+    }
+
+    /// List health check records for a server
+    ///
+    /// Sends a `GET` request to `/server/{server}/checkin`
+    ///
+    /// Arguments:
+    /// - `server`
+    /// - `limit`: Maximum number of items returned by a single call
+    /// - `page_token`: Token returned by previous call to retrieve the
+    ///   subsequent page
+    /// ```ignore
+    /// let response = client.list_server_checkins()
+    ///    .server(server)
+    ///    .limit(limit)
+    ///    .page_token(page_token)
+    ///    .send()
+    ///    .await;
+    /// ```
+    pub fn list_server_checkins(&self) -> builder::ListServerCheckins<'_> {
+        builder::ListServerCheckins::new(self)
     }
 
     /// Report a check in of a server for aliveness checks
@@ -12887,6 +13158,20 @@ impl Client {
     /// ```
     pub fn get_service(&self) -> builder::GetService<'_> {
         builder::GetService::new(self)
+    }
+
+    /// Delete a service
+    ///
+    /// Sends a `DELETE` request to `/service/{service}`
+    ///
+    /// ```ignore
+    /// let response = client.delete_service()
+    ///    .service(service)
+    ///    .send()
+    ///    .await;
+    /// ```
+    pub fn delete_service(&self) -> builder::DeleteService<'_> {
+        builder::DeleteService::new(self)
     }
 
     /// List all deployments for a service
@@ -17782,6 +18067,160 @@ pub mod builder {
         }
     }
 
+    /// Builder for [`Client::list_server_blobs`]
+    ///
+    /// [`Client::list_server_blobs`]: super::Client::list_server_blobs
+    #[derive(Debug, Clone)]
+    pub struct ListServerBlobs<'a> {
+        client: &'a super::Client,
+        server: Result<types::TypedUuidForServerRegistrationId, String>,
+        limit: Result<Option<::std::num::NonZeroU32>, String>,
+        page_token: Result<Option<::std::string::String>, String>,
+    }
+
+    impl<'a> ListServerBlobs<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                server: Err("server was not initialized".to_string()),
+                limit: Ok(None),
+                page_token: Ok(None),
+            }
+        }
+
+        pub fn server<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::TypedUuidForServerRegistrationId>,
+        {
+            self.server = value.try_into().map_err(|_| {
+                "conversion to `TypedUuidForServerRegistrationId` for server failed".to_string()
+            });
+            self
+        }
+
+        pub fn limit<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::num::NonZeroU32>,
+        {
+            self.limit = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: std :: num :: NonZeroU32` for limit failed".to_string()
+            });
+            self
+        }
+
+        pub fn page_token<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.page_token = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: std :: string :: String` for page_token failed".to_string()
+            });
+            self
+        }
+
+        /// Sends a `GET` request to `/server/{server}/blob`
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<types::BlobResultsPage>, Error<types::Error>> {
+            let Self {
+                client,
+                server,
+                limit,
+                page_token,
+            } = self;
+            let server = server.map_err(Error::InvalidRequest)?;
+            let limit = limit.map_err(Error::InvalidRequest)?;
+            let page_token = page_token.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/server/{}/blob",
+                client.baseurl,
+                encode_path(&server.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .query(&progenitor_client::QueryParam::new("limit", &limit))
+                .query(&progenitor_client::QueryParam::new(
+                    "page_token",
+                    &page_token,
+                ))
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "list_server_blobs",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                400u16..=499u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                500u16..=599u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+
+        /// Streams `GET` requests to `/server/{server}/blob`
+        pub fn stream(
+            self,
+        ) -> impl futures::Stream<Item = Result<types::Blob, Error<types::Error>>> + Unpin + 'a
+        {
+            use ::futures::StreamExt;
+            use ::futures::TryFutureExt;
+            use ::futures::TryStreamExt;
+            let next = Self {
+                page_token: Ok(None),
+                ..self.clone()
+            };
+            self.send()
+                .map_ok(move |page| {
+                    let page = page.into_inner();
+                    let first = futures::stream::iter(page.items).map(Ok);
+                    let rest = futures::stream::try_unfold(
+                        (page.next_page, next),
+                        |(next_page, next)| async {
+                            if next_page.is_none() {
+                                Ok(None)
+                            } else {
+                                Self {
+                                    page_token: Ok(next_page),
+                                    ..next.clone()
+                                }
+                                .send()
+                                .map_ok(|page| {
+                                    let page = page.into_inner();
+                                    Some((
+                                        futures::stream::iter(page.items).map(Ok),
+                                        (page.next_page, next),
+                                    ))
+                                })
+                                .await
+                            }
+                        },
+                    )
+                    .try_flatten();
+                    first.chain(rest)
+                })
+                .try_flatten_stream()
+                .boxed()
+        }
+    }
+
     /// Builder for [`Client::register_blob`]
     ///
     /// [`Client::register_blob`]: super::Client::register_blob
@@ -17884,6 +18323,160 @@ pub mod builder {
                 )),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
+        }
+    }
+
+    /// Builder for [`Client::list_server_checkins`]
+    ///
+    /// [`Client::list_server_checkins`]: super::Client::list_server_checkins
+    #[derive(Debug, Clone)]
+    pub struct ListServerCheckins<'a> {
+        client: &'a super::Client,
+        server: Result<types::TypedUuidForServerRegistrationId, String>,
+        limit: Result<Option<::std::num::NonZeroU32>, String>,
+        page_token: Result<Option<::std::string::String>, String>,
+    }
+
+    impl<'a> ListServerCheckins<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                server: Err("server was not initialized".to_string()),
+                limit: Ok(None),
+                page_token: Ok(None),
+            }
+        }
+
+        pub fn server<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::TypedUuidForServerRegistrationId>,
+        {
+            self.server = value.try_into().map_err(|_| {
+                "conversion to `TypedUuidForServerRegistrationId` for server failed".to_string()
+            });
+            self
+        }
+
+        pub fn limit<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::num::NonZeroU32>,
+        {
+            self.limit = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: std :: num :: NonZeroU32` for limit failed".to_string()
+            });
+            self
+        }
+
+        pub fn page_token<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.page_token = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: std :: string :: String` for page_token failed".to_string()
+            });
+            self
+        }
+
+        /// Sends a `GET` request to `/server/{server}/checkin`
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<types::HealthCheckResultsPage>, Error<types::Error>> {
+            let Self {
+                client,
+                server,
+                limit,
+                page_token,
+            } = self;
+            let server = server.map_err(Error::InvalidRequest)?;
+            let limit = limit.map_err(Error::InvalidRequest)?;
+            let page_token = page_token.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/server/{}/checkin",
+                client.baseurl,
+                encode_path(&server.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .query(&progenitor_client::QueryParam::new("limit", &limit))
+                .query(&progenitor_client::QueryParam::new(
+                    "page_token",
+                    &page_token,
+                ))
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "list_server_checkins",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                400u16..=499u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                500u16..=599u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+
+        /// Streams `GET` requests to `/server/{server}/checkin`
+        pub fn stream(
+            self,
+        ) -> impl futures::Stream<Item = Result<types::HealthCheck, Error<types::Error>>> + Unpin + 'a
+        {
+            use ::futures::StreamExt;
+            use ::futures::TryFutureExt;
+            use ::futures::TryStreamExt;
+            let next = Self {
+                page_token: Ok(None),
+                ..self.clone()
+            };
+            self.send()
+                .map_ok(move |page| {
+                    let page = page.into_inner();
+                    let first = futures::stream::iter(page.items).map(Ok);
+                    let rest = futures::stream::try_unfold(
+                        (page.next_page, next),
+                        |(next_page, next)| async {
+                            if next_page.is_none() {
+                                Ok(None)
+                            } else {
+                                Self {
+                                    page_token: Ok(next_page),
+                                    ..next.clone()
+                                }
+                                .send()
+                                .map_ok(|page| {
+                                    let page = page.into_inner();
+                                    Some((
+                                        futures::stream::iter(page.items).map(Ok),
+                                        (page.next_page, next),
+                                    ))
+                                })
+                                .await
+                            }
+                        },
+                    )
+                    .try_flatten();
+                    first.chain(rest)
+                })
+                .try_flatten_stream()
+                .boxed()
         }
     }
 
@@ -18601,6 +19194,77 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
+                400u16..=499u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                500u16..=599u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+
+    /// Builder for [`Client::delete_service`]
+    ///
+    /// [`Client::delete_service`]: super::Client::delete_service
+    #[derive(Debug, Clone)]
+    pub struct DeleteService<'a> {
+        client: &'a super::Client,
+        service: Result<types::ServiceIdentifier, String>,
+    }
+
+    impl<'a> DeleteService<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                service: Err("service was not initialized".to_string()),
+            }
+        }
+
+        pub fn service<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::ServiceIdentifier>,
+        {
+            self.service = value
+                .try_into()
+                .map_err(|_| "conversion to `ServiceIdentifier` for service failed".to_string());
+            self
+        }
+
+        /// Sends a `DELETE` request to `/service/{service}`
+        pub async fn send(self) -> Result<ResponseValue<()>, Error<types::Error>> {
+            let Self { client, service } = self;
+            let service = service.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/service/{}",
+                client.baseurl,
+                encode_path(&service.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .delete(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "delete_service",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                204u16 => Ok(ResponseValue::empty(response)),
                 400u16..=499u16 => Err(Error::ErrorResponse(
                     ResponseValue::from_response(response).await?,
                 )),

@@ -8,6 +8,9 @@ homepage = "https://github.com/oxidecomputer/sprue"
 repository = "https://github.com/oxidecomputer/sprue"
 description = "Oxide Hiring CLI"
 
+[features]
+ui = ["crossterm", "ratatui"]
+
 [package.metadata.dist]
 dist = true
 
@@ -16,8 +19,10 @@ anyhow = { workspace = true }
 chrono = { workspace = true }
 clap = { workspace = true }
 clap_complete = { workspace = true }
+crossterm = { workspace = true, optional = true }
 config = { workspace = true }
 dirs = { workspace = true }
+futures = { workspace = true }
 http = { workspace = true }
 http-body-util = { workspace = true }
 hyper = { workspace = true }
@@ -25,6 +30,7 @@ oauth2 = { workspace = true }
 oauth2-reqwest = { workspace = true }
 owo-colors = { workspace = true }
 progenitor-client = { workspace = true }
+ratatui = { workspace = true, optional = true }
 reqwest = { workspace = true }
 schemars = { workspace = true }
 serde = { workspace = true }

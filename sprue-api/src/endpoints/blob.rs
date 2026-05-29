@@ -36,23 +36,30 @@ pub async fn write_blob_upload(
 
     ctx.blob.start_blob_upload(&caller, path.blob).await?;
     let blob = ctx.blob.get_blob(&caller, path.blob).await?;
+    let blob_id = blob.id;
 
     let mut writer = ctx.blob.local_writer(&caller, blob).await?;
     let stream = body.into_stream();
     tokio::pin!(stream);
 
+    let mut written = 0;
     while let Some(res) = stream.next().await {
         let mut data = res?;
+        written += data.len();
         writer
             .write_all_buf(&mut data)
             .await
             .map_err(|error| HttpError::for_unavail(None, format!("write failed: {error}")))?;
+
+        ctx.blob
+            .update_blob_upload_progress(&caller, blob_id, written)
+            .await?;
     }
 
     writer
         .flush()
         .await
-        .map_err(|error| HttpError::for_unavail(None, format!("flush failed: {error}")))?;
+        .map_err(|error| HttpError::for_unavail(None, format!("Flush failed: {error}")))?;
 
     Ok(HttpResponseUpdatedNoContent {})
 }

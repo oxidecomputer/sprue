@@ -39,7 +39,10 @@ pub async fn backup(request: BackupRequest<'_>) -> anyhow::Result<TypedUuidForBl
 
     // We loop here to do our best to ensure the file is fully uploaded before returning
     loop {
-        let file = File::open(path).await?;
+        let file = File::open(path).await.map_err(|err| {
+            tracing::error!(?err, "Failed to open file");
+            err
+        })?;
         let stream = ReaderStream::new(file);
         let body = Body::wrap_stream(stream);
         match client

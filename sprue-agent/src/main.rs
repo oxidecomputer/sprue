@@ -49,9 +49,6 @@ enum Commands {
     Backup {
         /// Path to file to store
         path: PathBuf,
-        /// Socket the Sprue agent is listening on
-        #[clap(long)]
-        socket: Option<PathBuf>,
     },
     /// Register a server instance with the sprue service and prove its identity
     RegisterServer,
@@ -83,18 +80,32 @@ fn build_platform(args: &Args) -> anyhow::Result<Box<dyn platform::Platform + Sy
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
-    let platform = build_platform(&args)?;
-    let socket = args.socket.unwrap_or(PathBuf::from(DEFAULT_SPRUE_SOCKET));
+    let socket = args
+        .socket
+        .as_ref()
+        .unwrap_or(&PathBuf::from(DEFAULT_SPRUE_SOCKET))
+        .to_owned();
 
-    match args.command {
+    let (writer, _guard) = NonBlocking::new(std::io::stdout());
+    let _subscriber = tracing_subscriber::fmt()
+        .with_file(false)
+        .with_line_number(false)
+        .with_env_filter(EnvFilter::from_default_env())
+        .with_writer(writer)
+        .json()
+        .init();
+
+    match &args.command {
         Commands::GetToken => {
             let client = svc_client(&socket).await?;
             let token = client.get_token(context::current()).await??;
             println!("{}", token);
         }
-        Commands::Backup { path, socket } => {
-            let client = svc_client(&socket.unwrap_or(PathBuf::from(DEFAULT_SPRUE_SOCKET))).await?;
-            let blob_id = client.backup(context::current(), path).await??;
+        Commands::Backup { path } => {
+            let client = svc_client(&socket).await?;
+            let blob_id = client
+                .backup(context::current(), path.to_path_buf())
+                .await??;
             println!("Backup completed successfully. Created {}", blob_id);
         }
         Commands::RegisterServer => {
@@ -103,15 +114,7 @@ async fn main() -> anyhow::Result<()> {
             println!("{}", id);
         }
         Commands::Serve { server, service } => {
-            let (writer, _guard) = NonBlocking::new(std::io::stdout());
-            let _subscriber = tracing_subscriber::fmt()
-                .with_file(false)
-                .with_line_number(false)
-                .with_env_filter(EnvFilter::from_default_env())
-                .with_writer(writer)
-                .json()
-                .init();
-
+            let platform = build_platform(&args)?;
             SprueAgentStarter::new(server, service, socket, Arc::from(platform))
                 .serve()
                 .await?;

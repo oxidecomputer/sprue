@@ -18,7 +18,7 @@ use sprue_model::{
     Blob, BlobId, BlobState, BlobUploadState, InvalidBlobStateTransition, ServerRegistrationId,
     ServiceId,
     db::NewBlobModel,
-    storage::{BlobFilter, BlobStorage, StorageError},
+    storage::{BlobFilter, BlobStorage, Paginated, StorageError},
 };
 use v_api::response::{
     OptionalResource, ResourceError, ResourceErrorInner, ResourceResult, resource_restricted,
@@ -222,6 +222,31 @@ impl BlobContext {
             .collect())
     }
 
+    pub async fn list_blobs_paginated(
+        &self,
+        caller: &BlobCaller,
+        filter: &BlobFilter,
+        page: &Paginated,
+    ) -> ResourceResult<Vec<Blob>, BlobError> {
+        let models = self
+            .storage
+            .list_blobs_paginated(filter, page)
+            .await
+            .map_err(ResourceError::InternalError)
+            .inner_err_into()?;
+        Ok(models
+            .into_iter()
+            .filter_map(|model| {
+                let blob: Blob = model.into();
+                if caller.can_read(&blob) {
+                    Some(blob)
+                } else {
+                    None
+                }
+            })
+            .collect())
+    }
+
     pub async fn start_blob_upload(
         &self,
         caller: &BlobCaller,
@@ -238,6 +263,29 @@ impl BlobContext {
                         .start_upload()
                         .map_err(ResourceError::InternalError)
                         .inner_err_into()?,
+                )
+                .await
+                .optional()?)
+        } else {
+            resource_restricted()
+        }
+    }
+
+    pub async fn update_blob_upload_progress(
+        &self,
+        caller: &BlobCaller,
+        blob: TypedUuid<BlobId>,
+        progress: usize,
+    ) -> ResourceResult<(), BlobError> {
+        let blob = self.get_blob(caller, blob).await?;
+        if caller.can_manage(&blob) {
+            tracing::trace!(blob = ?blob.id, size = progress, "Update blob size");
+            Ok(self
+                .storage
+                .update_blob_size(
+                    blob.id,
+                    // Casting to the underlying db type
+                    progress as i64,
                 )
                 .await
                 .optional()?)

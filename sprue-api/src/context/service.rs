@@ -14,8 +14,8 @@ use sprue_model::{
     SiloId,
     db::{NewDeploymentModel, NewHealthCheckModel, NewServerRegistrationModel, NewServiceModel},
     storage::{
-        DeploymentStorage, HealthCheckStorage, ServerRegistrationStorage, ServiceStorage,
-        StorageError,
+        DeploymentStorage, HealthCheckStorage, Paginated, ServerRegistrationStorage,
+        ServiceStorage, StorageError,
     },
 };
 use v_api::response::{
@@ -87,12 +87,7 @@ impl ServiceContext {
         service: TypedUuid<ServiceId>,
     ) -> ResourceResult<Service, ServiceError> {
         if caller.can(&ApiPermissions::GetService(service)) {
-            Ok(self
-                .storage
-                .get_service_by_id(service)
-                .await
-                .optional()?
-                .into())
+            Ok(self.storage.get_service(service).await.optional()?.into())
         } else {
             resource_restricted()
         }
@@ -135,6 +130,18 @@ impl ServiceContext {
                 .map_err(ResourceError::InternalError)
                 .inner_err_into()?
                 .into())
+        } else {
+            resource_restricted()
+        }
+    }
+
+    pub async fn delete_service(
+        &self,
+        caller: &Caller<ApiPermissions>,
+        service: TypedUuid<ServiceId>,
+    ) -> ResourceResult<(), ServiceError> {
+        if caller.can(&ApiPermissions::ManageService(service)) {
+            Ok(self.storage.delete_service(service).await.optional()?)
         } else {
             resource_restricted()
         }
@@ -350,6 +357,59 @@ impl ServiceContext {
                 .inner_err_into()?
                 .into();
             Ok(record)
+        } else {
+            resource_restricted()
+        }
+    }
+
+    pub async fn list_health_checks(
+        &self,
+        caller: &Caller<ApiPermissions>,
+        server: &ServerRegistration,
+    ) -> ResourceResult<Vec<HealthCheck>, ServiceError> {
+        if caller.any(
+            [
+                ApiPermissions::GetService(server.service_id),
+                ApiPermissions::GetServicesAll,
+            ]
+            .iter(),
+        ) {
+            let checks = self
+                .storage
+                .list_health_checks_by_server_registration(server.id)
+                .await
+                .map_err(ResourceError::InternalError)
+                .inner_err_into()?;
+            let checks = checks.into_iter().map(Into::into).collect();
+            Ok(checks)
+        } else {
+            resource_restricted()
+        }
+    }
+
+    pub async fn list_health_checks_paginated(
+        &self,
+        caller: &Caller<ApiPermissions>,
+        server: &ServerRegistration,
+        page: &Paginated,
+    ) -> ResourceResult<Vec<HealthCheck>, ServiceError> {
+        if caller.any(
+            [
+                ApiPermissions::GetService(server.service_id),
+                ApiPermissions::GetServicesAll,
+            ]
+            .iter(),
+        ) {
+            let checks = self
+                .storage
+                .list_health_checks_paginated(server.id, page)
+                .await
+                .map_err(ResourceError::InternalError)
+                .inner_err_into()?
+                .into_iter()
+                .map(Into::into)
+                .collect();
+            Ok(checks)
         } else {
             resource_restricted()
         }

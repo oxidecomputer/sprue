@@ -4,15 +4,16 @@
 
 use chrono::{DateTime, Utc};
 use dropshot::{
-    HttpError, HttpResponseOk, HttpResponseUpdatedNoContent, Path, RequestContext, TypedBody,
-    endpoint,
+    HttpError, HttpResponseOk, HttpResponseUpdatedNoContent, PaginationParams, Path, Query,
+    RequestContext, ResultsPage, TypedBody, WhichPage, endpoint,
 };
 use newtype_uuid::TypedUuid;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sprue_model::{
     Blob, Deployment, DeploymentId, HealthCheck, ProjectId, ServerRegistration,
-    ServerRegistrationId, ServerRegistrationInstanceId, Service, ServiceIdentifier, SiloId,
+    ServerRegistrationId, ServerRegistrationInstanceId, ServerRegistrationState, Service,
+    ServiceIdentifier, SiloId,
 };
 use v_api::ApiContext as VApiContext;
 
@@ -45,6 +46,37 @@ pub async fn get_service(
     let service = ctx.service.resolve_service(&caller, &path.service).await?;
 
     Ok(HttpResponseOk(service))
+}
+
+/// Delete a service
+#[endpoint {
+    method = DELETE,
+    path = "/service/{service}",
+}]
+pub async fn delete_service(
+    rqctx: RequestContext<ApiContext>,
+    path: Path<ServicePath>,
+) -> Result<HttpResponseUpdatedNoContent, HttpError> {
+    let ctx = rqctx.context();
+    let caller = rqctx.v_ctx().get_caller(&rqctx).await?;
+    let path = path.into_inner();
+    let service = ctx.service.resolve_service(&caller, &path.service).await?;
+    let servers = ctx.service.get_service_servers(&caller, service.id).await?;
+    let has_servers = servers.iter().any(|s| {
+        s.state != ServerRegistrationState::Expired
+            || s.state != ServerRegistrationState::Terminated
+    });
+
+    if !has_servers {
+        ctx.service.delete_service(&caller, service.id).await?;
+        Ok(HttpResponseUpdatedNoContent())
+    } else {
+        Err(HttpError::for_bad_request(
+            None,
+            "Service has non-terminated servers. Terminate all servers before deleting."
+                .to_string(),
+        ))
+    }
 }
 
 /// List services
@@ -366,6 +398,94 @@ pub async fn checkin_server(
     Ok(HttpResponseOk(record))
 }
 
+/// Page selector for cursor-based pagination keyed on `created_at`.
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct TimePageSelector {
+    created_at: DateTime<Utc>,
+}
+
+/// Scan params (empty — no additional filter params for these paginated endpoints).
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+pub struct EmptyScanParams {}
+
+/// List health check records for a server
+#[endpoint {
+    method = GET,
+    path = "/server/{server}/checkin",
+}]
+pub async fn list_server_checkins(
+    rqctx: RequestContext<ApiContext>,
+    path: Path<ServerPath>,
+    query: Query<PaginationParams<EmptyScanParams, TimePageSelector>>,
+) -> Result<HttpResponseOk<ResultsPage<HealthCheck>>, HttpError> {
+    let ctx = rqctx.context();
+    let caller = rqctx.v_ctx().get_caller(&rqctx).await?;
+    let path = path.into_inner();
+    let query = query.into_inner();
+    let limit = rqctx.page_limit(&query)?.get() as u32;
+    let server = ctx.service.get_server(&caller, path.server).await?;
+
+    let page = match query.page {
+        WhichPage::First(..) => sprue_model::storage::Paginated::new(limit),
+        WhichPage::Next(ref selector) => {
+            sprue_model::storage::Paginated::new(limit).before(selector.created_at)
+        }
+    };
+
+    let checks = ctx
+        .service
+        .list_health_checks_paginated(&caller, &server, &page)
+        .await?;
+
+    Ok(HttpResponseOk(ResultsPage::new(
+        checks,
+        &(),
+        |item: &HealthCheck, _| TimePageSelector {
+            created_at: item.checked_in_at,
+        },
+    )?))
+}
+
+/// List blobs for a server
+#[endpoint {
+    method = GET,
+    path = "/server/{server}/blob",
+}]
+pub async fn list_server_blobs(
+    rqctx: RequestContext<ApiContext>,
+    path: Path<ServerPath>,
+    query: Query<PaginationParams<EmptyScanParams, TimePageSelector>>,
+) -> Result<HttpResponseOk<ResultsPage<Blob>>, HttpError> {
+    let ctx = rqctx.context();
+    let caller = rqctx.v_ctx().get_caller(&rqctx).await?;
+    let path = path.into_inner();
+    let query = query.into_inner();
+    let limit = rqctx.page_limit(&query)?.get() as u32;
+    let server = ctx.service.get_server(&caller, path.server).await?;
+
+    let filter = sprue_model::storage::BlobFilter::default().server_registration(server.id);
+    let page = match query.page {
+        WhichPage::First(..) => sprue_model::storage::Paginated::new(limit),
+        WhichPage::Next(ref selector) => {
+            sprue_model::storage::Paginated::new(limit).before(selector.created_at)
+        }
+    };
+
+    let blob_caller = crate::context::blob::BlobCaller::from(caller);
+    let blobs = ctx
+        .blob
+        .list_blobs_paginated(&blob_caller, &filter, &page)
+        .await?;
+
+    Ok(HttpResponseOk(ResultsPage::new(
+        blobs,
+        &(),
+        |item: &Blob, _| TimePageSelector {
+            created_at: item.created_at,
+        },
+    )?))
+}
+
 #[derive(Debug, Deserialize, JsonSchema)]
 struct RegisterBlobBody {
     size: i64,
@@ -409,8 +529,8 @@ pub async fn register_blob(
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct CreateDeploymentBody {
-    project_id: TypedUuid<ProjectId>,
-    silo_id: TypedUuid<SiloId>,
+    project: TypedUuid<ProjectId>,
+    silo: TypedUuid<SiloId>,
 }
 
 /// Create a new deployment for a service
@@ -432,7 +552,7 @@ pub async fn create_deployment(
     let service = ctx.service.resolve_service(&caller, &path.service).await?;
     let deployment = ctx
         .service
-        .create_deployment(&caller, service.id, body.project_id, body.silo_id)
+        .create_deployment(&caller, service.id, body.project, body.silo)
         .await?;
 
     Ok(HttpResponseOk(deployment))

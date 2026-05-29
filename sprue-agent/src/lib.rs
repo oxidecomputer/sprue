@@ -1,7 +1,6 @@
-use std::path::PathBuf;
-
 use serde::{Deserialize, Serialize};
 use sprue_sdk::types::TypedUuidForServerRegistrationId;
+use std::path::PathBuf;
 use thiserror::Error;
 
 pub static DEFAULT_SPRUE_SOCKET: &str = "unix:/var/run/sprue.sock";

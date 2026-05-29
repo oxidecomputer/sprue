@@ -75,7 +75,9 @@ impl<T: CliConfig> Cli<T> {
             CliCommand::GetSelf => Self::cli_get_self(),
             CliCommand::DeleteServer => Self::cli_delete_server(),
             CliCommand::AcceptServer => Self::cli_accept_server(),
+            CliCommand::ListServerBlobs => Self::cli_list_server_blobs(),
             CliCommand::RegisterBlob => Self::cli_register_blob(),
+            CliCommand::ListServerCheckins => Self::cli_list_server_checkins(),
             CliCommand::CheckinServer => Self::cli_checkin_server(),
             CliCommand::RegisterOidcTokenRequest => Self::cli_register_oidc_token_request(),
             CliCommand::ProveOidcTokenRequest => Self::cli_prove_oidc_token_request(),
@@ -85,6 +87,7 @@ impl<T: CliConfig> Cli<T> {
             CliCommand::ListServices => Self::cli_list_services(),
             CliCommand::CreateService => Self::cli_create_service(),
             CliCommand::GetService => Self::cli_get_service(),
+            CliCommand::DeleteService => Self::cli_delete_service(),
             CliCommand::ListDeployments => Self::cli_list_deployments(),
             CliCommand::CreateDeployment => Self::cli_create_deployment(),
             CliCommand::GetDeployment => Self::cli_get_deployment(),
@@ -1271,6 +1274,26 @@ impl<T: CliConfig> Cli<T> {
             )
     }
 
+    pub fn cli_list_server_blobs() -> ::clap::Command {
+        ::clap::Command::new("")
+            .arg(
+                ::clap::Arg::new("limit")
+                    .long("limit")
+                    .value_parser(::clap::value_parser!(::std::num::NonZeroU32))
+                    .required(false)
+                    .help("Maximum number of items returned by a single call"),
+            )
+            .arg(
+                ::clap::Arg::new("server")
+                    .long("server")
+                    .value_parser(::clap::value_parser!(
+                        types::TypedUuidForServerRegistrationId
+                    ))
+                    .required(true),
+            )
+            .about("List blobs for a server")
+    }
+
     pub fn cli_register_blob() -> ::clap::Command {
         ::clap::Command::new("")
             .arg(
@@ -1319,6 +1342,26 @@ impl<T: CliConfig> Cli<T> {
             .long_about(
                 "Returns a blob instance that the requesting server is authorized to upload to.",
             )
+    }
+
+    pub fn cli_list_server_checkins() -> ::clap::Command {
+        ::clap::Command::new("")
+            .arg(
+                ::clap::Arg::new("limit")
+                    .long("limit")
+                    .value_parser(::clap::value_parser!(::std::num::NonZeroU32))
+                    .required(false)
+                    .help("Maximum number of items returned by a single call"),
+            )
+            .arg(
+                ::clap::Arg::new("server")
+                    .long("server")
+                    .value_parser(::clap::value_parser!(
+                        types::TypedUuidForServerRegistrationId
+                    ))
+                    .required(true),
+            )
+            .about("List health check records for a server")
     }
 
     pub fn cli_checkin_server() -> ::clap::Command {
@@ -1505,6 +1548,17 @@ impl<T: CliConfig> Cli<T> {
             .about("Get a service by its id")
     }
 
+    pub fn cli_delete_service() -> ::clap::Command {
+        ::clap::Command::new("")
+            .arg(
+                ::clap::Arg::new("service")
+                    .long("service")
+                    .value_parser(::clap::value_parser!(types::ServiceIdentifier))
+                    .required(true),
+            )
+            .about("Delete a service")
+    }
+
     pub fn cli_list_deployments() -> ::clap::Command {
         ::clap::Command::new("")
             .arg(
@@ -1519,8 +1573,8 @@ impl<T: CliConfig> Cli<T> {
     pub fn cli_create_deployment() -> ::clap::Command {
         ::clap::Command::new("")
             .arg(
-                ::clap::Arg::new("project-id")
-                    .long("project-id")
+                ::clap::Arg::new("project")
+                    .long("project")
                     .value_parser(::clap::value_parser!(types::TypedUuidForProjectId))
                     .required_unless_present("json-body"),
             )
@@ -1531,8 +1585,8 @@ impl<T: CliConfig> Cli<T> {
                     .required(true),
             )
             .arg(
-                ::clap::Arg::new("silo-id")
-                    .long("silo-id")
+                ::clap::Arg::new("silo")
+                    .long("silo")
                     .value_parser(::clap::value_parser!(types::TypedUuidForSiloId))
                     .required_unless_present("json-body"),
             )
@@ -1734,7 +1788,9 @@ impl<T: CliConfig> Cli<T> {
             CliCommand::GetSelf => self.execute_get_self(matches).await,
             CliCommand::DeleteServer => self.execute_delete_server(matches).await,
             CliCommand::AcceptServer => self.execute_accept_server(matches).await,
+            CliCommand::ListServerBlobs => self.execute_list_server_blobs(matches).await,
             CliCommand::RegisterBlob => self.execute_register_blob(matches).await,
+            CliCommand::ListServerCheckins => self.execute_list_server_checkins(matches).await,
             CliCommand::CheckinServer => self.execute_checkin_server(matches).await,
             CliCommand::RegisterOidcTokenRequest => {
                 self.execute_register_oidc_token_request(matches).await
@@ -1748,6 +1804,7 @@ impl<T: CliConfig> Cli<T> {
             CliCommand::ListServices => self.execute_list_services(matches).await,
             CliCommand::CreateService => self.execute_create_service(matches).await,
             CliCommand::GetService => self.execute_get_service(matches).await,
+            CliCommand::DeleteService => self.execute_delete_service(matches).await,
             CliCommand::ListDeployments => self.execute_list_deployments(matches).await,
             CliCommand::CreateDeployment => self.execute_create_deployment(matches).await,
             CliCommand::GetDeployment => self.execute_get_deployment(matches).await,
@@ -3318,6 +3375,45 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
+    pub async fn execute_list_server_blobs(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
+        let mut request = self.client.list_server_blobs();
+        if let Some(value) = matches.get_one::<::std::num::NonZeroU32>("limit") {
+            request = request.limit(value.clone());
+        }
+
+        if let Some(value) = matches.get_one::<types::TypedUuidForServerRegistrationId>("server") {
+            request = request.server(value.clone());
+        }
+
+        self.config
+            .execute_list_server_blobs(matches, &mut request)?;
+        self.config.list_start::<types::BlobResultsPage>();
+        let mut stream = futures::StreamExt::take(
+            request.stream(),
+            matches
+                .get_one::<std::num::NonZeroU32>("limit")
+                .map_or(usize::MAX, |x| x.get() as usize),
+        );
+        loop {
+            match futures::TryStreamExt::try_next(&mut stream).await {
+                Err(r) => {
+                    self.config.list_end_error(&r);
+                    return Err(anyhow::Error::new(r));
+                }
+                Ok(None) => {
+                    self.config.list_end_success::<types::BlobResultsPage>();
+                    return Ok(());
+                }
+                Ok(Some(value)) => {
+                    self.config.list_item(&value);
+                }
+            }
+        }
+    }
+
     pub async fn execute_register_blob(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
         let mut request = self.client.register_blob();
         if let Some(value) =
@@ -3356,6 +3452,46 @@ impl<T: CliConfig> Cli<T> {
             Err(r) => {
                 self.config.error(&r);
                 Err(anyhow::Error::new(r))
+            }
+        }
+    }
+
+    pub async fn execute_list_server_checkins(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
+        let mut request = self.client.list_server_checkins();
+        if let Some(value) = matches.get_one::<::std::num::NonZeroU32>("limit") {
+            request = request.limit(value.clone());
+        }
+
+        if let Some(value) = matches.get_one::<types::TypedUuidForServerRegistrationId>("server") {
+            request = request.server(value.clone());
+        }
+
+        self.config
+            .execute_list_server_checkins(matches, &mut request)?;
+        self.config.list_start::<types::HealthCheckResultsPage>();
+        let mut stream = futures::StreamExt::take(
+            request.stream(),
+            matches
+                .get_one::<std::num::NonZeroU32>("limit")
+                .map_or(usize::MAX, |x| x.get() as usize),
+        );
+        loop {
+            match futures::TryStreamExt::try_next(&mut stream).await {
+                Err(r) => {
+                    self.config.list_end_error(&r);
+                    return Err(anyhow::Error::new(r));
+                }
+                Ok(None) => {
+                    self.config
+                        .list_end_success::<types::HealthCheckResultsPage>();
+                    return Ok(());
+                }
+                Ok(Some(value)) => {
+                    self.config.list_item(&value);
+                }
             }
         }
     }
@@ -3590,6 +3726,26 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
+    pub async fn execute_delete_service(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
+        let mut request = self.client.delete_service();
+        if let Some(value) = matches.get_one::<types::ServiceIdentifier>("service") {
+            request = request.service(value.clone());
+        }
+
+        self.config.execute_delete_service(matches, &mut request)?;
+        let result = request.send().await;
+        match result {
+            Ok(r) => {
+                self.config.success_no_item(&r);
+                Ok(())
+            }
+            Err(r) => {
+                self.config.error(&r);
+                Err(anyhow::Error::new(r))
+            }
+        }
+    }
+
     pub async fn execute_list_deployments(
         &self,
         matches: &::clap::ArgMatches,
@@ -3619,16 +3775,16 @@ impl<T: CliConfig> Cli<T> {
         matches: &::clap::ArgMatches,
     ) -> anyhow::Result<()> {
         let mut request = self.client.create_deployment();
-        if let Some(value) = matches.get_one::<types::TypedUuidForProjectId>("project-id") {
-            request = request.body_map(|body| body.project_id(value.clone()))
+        if let Some(value) = matches.get_one::<types::TypedUuidForProjectId>("project") {
+            request = request.body_map(|body| body.project(value.clone()))
         }
 
         if let Some(value) = matches.get_one::<types::ServiceIdentifier>("service") {
             request = request.service(value.clone());
         }
 
-        if let Some(value) = matches.get_one::<types::TypedUuidForSiloId>("silo-id") {
-            request = request.body_map(|body| body.silo_id(value.clone()))
+        if let Some(value) = matches.get_one::<types::TypedUuidForSiloId>("silo") {
+            request = request.body_map(|body| body.silo(value.clone()))
         }
 
         if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
@@ -4236,10 +4392,26 @@ pub trait CliConfig {
         Ok(())
     }
 
+    fn execute_list_server_blobs(
+        &self,
+        matches: &::clap::ArgMatches,
+        request: &mut builder::ListServerBlobs,
+    ) -> anyhow::Result<()> {
+        Ok(())
+    }
+
     fn execute_register_blob(
         &self,
         matches: &::clap::ArgMatches,
         request: &mut builder::RegisterBlob,
+    ) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn execute_list_server_checkins(
+        &self,
+        matches: &::clap::ArgMatches,
+        request: &mut builder::ListServerCheckins,
     ) -> anyhow::Result<()> {
         Ok(())
     }
@@ -4312,6 +4484,14 @@ pub trait CliConfig {
         &self,
         matches: &::clap::ArgMatches,
         request: &mut builder::GetService,
+    ) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn execute_delete_service(
+        &self,
+        matches: &::clap::ArgMatches,
+        request: &mut builder::DeleteService,
     ) -> anyhow::Result<()> {
         Ok(())
     }
@@ -4422,7 +4602,9 @@ pub enum CliCommand {
     GetSelf,
     DeleteServer,
     AcceptServer,
+    ListServerBlobs,
     RegisterBlob,
+    ListServerCheckins,
     CheckinServer,
     RegisterOidcTokenRequest,
     ProveOidcTokenRequest,
@@ -4432,6 +4614,7 @@ pub enum CliCommand {
     ListServices,
     CreateService,
     GetService,
+    DeleteService,
     ListDeployments,
     CreateDeployment,
     GetDeployment,
@@ -4498,7 +4681,9 @@ impl CliCommand {
             CliCommand::GetSelf,
             CliCommand::DeleteServer,
             CliCommand::AcceptServer,
+            CliCommand::ListServerBlobs,
             CliCommand::RegisterBlob,
+            CliCommand::ListServerCheckins,
             CliCommand::CheckinServer,
             CliCommand::RegisterOidcTokenRequest,
             CliCommand::ProveOidcTokenRequest,
@@ -4508,6 +4693,7 @@ impl CliCommand {
             CliCommand::ListServices,
             CliCommand::CreateService,
             CliCommand::GetService,
+            CliCommand::DeleteService,
             CliCommand::ListDeployments,
             CliCommand::CreateDeployment,
             CliCommand::GetDeployment,
@@ -4575,7 +4761,9 @@ impl CliCommand {
             CliCommand::GetSelf => "get_self",
             CliCommand::DeleteServer => "delete_server",
             CliCommand::AcceptServer => "accept_server",
+            CliCommand::ListServerBlobs => "list_server_blobs",
             CliCommand::RegisterBlob => "register_blob",
+            CliCommand::ListServerCheckins => "list_server_checkins",
             CliCommand::CheckinServer => "checkin_server",
             CliCommand::RegisterOidcTokenRequest => "register_oidc_token_request",
             CliCommand::ProveOidcTokenRequest => "prove_oidc_token_request",
@@ -4585,6 +4773,7 @@ impl CliCommand {
             CliCommand::ListServices => "list_services",
             CliCommand::CreateService => "create_service",
             CliCommand::GetService => "get_service",
+            CliCommand::DeleteService => "delete_service",
             CliCommand::ListDeployments => "list_deployments",
             CliCommand::CreateDeployment => "create_deployment",
             CliCommand::GetDeployment => "get_deployment",

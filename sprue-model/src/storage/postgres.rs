@@ -9,9 +9,9 @@ use sqlx::{PgPool, Row};
 
 use super::{
     BlobFilter, BlobStateTransition, BlobStorage, DeploymentStorage, HealthCheckStorage,
-    IdempotentRequestStorage, ServerRegistrationStateTransition, ServerRegistrationStorage,
-    ServiceStorage, Storage, StorageError, StorageResult, TokenRequestStateTransition,
-    TokenRequestStorage,
+    IdempotentRequestStorage, Paginated, ServerRegistrationStateTransition,
+    ServerRegistrationStorage, ServiceStorage, Storage, StorageError, StorageResult,
+    TokenRequestStateTransition, TokenRequestStorage,
 };
 use crate::db::{
     BlobModel, DeploymentModel, HealthCheckModel, IdempotentRequestModel, NewBlobModel,
@@ -72,10 +72,7 @@ impl ServiceStorage for PostgresStorage {
         })
     }
 
-    async fn get_service_by_id(
-        &self,
-        id: TypedUuid<ServiceId>,
-    ) -> StorageResult<Option<ServiceModel>> {
+    async fn get_service(&self, id: TypedUuid<ServiceId>) -> StorageResult<Option<ServiceModel>> {
         let row = sqlx::query(
             r#"
             SELECT id, name, created_at
@@ -151,14 +148,14 @@ impl ServiceStorage for PostgresStorage {
         Ok(services)
     }
 
-    async fn delete_service(&self, name: &str) -> StorageResult<Option<()>> {
+    async fn delete_service(&self, id: TypedUuid<ServiceId>) -> StorageResult<Option<()>> {
         let result = sqlx::query(
             r#"
             DELETE FROM service
-            WHERE name = $1
+            WHERE id = $1
             "#,
         )
-        .bind(name)
+        .bind(id.as_untyped_uuid())
         .execute(&self.pool)
         .await?;
 
@@ -1011,6 +1008,97 @@ impl BlobStorage for PostgresStorage {
 
         Ok(blobs)
     }
+
+    async fn list_blobs_paginated(
+        &self,
+        filter: &BlobFilter,
+        page: &Paginated,
+    ) -> StorageResult<Vec<BlobModel>> {
+        let mut sql = String::from(
+            "SELECT q.id, q.service_id, q.server_registration_id, q.blob_time, \
+             q.size, q.total_size, q.created_at, q.updated_at, q.state \
+             FROM ( \
+               SELECT DISTINCT ON (b.id) b.id, b.service_id, b.server_registration_id, \
+                      b.blob_time, b.size, b.total_size, b.created_at, b.updated_at, bs.state \
+               FROM blob b \
+               JOIN blob_state bs ON bs.blob_id = b.id \
+               ORDER BY b.id, bs.created_at DESC \
+             ) q",
+        );
+
+        let mut conditions: Vec<String> = Vec::new();
+        let mut param_idx: usize = 1;
+
+        if filter.service_id.is_some() {
+            conditions.push(format!("q.service_id = ${}", param_idx));
+            param_idx += 1;
+        }
+        if filter.server_registration_id.is_some() {
+            conditions.push(format!("q.server_registration_id = ${}", param_idx));
+            param_idx += 1;
+        }
+        if filter.state.is_some() {
+            conditions.push(format!("q.state = ${}", param_idx));
+            param_idx += 1;
+        }
+        if page.created_before.is_some() {
+            conditions.push(format!("q.created_at < ${}", param_idx));
+            param_idx += 1;
+        }
+
+        if !conditions.is_empty() {
+            sql.push_str(" WHERE ");
+            sql.push_str(&conditions.join(" AND "));
+        }
+
+        sql.push_str(" ORDER BY q.created_at DESC");
+        sql.push_str(&format!(" LIMIT ${}", param_idx));
+
+        let mut query = sqlx::query(&sql);
+
+        if let Some(ref service_id) = filter.service_id {
+            query = query.bind(service_id.as_untyped_uuid());
+        }
+        if let Some(ref server_registration_id) = filter.server_registration_id {
+            query = query.bind(server_registration_id.as_untyped_uuid());
+        }
+        if let Some(ref state) = filter.state {
+            query = query.bind(state);
+        }
+        if let Some(ref ts) = page.created_before {
+            query = query.bind(ts);
+        }
+        query = query.bind(page.limit as i64);
+
+        let rows = query.fetch_all(&self.pool).await?;
+
+        let blobs = rows
+            .iter()
+            .map(|row| {
+                let id_uuid: sqlx::types::Uuid = row.try_get("id")?;
+                let service_id_uuid: sqlx::types::Uuid = row.try_get("service_id")?;
+                let server_registration_id_uuid: sqlx::types::Uuid =
+                    row.try_get("server_registration_id")?;
+                let state: BlobState = row.try_get("state")?;
+
+                Ok(BlobModel {
+                    id: TypedUuid::from_untyped_uuid(id_uuid),
+                    service_id: TypedUuid::from_untyped_uuid(service_id_uuid),
+                    server_registration_id: TypedUuid::from_untyped_uuid(
+                        server_registration_id_uuid,
+                    ),
+                    blob_time: row.try_get("blob_time")?,
+                    size: row.try_get("size")?,
+                    total_size: row.try_get("total_size")?,
+                    state,
+                    created_at: row.try_get("created_at")?,
+                    updated_at: row.try_get("updated_at")?,
+                })
+            })
+            .collect::<Result<Vec<_>, sqlx::Error>>()?;
+
+        Ok(blobs)
+    }
 }
 
 #[async_trait]
@@ -1107,6 +1195,58 @@ impl HealthCheckStorage for PostgresStorage {
                     ),
                     checked_in_at: row.try_get("checked_in_at")?,
                     created_at: row.try_get("checked_in_at")?, // Using checked_in_at as proxy
+                })
+            })
+            .collect::<Result<Vec<_>, sqlx::Error>>()?;
+
+        Ok(health_checks)
+    }
+
+    async fn list_health_checks_paginated(
+        &self,
+        server_registration_id: TypedUuid<ServerRegistrationId>,
+        page: &Paginated,
+    ) -> StorageResult<Vec<HealthCheckModel>> {
+        let sql = if page.created_before.is_some() {
+            r#"
+            SELECT id, server_registration_id, checked_in_at
+            FROM health_check
+            WHERE server_registration_id = $1 AND checked_in_at < $2
+            ORDER BY checked_in_at DESC
+            LIMIT $3
+            "#
+        } else {
+            r#"
+            SELECT id, server_registration_id, checked_in_at
+            FROM health_check
+            WHERE server_registration_id = $1
+            ORDER BY checked_in_at DESC
+            LIMIT $2
+            "#
+        };
+
+        let mut query = sqlx::query(sql).bind(server_registration_id.as_untyped_uuid());
+
+        if let Some(ref ts) = page.created_before {
+            query = query.bind(ts);
+        }
+        query = query.bind(page.limit as i64);
+
+        let rows = query.fetch_all(&self.pool).await?;
+
+        let health_checks = rows
+            .iter()
+            .map(|row| {
+                let id_uuid: sqlx::types::Uuid = row.try_get("id")?;
+                let server_registration_id_uuid: sqlx::types::Uuid =
+                    row.try_get("server_registration_id")?;
+                Ok(HealthCheckModel {
+                    id: TypedUuid::from_untyped_uuid(id_uuid),
+                    server_registration_id: TypedUuid::from_untyped_uuid(
+                        server_registration_id_uuid,
+                    ),
+                    checked_in_at: row.try_get("checked_in_at")?,
+                    created_at: row.try_get("checked_in_at")?,
                 })
             })
             .collect::<Result<Vec<_>, sqlx::Error>>()?;

@@ -46,6 +46,30 @@ impl BlobFilter {
     }
 }
 
+/// Pagination parameters for cursor-based keyset pagination.
+#[derive(Clone, Debug)]
+pub struct Paginated {
+    /// Maximum number of items to return.
+    pub limit: u32,
+    /// If set, only return items created before this timestamp (for descending order)
+    /// or after this timestamp (for ascending order).
+    pub created_before: Option<DateTime<Utc>>,
+}
+
+impl Paginated {
+    pub fn new(limit: u32) -> Self {
+        Self {
+            limit,
+            created_before: None,
+        }
+    }
+
+    pub fn before(mut self, ts: DateTime<Utc>) -> Self {
+        self.created_before = Some(ts);
+        self
+    }
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum StorageError {
     #[error("Database error: {0}")]
@@ -137,10 +161,7 @@ pub trait ServiceStorage: Send + Sync {
 
     /// Get a service by id
     /// Returns None if the service does not exist
-    async fn get_service_by_id(
-        &self,
-        id: TypedUuid<ServiceId>,
-    ) -> StorageResult<Option<ServiceModel>>;
+    async fn get_service(&self, id: TypedUuid<ServiceId>) -> StorageResult<Option<ServiceModel>>;
 
     /// Get a service by name
     /// Returns None if the service does not exist
@@ -149,9 +170,9 @@ pub trait ServiceStorage: Send + Sync {
     /// List all services
     async fn list_services(&self) -> StorageResult<Vec<ServiceModel>>;
 
-    /// Delete a service
+    /// Delete a service by id
     /// Returns None if the service does not exist
-    async fn delete_service(&self, name: &str) -> StorageResult<Option<()>>;
+    async fn delete_service(&self, id: TypedUuid<ServiceId>) -> StorageResult<Option<()>>;
 }
 
 /// Storage interface for deployment operations
@@ -285,6 +306,13 @@ pub trait BlobStorage: Send + Sync {
         &self,
         service_id: TypedUuid<ServiceId>,
     ) -> StorageResult<Vec<BlobModel>>;
+
+    /// List blobs matching the filter with cursor-based pagination.
+    async fn list_blobs_paginated(
+        &self,
+        filter: &BlobFilter,
+        page: &Paginated,
+    ) -> StorageResult<Vec<BlobModel>>;
 }
 
 /// Storage interface for health check operations
@@ -307,6 +335,13 @@ pub trait HealthCheckStorage: Send + Sync {
     async fn list_health_checks_by_server_registration(
         &self,
         server_registration_id: TypedUuid<ServerRegistrationId>,
+    ) -> StorageResult<Vec<HealthCheckModel>>;
+
+    /// List health checks for a server registration with cursor-based pagination.
+    async fn list_health_checks_paginated(
+        &self,
+        server_registration_id: TypedUuid<ServerRegistrationId>,
+        page: &Paginated,
     ) -> StorageResult<Vec<HealthCheckModel>>;
 }
 

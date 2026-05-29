@@ -9,7 +9,7 @@ name = "sprue_svc"
 path = "src/lib.rs"
 
 [[bin]]
-name = "sprue_agent"
+name = "sprue-agent"
 path = "src/main.rs"
 
 [features]

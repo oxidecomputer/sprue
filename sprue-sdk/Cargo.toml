@@ -6,6 +6,7 @@ publish.workspace = true
 
 [dependencies]
 chrono = { workspace = true, features = ["serde"] }
+futures = { workspace = true }
 progenitor-client = { workspace = true }
 schemars = { workspace = true, features = ["chrono", "uuid1"] }
 serde = { workspace = true }

@@ -27,7 +27,6 @@ http = { workspace = true }
 http-body-util = { workspace = true }
 hyper = { workspace = true }
 oauth2 = { workspace = true }
-oauth2-reqwest = { workspace = true }
 owo-colors = { workspace = true }
 progenitor-client = { workspace = true }
 ratatui = { workspace = true, optional = true }
@@ -36,7 +35,6 @@ schemars = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sprue-sdk = { path = "../sprue-sdk" }
-tabwriter = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 toml = { workspace = true }

@@ -79,4 +79,4 @@ sprue-model = { path = "../sprue-model", features = ["test-util"] }
 sprue-sdk = { path = "../sprue-sdk" }
 
 [package.metadata.cargo-machete]
-ignored = ["http"]
+ignored = ["http", "sprue-agent"]

@@ -10,9 +10,10 @@ use dice_verifier::{
 use newtype_uuid::{GenericUuid, TypedUuid};
 use sha2::{Digest, Sha256};
 use sprue_model::ServerRegistrationInstanceId;
-use std::{str::Utf8Error, sync::Arc};
+use std::{future::Future, str::Utf8Error, sync::Arc};
 use tap::TapFallible;
 use thiserror::Error;
+use tokio::{sync::Mutex, task::JoinHandle};
 use tracing::instrument;
 use v_api::response::{ResourceError, ResourceResult};
 use vm_attest::{QualifyingData, RotType, VmInstanceAttestation, VmInstanceConf};
@@ -65,20 +66,46 @@ pub enum ServerIdentityError {
 pub struct ServerIdentityContext {
     organization: String,
     root_certs: Vec<Certificate>,
-    ref_measurements: Arc<ReferenceMeasurements>,
+    ref_measurements_loader: Arc<Mutex<Option<JoinHandle<Arc<ReferenceMeasurements>>>>>,
+    ref_measurements: Arc<Mutex<Option<Arc<ReferenceMeasurements>>>>,
 }
 
 impl ServerIdentityContext {
-    pub fn new(
-        organization: String,
-        root_certs: Vec<Certificate>,
-        ref_measurements: Arc<ReferenceMeasurements>,
-    ) -> Self {
+    pub fn new<F, Fut>(organization: String, root_certs: Vec<Certificate>, loader: F) -> Self
+    where
+        F: FnOnce() -> Fut,
+        Fut: Future<Output = Arc<ReferenceMeasurements>> + Send + 'static,
+    {
+        // Load reference measurements in the background so a potentially slow
+        // repository download does not block server startup.
+        let handle = tokio::spawn(loader());
         Self {
             organization,
             root_certs,
-            ref_measurements,
+            ref_measurements_loader: Arc::new(Mutex::new(Some(handle))),
+            ref_measurements: Arc::new(Mutex::new(None)),
         }
+    }
+
+    /// Resolves the reference measurements, awaiting the background loader task
+    /// on first access and caching the result for subsequent calls.
+    async fn reference_measurements(&self) -> Arc<ReferenceMeasurements> {
+        let mut cached = self.ref_measurements.lock().await;
+        if let Some(measurements) = cached.as_ref() {
+            return measurements.clone();
+        }
+
+        let handle = self
+            .ref_measurements_loader
+            .lock()
+            .await
+            .take()
+            .expect("reference measurement loader is consumed exactly once");
+        let measurements = handle
+            .await
+            .expect("reference measurement loader task should not panic");
+        *cached = Some(measurements.clone());
+        measurements
     }
 
     pub fn generate_nonce(&self) -> ResourceResult<String, ServerIdentityError> {
@@ -93,7 +120,7 @@ impl ServerIdentityContext {
     }
 
     #[instrument(skip(self, attestation), fields(instance))]
-    pub fn verify_instance_attestation(
+    pub async fn verify_instance_attestation(
         &self,
         instance: TypedUuid<ServerRegistrationInstanceId>,
         nonce: &str,
@@ -174,6 +201,8 @@ impl ServerIdentityContext {
             .map_err(ServerIdentityError::VerifyAttestation)?;
         tracing::info!("Verified attestation");
 
+        let reference_measurements = self.reference_measurements().await;
+
         for log in &attestation.measurement_logs {
             match log.rot {
                 RotType::OxidePlatform => {
@@ -181,10 +210,13 @@ impl ServerIdentityContext {
                     // log from the OxidePlatform RoT
                     let (log, _): (Log, _) = hubpack::deserialize(&log.data)?;
                     let measurements = MeasurementSet::from_artifacts(&cert_chain_pem, &log)?;
-                    dice_verifier::verify_measurements(&measurements, &self.ref_measurements)
-                        .tap_err(|err| {
-                            tracing::info!(?err, "Failed to verify RoT measurements");
-                        })?;
+                    dice_verifier::verify_measurements(
+                        &measurements,
+                        reference_measurements.as_ref(),
+                    )
+                    .tap_err(|err| {
+                        tracing::info!(?err, "Failed to verify RoT measurements");
+                    })?;
                 }
                 RotType::OxideInstance => {
                     // Compare the server identity to the instance id config from the attestation

@@ -2,7 +2,6 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use dice_verifier::{Corim, CorimError, ReferenceMeasurementsError};
 use dropshot::BuildError as DropshotError;
 use newtype_uuid::TypedUuid;
 use secrecy::ExposeSecret;
@@ -39,6 +38,7 @@ use crate::{
         service::ServiceContext,
     },
     initial_data::{InitError, InitialData},
+    measurement::{MeasurementError, fetch_measurements},
     permissions::ApiPermissions,
     sagas::{
         actions::{load_actions, push_backup::PushBackup},
@@ -51,6 +51,7 @@ pub mod config;
 pub mod context;
 mod endpoints;
 mod initial_data;
+mod measurement;
 pub mod permissions;
 mod policy;
 mod sagas;
@@ -68,18 +69,14 @@ pub enum ServerError {
     InitError(#[from] InitError),
     #[error("Failed to create server")]
     FailedToCreate(#[from] DropshotError),
-    #[error("Failed to parse measurement")]
-    Measurement(#[from] CorimError),
+    #[error("Failed to fetch measurements")]
+    Mesaurement(#[from] MeasurementError),
     #[error("Failed to create OidcContext")]
     Oidc(#[from] OidcContextError),
     #[error("Failed to load registration policy")]
     Policy(String),
     #[error("Failed to resolve paramater")]
     ParamResolution(#[from] ParamResolutionError),
-    #[error("Failed to read measurement file")]
-    Read(#[from] std::io::Error),
-    #[error("Failed to construct reference measurement")]
-    ReferenceMeasurement(#[from] ReferenceMeasurementsError),
     #[error("Failed to load root cert chain")]
     RootCertChain(#[from] x509_cert::der::Error),
     #[error("Task failed")]
@@ -167,6 +164,30 @@ pub async fn run_server(
         );
     }
 
+    let releases = config.vm_identity.releases;
+    let release_storage = config.vm_identity.release_storage;
+    let server_identity = ServerIdentityContext::new(
+        config.vm_identity.organization,
+        Certificate::load_pem_chain(config.vm_identity.root_cert_chain.as_bytes())?,
+        move || async move {
+            // Retry indefinitely so a transient failure to reach the release
+            // repositories does not permanently disable attestation.
+            loop {
+                match fetch_measurements(&releases, &release_storage).await {
+                    Ok(measurements) => break Arc::new(measurements),
+                    Err(err) => {
+                        tracing::error!(
+                            ?err,
+                            "Failed to load reference measurements; retrying shortly"
+                        );
+                        tokio::time::sleep(Duration::from_secs(30)).await;
+                    }
+                }
+            }
+        },
+    );
+    tracing::info!("Reference measurement loading scheduled in background");
+
     let mut saga_actions = ActionRegistry::new();
     load_actions(&mut saga_actions);
 
@@ -184,21 +205,7 @@ pub async fn run_server(
             storage.clone(),
         )?)
         .policy(policy_engine)
-        .server_identity(ServerIdentityContext::new(
-            config.vm_identity.organization,
-            Certificate::load_pem_chain(config.vm_identity.root_cert_chain.as_bytes())?,
-            Arc::new(TryFrom::<&[Corim]>::try_from(
-                &config
-                    .vm_identity
-                    .measurements
-                    .into_iter()
-                    .map(|p| {
-                        let data = std::fs::read(p)?;
-                        Ok::<_, ServerError>(Corim::from_bytes(&data)?)
-                    })
-                    .collect::<Result<Vec<_>, _>>()?,
-            )?),
-        ))
+        .server_identity(server_identity)
         .service(ServiceContext::new(
             storage,
             Duration::from_secs(config.vm_identity.registration_duration),

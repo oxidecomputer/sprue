@@ -191,15 +191,20 @@ impl SeededContext {
                 )
                 .unwrap(),
             )
-            .server_identity(ServerIdentityContext::new(
-                "Oxide Computer Company".to_string(),
-                Certificate::load_pem_chain(include_bytes!(
-                    "../../test-data/attestation/root.crt"
-                ))?,
-                Arc::new(ReferenceMeasurements::try_from(std::slice::from_ref(
-                    &Corim::from_bytes(include_bytes!("../../test-data/attestation/corim.cbor"))?,
-                ))?),
-            ))
+            .server_identity({
+                let reference_measurements = Arc::new(ReferenceMeasurements::try_from(
+                    std::slice::from_ref(&Corim::from_bytes(include_bytes!(
+                        "../../test-data/attestation/corim.cbor"
+                    ))?),
+                )?);
+                ServerIdentityContext::new(
+                    "Oxide Computer Company".to_string(),
+                    Certificate::load_pem_chain(include_bytes!(
+                        "../../test-data/attestation/root.crt"
+                    ))?,
+                    move || async move { reference_measurements },
+                )
+            })
             .service(ServiceContext::new(storage, Duration::from_secs(10)))
             .saga_action_registry(Arc::new(ActionRegistry::new()))
             .policy(policy)

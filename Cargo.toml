@@ -91,6 +91,7 @@ v-model = { git = "https://github.com/oxidecomputer/v-api", rev = "v0.4.0-alpha.
 vm-attest = { git = "https://github.com/oxidecomputer/vm-attest" }
 lib-vsock = { package = "vsock", version = "0.5.3" }
 x509-cert = "0.2.5"
+zip = "8.6.0"
 
 # [patch."https://github.com/oxidecomputer/v-api"]
 # v-api = { path = "../v-api/v-api" }

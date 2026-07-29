@@ -37,8 +37,16 @@ pub struct JwtConfig {
 pub struct VmIdentityConfig {
     pub organization: String,
     pub root_cert_chain: String,
-    pub measurements: Vec<PathBuf>,
     pub registration_duration: u64,
+    pub release_storage: PathBuf,
+    pub releases: Vec<SystemRelease>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SystemRelease {
+    pub version: String,
+    pub url: String,
+    pub checksum: String,
 }
 
 #[derive(Debug, Deserialize)]

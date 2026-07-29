@@ -232,6 +232,7 @@ pub async fn prove_server(
             })?,
             &attestation,
         )
+        .await
         .map_err(|err| {
             tracing::info!(?err, "Failed to verify attestation");
             HttpError::for_bad_request(None, "Invalid attestation".to_string())

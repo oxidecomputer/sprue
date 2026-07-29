@@ -1,11 +1,17 @@
-use std::{path::PathBuf, sync::Arc, time::Duration};
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 use futures::future;
 use futures_util::StreamExt;
 use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderValue};
 use sprue_sdk::{Client, types::TypedUuidForServerRegistrationId};
 use sprue_svc::{SprueError, SprueService};
-use std::sync::RwLock;
+use std::{
+    path::PathBuf,
+    sync::{Arc, RwLock},
+    time::Duration,
+};
 use tarpc::{
     context,
     server::{self, Channel},

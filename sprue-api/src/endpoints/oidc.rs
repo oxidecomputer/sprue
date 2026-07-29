@@ -82,6 +82,7 @@ pub async fn prove_oidc_token_request(
                 })?,
                 &attestation,
             )
+            .await
             .map_err(|err| {
                 tracing::info!(?err, "Failed to verify attestation");
                 HttpError::for_bad_request(None, "Invalid attestation".to_string())

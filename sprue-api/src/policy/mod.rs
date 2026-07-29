@@ -1,12 +1,14 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 use cedar_policy::{
     EntityAttrEvaluationError, EntityId, EntityTypeName, EntityUid, ExpressionConstructionError,
 };
 use newtype_uuid::TypedUuid;
-use sprue_model::{ServerRegistrationInstanceId, ServiceId};
+use sprue_model::{ProjectId, ServerRegistrationInstanceId, ServiceId, SiloId};
 use std::{str::FromStr, sync::LazyLock};
 use thiserror::Error;
-
-use sprue_model::{ProjectId, SiloId};
 
 pub mod action;
 pub mod principal;

@@ -139,22 +139,19 @@ pub async fn run_server(
         Box::pin(async move { Ok(v_ctx_token.service_token(&audience).await?) })
     });
 
-    let policy_engine =
-        config
-            .auto_registration_policy
-            .map(|policy_config| {
-                let policy_text = policy_config.policy.resolve(param_path).map_err(|e| {
-                    ServerError::Policy(format!("Failed to read policy file: {}", e))
-                })?;
-                let schema_text = policy_config.schema.resolve(param_path).map_err(|e| {
-                    ServerError::Policy(format!("Failed to read schema file: {}", e))
-                })?;
-                tracing::info!("Constructing policy engine");
+    let policy_engine = config
+        .auto_registration_policy
+        .map(|policy_config| {
+            let policy_text = policy_config
+                .policy
+                .resolve(param_path)
+                .map_err(|e| ServerError::Policy(format!("Failed to read policy file: {}", e)))?;
+            tracing::info!("Constructing policy engine");
 
-                PolicyEngine::new(&policy_text.expose_secret(), &schema_text.expose_secret())
-                    .map_err(|e| ServerError::Policy(e.to_string()))
-            })
-            .transpose()?;
+            PolicyEngine::new(policy_text.expose_secret())
+                .map_err(|e| ServerError::Policy(e.to_string()))
+        })
+        .transpose()?;
 
     if policy_engine.is_some() {
         tracing::info!("Registration policy engine enabled");

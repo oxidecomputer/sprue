@@ -63,7 +63,6 @@ pub struct OidcTokenConfig {
 #[derive(Debug, Deserialize)]
 pub struct ServerAutoRegistration {
     pub policy: StringParam,
-    pub schema: StringParam,
 }
 
 #[derive(Debug, Deserialize)]

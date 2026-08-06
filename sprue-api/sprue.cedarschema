@@ -1,0 +1,42 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+// Schema for server auto-registration policies.
+//
+// This file is compiled into the sprue-api binary and is NOT operator
+// configurable. It describes the entities that the server itself constructs
+// when evaluating a registration, so it has to be versioned alongside the code
+// that builds those entities:
+//
+//   - Instance is built by `policy::principal::ServerPrincipal`
+//   - Service  is built by `policy::resource::ServiceResource`
+//   - registerServer is defined in `policy::action`
+//
+// If you change an entity's attributes in those modules, change them here in
+// the same commit. Operator-supplied policies are validated against this schema
+// at startup, so a mismatch surfaces immediately rather than silently denying
+// registrations.
+namespace Sprue {
+    entity Project;
+    entity Silo;
+
+    // A VM instance requesting registration. The identity is established by
+    // hardware attestation before the policy is ever evaluated.
+    entity Instance {
+        project: Project,
+        silo: Silo,
+    };
+
+    // The service the instance is registering with, along with the
+    // project/silo pairs it is currently deployed to.
+    entity Service {
+        deployments: Set<{
+            "project": Project,
+            "silo": Silo,
+        }>,
+    };
+
+    action registerServer
+        appliesTo { principal: [Instance], resource: [Service] };
+}

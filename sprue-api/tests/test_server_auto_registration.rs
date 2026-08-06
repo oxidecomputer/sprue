@@ -14,25 +14,6 @@ mod common;
 
 static USER_SCOPE: &str = "user:info:r service:r service:w";
 
-const SCHEMA: &str = r#"
-    namespace Sprue {
-        entity Project;
-        entity Silo;
-        entity Instance {
-            project: Project,
-            silo: Silo,
-        };
-        entity Service {
-            deployments: Set<{
-                "project": Project,
-                "silo": Silo,
-            }>,
-        };
-        action registerServer
-            appliesTo { principal: [Instance], resource: [Service] };
-    }
-"#;
-
 /// Permit registration when the server's project/silo pair matches a known
 /// deployment on the service.
 const POLICY: &str = r#"
@@ -52,7 +33,7 @@ const POLICY: &str = r#"
 async fn test_server_auto_registration() {
     let _ = tracing_subscriber::fmt::try_init();
 
-    let policy = PolicyEngine::new(POLICY, SCHEMA).unwrap();
+    let policy = PolicyEngine::new(POLICY).unwrap();
     let seed = SeededContext::create_with_policy("server_auto_registration", Some(policy))
         .await
         .unwrap();

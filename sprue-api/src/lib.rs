@@ -102,6 +102,7 @@ pub async fn run_server(
         .with_keys(config.jwt.keys)
         .with_saga_backend(node_id, None)
         .with_additional_builtin_permissions(ApiPermissions::iter().collect())
+        .with_mappers(config.presets.map(|p| p.mappers).unwrap_or_default())
         .build()
         .await?;
 
@@ -148,7 +149,7 @@ pub async fn run_server(
                 .map_err(|e| ServerError::Policy(format!("Failed to read policy file: {}", e)))?;
             tracing::info!("Constructing policy engine");
 
-            PolicyEngine::new(policy_text.expose_secret())
+            PolicyEngine::new(&policy_text.expose_secret())
                 .map_err(|e| ServerError::Policy(e.to_string()))
         })
         .transpose()?;

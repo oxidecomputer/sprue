@@ -2892,7 +2892,7 @@ pub mod types {
     ///      "type": "string"
     ///    },
     ///    "secret": {
-    ///      "type": "string"
+    ///      "$ref": "#/components/schemas/SecretString"
     ///    }
 
     ///  }
@@ -2907,7 +2907,7 @@ pub mod types {
     pub struct MagicLinkExchangeRequest {
         pub attempt_id: TypedUuidForMagicLinkAttemptId,
         pub recipient: ::std::string::String,
-        pub secret: ::std::string::String,
+        pub secret: SecretString,
     }
 
     impl MagicLinkExchangeRequest {
@@ -3262,7 +3262,7 @@ pub mod types {
     ///      ]
     ///    },
     ///    "secret": {
-    ///      "type": "string"
+    ///      "$ref": "#/components/schemas/SecretString"
     ///    }
 
     ///  }
@@ -3281,7 +3281,7 @@ pub mod types {
         pub redirect_uri: ::std::string::String,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub scope: ::std::option::Option<::std::string::String>,
-        pub secret: ::std::string::String,
+        pub secret: SecretString,
     }
 
     impl MagicLinkSendRequest {
@@ -3550,8 +3550,8 @@ pub mod types {
     ///  "type": "object",
     ///  "required": [
     ///    "code",
+    ///    "code_verifier",
     ///    "grant_type",
-    ///    "pkce_verifier",
     ///    "redirect_uri"
     ///  ],
     ///  "properties": {
@@ -3590,12 +3590,12 @@ pub mod types {
     ///    "code": {
     ///      "type": "string"
     ///    },
-    ///    "grant_type": {
-    ///      "type": "string"
-    ///    },
-    ///    "pkce_verifier": {
+    ///    "code_verifier": {
     ///      "description": "PKCE code verifier (RFC 7636). Required for all
     /// authorization code exchanges.",
+    ///      "type": "string"
+    ///    },
+    ///    "grant_type": {
     ///      "type": "string"
     ///    },
     ///    "redirect_uri": {
@@ -3617,10 +3617,10 @@ pub mod types {
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub client_secret: ::std::option::Option<SecretString>,
         pub code: ::std::string::String,
-        pub grant_type: ::std::string::String,
         /// PKCE code verifier (RFC 7636). Required for all authorization code
         /// exchanges.
-        pub pkce_verifier: ::std::string::String,
+        pub code_verifier: ::std::string::String,
+        pub grant_type: ::std::string::String,
         pub redirect_uri: ::std::string::String,
     }
 
@@ -3651,7 +3651,19 @@ pub mod types {
     ///      "type": "integer",
     ///      "format": "int64"
     ///    },
+    ///    "idp_refresh_token": {
+    ///      "description": "Refresh token issued by the upstream identity
+    /// provider. Returned under the same conditions as `idp_token`, and only
+    /// when the provider issued one.",
+    ///      "type": [
+    ///        "string",
+    ///        "null"
+    ///      ]
+    ///    },
     ///    "idp_token": {
+    ///      "description": "Access token issued by the upstream identity
+    /// provider. Only returned when the caller requested it and holds the
+    /// `RetrieveRemoteAccessToken` permission.",
     ///      "type": [
     ///        "string",
     ///        "null"
@@ -3679,6 +3691,14 @@ pub mod types {
     pub struct OAuthAuthzCodeExchangeResponse {
         pub access_token: ::std::string::String,
         pub expires_in: i64,
+        /// Refresh token issued by the upstream identity provider. Returned
+        /// under the same conditions as `idp_token`, and only when the provider
+        /// issued one.
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub idp_refresh_token: ::std::option::Option<::std::string::String>,
+        /// Access token issued by the upstream identity provider. Only returned
+        /// when the caller requested it and holds the
+        /// `RetrieveRemoteAccessToken` permission.
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub idp_token: ::std::option::Option<::std::string::String>,
         /// The scope granted to the access token per RFC 6749 §5.1. An empty
@@ -9659,7 +9679,7 @@ pub mod types {
             attempt_id:
                 ::std::result::Result<super::TypedUuidForMagicLinkAttemptId, ::std::string::String>,
             recipient: ::std::result::Result<::std::string::String, ::std::string::String>,
-            secret: ::std::result::Result<::std::string::String, ::std::string::String>,
+            secret: ::std::result::Result<super::SecretString, ::std::string::String>,
         }
 
         impl ::std::default::Default for MagicLinkExchangeRequest {
@@ -9695,7 +9715,7 @@ pub mod types {
             }
             pub fn secret<T>(mut self, value: T) -> Self
             where
-                T: ::std::convert::TryInto<::std::string::String>,
+                T: ::std::convert::TryInto<super::SecretString>,
                 T::Error: ::std::fmt::Display,
             {
                 self.secret = value
@@ -10038,7 +10058,7 @@ pub mod types {
                 ::std::option::Option<::std::string::String>,
                 ::std::string::String,
             >,
-            secret: ::std::result::Result<::std::string::String, ::std::string::String>,
+            secret: ::std::result::Result<super::SecretString, ::std::string::String>,
         }
 
         impl ::std::default::Default for MagicLinkSendRequest {
@@ -10107,7 +10127,7 @@ pub mod types {
             }
             pub fn secret<T>(mut self, value: T) -> Self
             where
-                T: ::std::convert::TryInto<::std::string::String>,
+                T: ::std::convert::TryInto<super::SecretString>,
                 T::Error: ::std::fmt::Display,
             {
                 self.secret = value
@@ -10391,8 +10411,8 @@ pub mod types {
                 ::std::string::String,
             >,
             code: ::std::result::Result<::std::string::String, ::std::string::String>,
+            code_verifier: ::std::result::Result<::std::string::String, ::std::string::String>,
             grant_type: ::std::result::Result<::std::string::String, ::std::string::String>,
-            pkce_verifier: ::std::result::Result<::std::string::String, ::std::string::String>,
             redirect_uri: ::std::result::Result<::std::string::String, ::std::string::String>,
         }
 
@@ -10402,8 +10422,8 @@ pub mod types {
                     client_id: Ok(Default::default()),
                     client_secret: Ok(Default::default()),
                     code: Err("no value supplied for code".to_string()),
+                    code_verifier: Err("no value supplied for code_verifier".to_string()),
                     grant_type: Err("no value supplied for grant_type".to_string()),
-                    pkce_verifier: Err("no value supplied for pkce_verifier".to_string()),
                     redirect_uri: Err("no value supplied for redirect_uri".to_string()),
                 }
             }
@@ -10440,6 +10460,16 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for code: {e}"));
                 self
             }
+            pub fn code_verifier<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.code_verifier = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for code_verifier: {e}"));
+                self
+            }
             pub fn grant_type<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::std::string::String>,
@@ -10448,16 +10478,6 @@ pub mod types {
                 self.grant_type = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for grant_type: {e}"));
-                self
-            }
-            pub fn pkce_verifier<T>(mut self, value: T) -> Self
-            where
-                T: ::std::convert::TryInto<::std::string::String>,
-                T::Error: ::std::fmt::Display,
-            {
-                self.pkce_verifier = value
-                    .try_into()
-                    .map_err(|e| format!("error converting supplied value for pkce_verifier: {e}"));
                 self
             }
             pub fn redirect_uri<T>(mut self, value: T) -> Self
@@ -10481,8 +10501,8 @@ pub mod types {
                     client_id: value.client_id?,
                     client_secret: value.client_secret?,
                     code: value.code?,
+                    code_verifier: value.code_verifier?,
                     grant_type: value.grant_type?,
-                    pkce_verifier: value.pkce_verifier?,
                     redirect_uri: value.redirect_uri?,
                 })
             }
@@ -10494,8 +10514,8 @@ pub mod types {
                     client_id: Ok(value.client_id),
                     client_secret: Ok(value.client_secret),
                     code: Ok(value.code),
+                    code_verifier: Ok(value.code_verifier),
                     grant_type: Ok(value.grant_type),
-                    pkce_verifier: Ok(value.pkce_verifier),
                     redirect_uri: Ok(value.redirect_uri),
                 }
             }
@@ -10505,6 +10525,10 @@ pub mod types {
         pub struct OAuthAuthzCodeExchangeResponse {
             access_token: ::std::result::Result<::std::string::String, ::std::string::String>,
             expires_in: ::std::result::Result<i64, ::std::string::String>,
+            idp_refresh_token: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
             idp_token: ::std::result::Result<
                 ::std::option::Option<::std::string::String>,
                 ::std::string::String,
@@ -10518,6 +10542,7 @@ pub mod types {
                 Self {
                     access_token: Err("no value supplied for access_token".to_string()),
                     expires_in: Err("no value supplied for expires_in".to_string()),
+                    idp_refresh_token: Ok(Default::default()),
                     idp_token: Ok(Default::default()),
                     scope: Err("no value supplied for scope".to_string()),
                     token_type: Err("no value supplied for token_type".to_string()),
@@ -10544,6 +10569,16 @@ pub mod types {
                 self.expires_in = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for expires_in: {e}"));
+                self
+            }
+            pub fn idp_refresh_token<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.idp_refresh_token = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for idp_refresh_token: {e}")
+                });
                 self
             }
             pub fn idp_token<T>(mut self, value: T) -> Self
@@ -10588,6 +10623,7 @@ pub mod types {
                 Ok(Self {
                     access_token: value.access_token?,
                     expires_in: value.expires_in?,
+                    idp_refresh_token: value.idp_refresh_token?,
                     idp_token: value.idp_token?,
                     scope: value.scope?,
                     token_type: value.token_type?,
@@ -10602,6 +10638,7 @@ pub mod types {
                 Self {
                     access_token: Ok(value.access_token),
                     expires_in: Ok(value.expires_in),
+                    idp_refresh_token: Ok(value.idp_refresh_token),
                     idp_token: Ok(value.idp_token),
                     scope: Ok(value.scope),
                     token_type: Ok(value.token_type),

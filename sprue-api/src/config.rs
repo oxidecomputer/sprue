@@ -6,7 +6,10 @@ use config::{Config, ConfigError, Environment, File};
 use serde::Deserialize;
 use std::path::PathBuf;
 use tap::TapFallible;
-use v_api::config::{AsymmetricKey, AuthnProviders, ServerLogFormat, SpecConfig};
+use v_api::{
+    PresetMapperConfig,
+    config::{AsymmetricKey, AuthnProviders, ServerLogFormat, SpecConfig},
+};
 use v_api_param::StringParam;
 
 #[derive(Debug, Deserialize)]
@@ -25,6 +28,7 @@ pub struct ServerConfig {
     pub oidc: OidcConfig,
     pub auto_registration_policy: Option<ServerAutoRegistration>,
     pub backup: BackupConfig,
+    pub presets: Option<PresetsConfig>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -82,6 +86,11 @@ pub enum BackupStorageConfig {
         role: String,
         bucket: String,
     },
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PresetsConfig {
+    pub mappers: Vec<PresetMapperConfig>,
 }
 
 impl ServerConfig {

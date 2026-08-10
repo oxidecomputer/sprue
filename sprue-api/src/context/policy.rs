@@ -8,7 +8,6 @@ use cedar_policy::{
     entities_errors::EntitiesError,
 };
 use sprue_model::{Deployment, ServerRegistration, Service};
-use std::str::FromStr;
 use thiserror::Error;
 
 use crate::policy::{
@@ -69,7 +68,9 @@ impl PolicyEngine {
     /// otherwise silently deny every registration.
     pub fn new(policy_src: &str) -> Result<Self, PolicyEngineError> {
         let policy_set = policy_src.parse::<PolicySet>()?;
-        let schema = Schema::from_str(BUNDLED_SCHEMA)?;
+        let schema_src = include_str!("../../../policy.cedarschema");
+        let (schema, _warnings) =
+            Schema::from_cedarschema_str(schema_src).map_err(PolicyEngineError::SchemaParse)?;
 
         let validation =
             Validator::new(schema.clone()).validate(&policy_set, ValidationMode::Strict);
@@ -215,11 +216,6 @@ mod tests {
 
     fn engine(policy: &str) -> PolicyEngine {
         PolicyEngine::new(policy).unwrap()
-    }
-
-    #[test]
-    fn bundled_schema_is_valid() {
-        Schema::from_str(BUNDLED_SCHEMA).expect("bundled schema parses");
     }
 
     #[test]

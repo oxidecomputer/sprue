@@ -52,7 +52,7 @@ const POLICY: &str = r#"
 async fn test_server_auto_registration() {
     let _ = tracing_subscriber::fmt::try_init();
 
-    let policy = PolicyEngine::new(POLICY, SCHEMA).unwrap();
+    let policy = PolicyEngine::new(POLICY).unwrap();
     let seed = SeededContext::create_with_policy("server_auto_registration", Some(policy))
         .await
         .unwrap();

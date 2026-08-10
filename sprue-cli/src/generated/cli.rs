@@ -593,7 +593,7 @@ impl<T: CliConfig> Cli<T> {
             .arg(
                 ::clap::Arg::new("secret")
                     .long("secret")
-                    .value_parser(::clap::value_parser!(::std::string::String))
+                    .value_parser(::clap::value_parser!(types::SecretString))
                     .required_unless_present("json-body"),
             )
             .arg(
@@ -659,7 +659,7 @@ impl<T: CliConfig> Cli<T> {
             .arg(
                 ::clap::Arg::new("secret")
                     .long("secret")
-                    .value_parser(::clap::value_parser!(::std::string::String))
+                    .value_parser(::clap::value_parser!(types::SecretString))
                     .required_unless_present("json-body"),
             )
             .arg(
@@ -801,20 +801,20 @@ impl<T: CliConfig> Cli<T> {
                     .required_unless_present("json-body"),
             )
             .arg(
-                ::clap::Arg::new("grant-type")
-                    .long("grant-type")
-                    .value_parser(::clap::value_parser!(::std::string::String))
-                    .required_unless_present("json-body"),
-            )
-            .arg(
-                ::clap::Arg::new("pkce-verifier")
-                    .long("pkce-verifier")
+                ::clap::Arg::new("code-verifier")
+                    .long("code-verifier")
                     .value_parser(::clap::value_parser!(::std::string::String))
                     .required_unless_present("json-body")
                     .help(
                         "PKCE code verifier (RFC 7636). Required for all authorization code \
                          exchanges.",
                     ),
+            )
+            .arg(
+                ::clap::Arg::new("grant-type")
+                    .long("grant-type")
+                    .value_parser(::clap::value_parser!(::std::string::String))
+                    .required_unless_present("json-body"),
             )
             .arg(
                 ::clap::Arg::new("provider")
@@ -2535,7 +2535,7 @@ impl<T: CliConfig> Cli<T> {
             request = request.body_map(|body| body.recipient(value.clone()))
         }
 
-        if let Some(value) = matches.get_one::<::std::string::String>("secret") {
+        if let Some(value) = matches.get_one::<types::SecretString>("secret") {
             request = request.body_map(|body| body.secret(value.clone()))
         }
 
@@ -2591,7 +2591,7 @@ impl<T: CliConfig> Cli<T> {
             request = request.body_map(|body| body.scope(value.clone()))
         }
 
-        if let Some(value) = matches.get_one::<::std::string::String>("secret") {
+        if let Some(value) = matches.get_one::<types::SecretString>("secret") {
             request = request.body_map(|body| body.secret(value.clone()))
         }
 
@@ -2720,12 +2720,12 @@ impl<T: CliConfig> Cli<T> {
             request = request.body_map(|body| body.code(value.clone()))
         }
 
-        if let Some(value) = matches.get_one::<::std::string::String>("grant-type") {
-            request = request.body_map(|body| body.grant_type(value.clone()))
+        if let Some(value) = matches.get_one::<::std::string::String>("code-verifier") {
+            request = request.body_map(|body| body.code_verifier(value.clone()))
         }
 
-        if let Some(value) = matches.get_one::<::std::string::String>("pkce-verifier") {
-            request = request.body_map(|body| body.pkce_verifier(value.clone()))
+        if let Some(value) = matches.get_one::<::std::string::String>("grant-type") {
+            request = request.body_map(|body| body.grant_type(value.clone()))
         }
 
         if let Some(value) = matches.get_one::<types::OAuthProviderName>("provider") {

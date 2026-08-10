@@ -4142,7 +4142,7 @@
             "type": "string"
           },
           "secret": {
-            "type": "string"
+            "$ref": "#/components/schemas/SecretString"
           }
         },
         "required": [
@@ -4266,7 +4266,7 @@
             "type": "string"
           },
           "secret": {
-            "type": "string"
+            "$ref": "#/components/schemas/SecretString"
           }
         },
         "required": [
@@ -4382,11 +4382,11 @@
           "code": {
             "type": "string"
           },
-          "grant_type": {
+          "code_verifier": {
+            "description": "PKCE code verifier (RFC 7636). Required for all authorization code exchanges.",
             "type": "string"
           },
-          "pkce_verifier": {
-            "description": "PKCE code verifier (RFC 7636). Required for all authorization code exchanges.",
+          "grant_type": {
             "type": "string"
           },
           "redirect_uri": {
@@ -4395,8 +4395,8 @@
         },
         "required": [
           "code",
+          "code_verifier",
           "grant_type",
-          "pkce_verifier",
           "redirect_uri"
         ]
       },
@@ -4410,8 +4410,14 @@
             "type": "integer",
             "format": "int64"
           },
+          "idp_refresh_token": {
+            "nullable": true,
+            "description": "Refresh token issued by the upstream identity provider. Returned under the same conditions as `idp_token`, and only when the provider issued one.",
+            "type": "string"
+          },
           "idp_token": {
             "nullable": true,
+            "description": "Access token issued by the upstream identity provider. Only returned when the caller requested it and holds the `RetrieveRemoteAccessToken` permission.",
             "type": "string"
           },
           "scope": {

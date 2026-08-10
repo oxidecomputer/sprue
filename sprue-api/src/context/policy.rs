@@ -7,7 +7,6 @@ use cedar_policy::{
     Request, RequestValidationError, Response, Schema, entities_errors::EntitiesError,
 };
 use sprue_model::{Deployment, ServerRegistration, Service};
-use std::str::FromStr;
 use thiserror::Error;
 
 use crate::policy::{
@@ -51,10 +50,13 @@ pub struct PolicyEngine {
 
 impl PolicyEngine {
     /// Create a new policy engine from Cedar policy and schema text
-    pub fn new(policy_src: &str, schema: &str) -> Result<Self, PolicyEngineError> {
+    pub fn new(policy_src: &str) -> Result<Self, PolicyEngineError> {
         let policy_set = policy_src.parse::<PolicySet>()?;
-        let schema = Schema::from_str(schema)?;
-
+        // Schemas are defined with the application version itself. Any change to the permission
+        // schema must be introduced as a new version of the application.
+        let schema_src = include_str!("../../../policy.cedarschema");
+        let (schema, _warnings) =
+            Schema::from_cedarschema_str(schema_src).map_err(PolicyEngineError::SchemaParse)?;
         tracing::info!(
             policy_count = policy_set.policies().count(),
             "Loaded Cedar registration policies"
@@ -149,25 +151,6 @@ mod tests {
         ServerRegistrationInstanceId, ServerRegistrationState, Service, ServiceId, SiloId,
     };
 
-    const SCHEMA: &str = r#"
-        namespace Sprue {
-            entity Project;
-            entity Silo;
-            entity Instance {
-                project: Project,
-                silo: Silo,
-            };
-            entity Service {
-                deployments: Set<{
-                    "project": Project,
-                    "silo": Silo,
-                }>,
-            };
-            action registerServer
-                appliesTo { principal: [Instance], resource: [Service] };
-        }
-    "#;
-
     fn new_id<T: newtype_uuid::TypedUuidKind>() -> TypedUuid<T> {
         TypedUuid::from_untyped_uuid(uuid::Uuid::new_v4())
     }
@@ -206,7 +189,7 @@ mod tests {
     }
 
     fn engine(policy: &str) -> PolicyEngine {
-        PolicyEngine::new(policy, SCHEMA).unwrap()
+        PolicyEngine::new(policy).unwrap()
     }
 
     #[test]
@@ -278,7 +261,7 @@ mod tests {
             );"#,
             target_service.id
         );
-        let engine = PolicyEngine::new(&policy, SCHEMA).unwrap();
+        let engine = PolicyEngine::new(&policy).unwrap();
 
         let accepted = engine
             .evaluate_server_auto_registration(&server, &target_service, &[])
@@ -307,7 +290,7 @@ mod tests {
             }};"#,
             server.project_id
         );
-        let engine = PolicyEngine::new(&policy, SCHEMA).unwrap();
+        let engine = PolicyEngine::new(&policy).unwrap();
 
         let accepted = engine
             .evaluate_server_auto_registration(&server, &service, &[])
@@ -341,7 +324,7 @@ mod tests {
                 })
             };
         "#;
-        let engine = PolicyEngine::new(policy, SCHEMA).unwrap();
+        let engine = PolicyEngine::new(policy).unwrap();
 
         // With a matching deployment, the server is accepted
         let accepted = engine
@@ -358,13 +341,7 @@ mod tests {
 
     #[test]
     fn invalid_policy_returns_error() {
-        let result = PolicyEngine::new("this is not valid cedar", SCHEMA);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn invalid_schema_returns_error() {
-        let result = PolicyEngine::new("", "this is not valid cedar schema");
+        let result = PolicyEngine::new("this is not valid cedar");
         assert!(result.is_err());
     }
 }

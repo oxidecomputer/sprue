@@ -11,12 +11,12 @@ version = "0.1.0"
 anyhow = "1.0"
 async-trait = "0.1"
 attest-data = { git = "https://github.com/oxidecomputer/dice-util", rev = "d7472bfa91aee859c3fe0bdc1dbb1e320285228e" }
-aws-config = { version = "1.8.15", features = ["behavior-version-latest"] }
-aws-credential-types = "1.2.14"
-aws-sdk-s3 = "1.129.0"
-aws-sdk-sts = "1.101.0"
-aws-smithy-mocks = "0.2"
-aws-smithy-types = "1.4.7"
+aws-config = { version = "1.10", features = ["behavior-version-latest"] }
+aws-credential-types = "1.3"
+aws-sdk-s3 = "1.141"
+aws-sdk-sts = "1.110"
+aws-smithy-mocks = "0.3"
+aws-smithy-types = "1.6"
 base64 = "0.22"
 btreemultimap = "0.1.1"
 bytes = "1.11.1"
@@ -83,11 +83,11 @@ tracing-appender = "0.2.4"
 tracing-slog = { git = "https://github.com/oxidecomputer/tracing-slog", default-features = false }
 tracing-subscriber = { version = "0.3.22", features = ["env-filter", "json"] }
 uuid = { version = "1", features = ["serde"] }
-v-api = { git = "https://github.com/oxidecomputer/v-api", rev = "v0.4.0-alpha.3" }
-v-api-param = { git = "https://github.com/oxidecomputer/v-api", rev = "v0.4.0-alpha.3" }
-v-api-permission-derive = { git = "https://github.com/oxidecomputer/v-api", rev = "v0.4.0-alpha.3" }
-v-cli-sdk = { git = "https://github.com/oxidecomputer/v-api", rev = "v0.4.0-alpha.3" }
-v-model = { git = "https://github.com/oxidecomputer/v-api", rev = "v0.4.0-alpha.3" }
+v-api = { git = "https://github.com/oxidecomputer/v-api", rev = "v0.4.13" }
+v-api-param = { git = "https://github.com/oxidecomputer/v-api", rev = "v0.4.13" }
+v-api-permission-derive = { git = "https://github.com/oxidecomputer/v-api", rev = "v0.4.13" }
+v-cli-sdk = { git = "https://github.com/oxidecomputer/v-api", rev = "v0.4.13" }
+v-model = { git = "https://github.com/oxidecomputer/v-api", rev = "v0.4.13" }
 vm-attest = { git = "https://github.com/oxidecomputer/vm-attest" }
 lib-vsock = { package = "vsock", version = "0.5.3" }
 x509-cert = "0.2.5"

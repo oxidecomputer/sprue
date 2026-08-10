@@ -14,25 +14,6 @@ mod common;
 
 static USER_SCOPE: &str = "user:info:r service:r service:w";
 
-const SCHEMA: &str = r#"
-    namespace Sprue {
-        entity Project;
-        entity Silo;
-        entity Instance {
-            project: Project,
-            silo: Silo,
-        };
-        entity Service {
-            deployments: Set<{
-                "project": Project,
-                "silo": Silo,
-            }>,
-        };
-        action registerServer
-            appliesTo { principal: [Instance], resource: [Service] };
-    }
-"#;
-
 /// Permit registration when the server's project/silo pair matches a known
 /// deployment on the service.
 const POLICY: &str = r#"

@@ -4,7 +4,8 @@
 
 use cedar_policy::{
     Authorizer, CedarSchemaError, Context, Decision, Entities, Entity, ParseErrors, PolicySet,
-    Request, RequestValidationError, Response, Schema, entities_errors::EntitiesError,
+    Request, RequestValidationError, Response, Schema, ValidationMode, Validator,
+    entities_errors::EntitiesError,
 };
 use sprue_model::{Deployment, ServerRegistration, Service};
 use thiserror::Error;
@@ -27,7 +28,16 @@ pub enum PolicyEngineError {
     Request(#[from] RequestValidationError),
     #[error("Failed to parse Cedar schema")]
     SchemaParse(#[from] CedarSchemaError),
+    #[error("Policy is not valid against the bundled schema: {0}")]
+    PolicyValidation(String),
 }
+
+/// The Cedar schema describing the entities used in registration policies.
+///
+/// This is compiled into the binary rather than supplied by configuration: it
+/// describes entities that this crate constructs, so the two must be versioned
+/// together. See `sprue-api/sprue.cedarschema`.
+pub const BUNDLED_SCHEMA: &str = include_str!("../../sprue.cedarschema");
 
 /// The result of a policy evaluation for a server registration.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -40,7 +50,8 @@ pub enum PolicyDecision {
 
 /// A Cedar-based policy engine for evaluating server registration decisions.
 ///
-/// Policies are loaded once from configuration at startup.
+/// Policies are loaded once from configuration at startup and validated against
+/// [`BUNDLED_SCHEMA`].
 #[derive(Clone)]
 pub struct PolicyEngine {
     policy_set: PolicySet,
@@ -49,14 +60,29 @@ pub struct PolicyEngine {
 }
 
 impl PolicyEngine {
-    /// Create a new policy engine from Cedar policy and schema text
+    /// Create a new policy engine from Cedar policy text.
+    ///
+    /// The schema is bundled with the binary, so only the policy is supplied.
+    /// The policy is validated against that schema up front: a policy that
+    /// references entities or attributes the server does not produce would
+    /// otherwise silently deny every registration.
     pub fn new(policy_src: &str) -> Result<Self, PolicyEngineError> {
         let policy_set = policy_src.parse::<PolicySet>()?;
-        // Schemas are defined with the application version itself. Any change to the permission
-        // schema must be introduced as a new version of the application.
         let schema_src = include_str!("../../../policy.cedarschema");
         let (schema, _warnings) =
             Schema::from_cedarschema_str(schema_src).map_err(PolicyEngineError::SchemaParse)?;
+
+        let validation =
+            Validator::new(schema.clone()).validate(&policy_set, ValidationMode::Strict);
+        if !validation.validation_passed() {
+            let errors = validation
+                .validation_errors()
+                .map(|e| e.to_string())
+                .collect::<Vec<_>>()
+                .join("; ");
+            return Err(PolicyEngineError::PolicyValidation(errors));
+        }
+
         tracing::info!(
             policy_count = policy_set.policies().count(),
             "Loaded Cedar registration policies"
@@ -342,6 +368,37 @@ mod tests {
     #[test]
     fn invalid_policy_returns_error() {
         let result = PolicyEngine::new("this is not valid cedar");
+        assert!(result.is_err());
+    }
+
+    /// A policy referencing an attribute the server does not build should be
+    /// rejected at load time rather than silently denying every registration.
+    #[test]
+    fn policy_not_matching_bundled_schema_is_rejected() {
+        let result = PolicyEngine::new(
+            r#"permit(
+                principal,
+                action == Sprue::Action::"registerServer",
+                resource
+            ) when { principal.nonexistent == "x" };"#,
+        );
+        assert!(matches!(
+            result,
+            Err(PolicyEngineError::PolicyValidation(_))
+        ));
+    }
+
+    /// A policy referencing an entity type outside the bundled schema should
+    /// likewise fail up front.
+    #[test]
+    fn policy_with_unknown_entity_type_is_rejected() {
+        let result = PolicyEngine::new(
+            r#"permit(
+                principal == Sprue::Unknown::"a",
+                action == Sprue::Action::"registerServer",
+                resource
+            );"#,
+        );
         assert!(result.is_err());
     }
 }

@@ -43,27 +43,13 @@ automatically when it satisfies a Cedar policy, or left for an operator to accep
 
 Once a registration is accepted, the agent can:
 
-- **Mint OIDC tokens** so a workload can authenticate to other services without a long-lived secret
-  baked into the image. `sprue-api` publishes standard `/.well-known/openid-configuration` and
-  `/.well-known/jwks.json` documents for verifying tokens.
-- **Push backups** of arbitrary blobs to local or S3-backed storage, staged locally and uploaded via
+- **Mint OIDC tokens** so a workload can authenticate to other services without a long-lived secret.
+  `sprue-api` publishes standard `/.well-known/openid-configuration` and `/.well-known/jwks.json`
+  documents for verifying tokens.
+- **Push backups** of arbitrary blob to S3-backed storage, blobs are staged locally and uploaded via
   a resumable, idempotent flow.
-- **Check in** periodically, so the control plane can tell live servers from ones that have gone away.
-
-## Repository layout
-
-| Crate | Description |
-| --- | --- |
-| `sprue-api` | The HTTP API server. [Dropshot](https://github.com/oxidecomputer/dropshot) endpoints, attestation verification, OIDC token issuance, blob/backup storage, and Cedar-based auto-registration policy. Built on [v-api](https://github.com/oxidecomputer/v-api) for users, groups, permissions, and login flows. |
-| `sprue-agent` | The in-guest agent. Runs as a service exposing a [tarpc](https://github.com/google/tarpc) API over a Unix socket (`/var/run/sprue.sock` by default), and doubles as a CLI for one-shot commands. |
-| `sprue-cli` | Operator/user CLI for the API. |
-| `sprue-model` | Database types and SQLx migrations (PostgreSQL). |
-| `sprue-sdk` | Generated Rust client for the API, plus hand-written extensions in `ext.rs`. |
-| `xtask` | Build tasks: SDK/CLI code generation and version bumping. |
-
-`sprue-sdk/src/generated/` and `sprue-cli/src/generated/` are generated from `sprue-api-spec.json`
-by [Progenitor](https://github.com/oxidecomputer/progenitor). Don't edit them by hand — see
-[Regenerating the SDK](#regenerating-the-sdk).
+- **Check in** periodically, so the control plane can tell live servers from ones that have gone
+  away.
 
 ## Getting started
 
@@ -76,16 +62,12 @@ $ cargo build --workspace
 
 ### Configuration
 
-The API server reads `settings.toml` from the working directory or `sprue-api/`, and any file passed
-with `--config`. Environment variables override file values. Configuration is deliberately not
-checked in, since it contains database credentials and JWT signing keys.
+The API server reads `settings.toml` that defines its runtime configuration. See 
+example.settings.toml for possible configuration.
 
-Alongside it there are up to two more files, both optional:
-
-| File | Purpose |
-| --- | --- |
-| `mappers.toml` | Initial groups, seeded on startup. See [`v-api`](https://github.com/oxidecomputer/v-api) for details |
-| `policy.cedar` | Cedar policy deciding which servers are auto-registered. |
+One important setting is the policy file location. It should point to a file that defines the 
+automatic server registration policy that the sprue instance intends to support. If a server does
+not want to support automatic registration, then a blank policy can be used.
 
 The Cedar *schema* those policies are written against is not configurable. It describes entities the
 server itself constructs, so it is compiled into the binary from `sprue-api/sprue.cedarschema` and
@@ -101,6 +83,9 @@ $ cargo run --bin sprue-api -- --config settings.toml migrate
 $ cargo run --bin sprue-api -- --config settings.toml run
 ```
 
+Note that `validate` only checks that the settings file itself deserializes. It does not read or
+parse the policy file it points at, so a missing or invalid policy is only reported by `run`.
+
 ## Development
 
 ### Tests
@@ -114,7 +99,7 @@ $ cargo test --all-features --workspace
 
 ### Regenerating the SDK
 
-After changing any endpoint, regenerate the OpenAPI document and the generated clients. CI fails if
+After changing any endpoint, regenerate the OpenAPI document and the generated clients. CI fails if 
 these are out of date.
 
 ```console

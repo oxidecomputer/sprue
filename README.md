@@ -83,8 +83,9 @@ $ cargo run --bin sprue-api -- --config settings.toml migrate
 $ cargo run --bin sprue-api -- --config settings.toml run
 ```
 
-Note that `validate` only checks that the settings file itself deserializes. It does not read or
-parse the policy file it points at, so a missing or invalid policy is only reported by `run`.
+`validate` checks that the settings file deserializes and, when an auto registration policy is
+configured, that the policy file can be read, parses as Cedar, and validates against the bundled
+schema.
 
 ## Development
 

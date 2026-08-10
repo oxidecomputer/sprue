@@ -2,13 +2,14 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+use anyhow::{Context as _, anyhow};
 use clap::Parser;
 use dropshot::semver::Version;
 use newtype_uuid::TypedUuid;
 use rustls::crypto;
 use secrecy::ExposeSecret;
 use slog::Drain;
-use sprue_api::{ServerConfig, describe};
+use sprue_api::{ServerConfig, context::policy::PolicyEngine, describe};
 use std::{
     fs::File,
     path::{Path, PathBuf},
@@ -36,7 +37,7 @@ pub enum ServerCommand {
     Migrate,
     /// Run the api server
     Run,
-    /// Validate the currently located configuration file
+    /// Validate the currently located configuration file and registration policy
     Validate,
     /// Print the version
     Version,
@@ -76,10 +77,28 @@ async fn main() -> anyhow::Result<()> {
             run_server(config, node_id).await?;
         }
         ServerCommand::Validate => {
-            let config = ServerConfig::new(args.config.map(|path| vec![path]));
-            match config {
-                Ok(_) => println!("Loaded settings successfully"),
-                Err(err) => eprintln!("Failed to load settings file:\n{}", err),
+            let config = ServerConfig::new(args.config.map(|path| vec![path]))
+                .context("Failed to load settings file")?;
+
+            // Loading the settings only proves they deserialize. The auto
+            // registration policy is read and checked against the bundled
+            // schema here so that a broken policy is reported now rather than
+            // at startup.
+            match &config.auto_registration_policy {
+                Some(policy_config) => {
+                    let policy_text = policy_config
+                        .policy
+                        .resolve(config.param_base_path.as_deref())
+                        .context("Failed to read auto registration policy")?;
+
+                    PolicyEngine::new(policy_text.expose_secret())
+                        .map_err(|err| anyhow!("Auto registration policy is invalid: {}", err))?;
+
+                    println!("Loaded settings and auto registration policy successfully");
+                }
+                None => println!(
+                    "Loaded settings successfully (no auto registration policy configured)"
+                ),
             }
         }
         ServerCommand::Version => {

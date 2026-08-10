@@ -1,0 +1,54 @@
+// Cedar schema for sprue server auto-registration.
+//
+// This schema describes the entities passed to the policy engine when deciding
+// whether to automatically accept a server registration. It must stay in sync
+// with the entity construction in `sprue-api/src/policy/`:
+//
+//   - `Instance` attributes  <- `policy/principal.rs` (ServerPrincipal)
+//   - `Service` attributes   <- `policy/resource.rs`  (ServiceResource)
+//   - `registerServer`       <- `policy/action.rs`
+//
+// Referenced from settings.toml as:
+//
+//   [auto_registration_policy]
+//   policy = { path = "policy.cedar" }
+//   schema = { path = "policy.cedarschema" }
+//
+// The `{ path = ... }` form is required to load from a file. A bare string is
+// interpreted as the schema text itself, not as a path. Relative paths are
+// resolved against `param_base_path` when it is set, otherwise against the
+// server's working directory. Both `policy` and `schema` are required whenever
+// the `[auto_registration_policy]` section is present; omit the section
+// entirely to disable auto-registration and approve every server by hand.
+
+namespace Sprue {
+    // A project within a silo. Carries no attributes; used only as an
+    // identifier that policies compare against.
+    entity Project;
+
+    // A silo (tenant boundary). Carries no attributes; used only as an
+    // identifier that policies compare against.
+    entity Silo;
+
+    // The principal: a VM instance requesting registration. The id is the
+    // instance UUID reported by the VM's attestation.
+    entity Instance {
+        project: Project,
+        silo: Silo,
+    };
+
+    // The resource: the service the instance is registering with. `deployments`
+    // is the set of project/silo pairs the service is deployed to, which lets a
+    // policy permit only instances running where the service expects them.
+    entity Service {
+        deployments: Set<{
+            "project": Project,
+            "silo": Silo,
+        }>,
+    };
+
+    // The only action evaluated today. Requests are built with an empty
+    // context, so policies must not reference `context`.
+    action registerServer
+        appliesTo { principal: [Instance], resource: [Service] };
+}

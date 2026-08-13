@@ -199,7 +199,8 @@ pub async fn run_server(
         .blob(BlobContext::new(
             config.backup.local_root,
             storage.clone(),
-            create_backup_storage(param_path.as_deref(), config.backup.remote, token_fetcher).await?,
+            create_backup_storage(param_path.as_deref(), config.backup.remote, token_fetcher)
+                .await?,
         ))
         .idempotency(IdempotencyContext::new(storage.clone()))
         .oidc(OidcContext::new(

@@ -4,8 +4,8 @@
 
 use futures::future::BoxFuture;
 use secrecy::ExposeSecret;
-use v_api_param::ParamResolutionError;
 use std::{path::Path, sync::Arc};
+use v_api_param::ParamResolutionError;
 
 use crate::{
     config::BackupStorageConfig,

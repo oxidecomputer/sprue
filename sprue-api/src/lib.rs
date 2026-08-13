@@ -93,10 +93,15 @@ pub async fn run_server(
 ) -> Result<(), ServerError> {
     let param_path = param_path.as_deref();
     let database_url_secret = config.database_url.resolve(param_path)?;
+    let public_url = config
+        .public_url
+        .resolve(param_path)?
+        .expose_secret()
+        .to_string();
     let storage = Arc::new(PostgresStorage::create(database_url_secret.expose_secret()).unwrap());
 
     let mut v_ctx = VContextBuilder::new()
-        .with_public_url(config.public_url.clone())
+        .with_public_url(public_url.clone())
         .with_jwt_expiration(config.jwt.default_expiration)
         .with_storage_url(database_url_secret.expose_secret().to_string())
         .with_keys(config.jwt.keys)
@@ -109,7 +114,7 @@ pub async fn run_server(
     // Install OAuth provider
     if let Some(google) = config.authn.oauth.google {
         let google_resolved = google.resolve(param_path)?;
-        let google_public_url = config.public_url.clone();
+        let google_public_url = public_url.clone();
         v_ctx.insert_oauth_provider(
             OAuthProviderName::Google,
             Box::new(move || {
@@ -190,11 +195,12 @@ pub async fn run_server(
     load_actions(&mut saga_actions);
 
     let ctx = ApiContextBuilder::default()
-        .public_url(config.public_url)
+        .public_url(public_url)
         .blob(BlobContext::new(
             config.backup.local_root,
             storage.clone(),
-            create_backup_storage(config.backup.remote, token_fetcher).await,
+            create_backup_storage(param_path.as_deref(), config.backup.remote, token_fetcher)
+                .await?,
         ))
         .idempotency(IdempotencyContext::new(storage.clone()))
         .oidc(OidcContext::new(

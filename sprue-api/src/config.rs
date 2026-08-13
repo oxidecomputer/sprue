@@ -20,7 +20,7 @@ pub struct ServerConfig {
     pub param_base_path: Option<PathBuf>,
     pub initial_mappers: Option<String>,
     pub spec: Option<SpecConfig>,
-    pub public_url: String,
+    pub public_url: StringParam,
     pub database_url: StringParam,
     pub jwt: JwtConfig,
     pub authn: AuthnProviders,
@@ -83,8 +83,8 @@ pub enum BackupStorageConfig {
     },
     S3 {
         iam_region: String,
-        role: String,
-        bucket: String,
+        role: StringParam,
+        bucket: StringParam,
     },
 }
 

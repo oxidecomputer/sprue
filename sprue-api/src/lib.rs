@@ -114,12 +114,13 @@ pub async fn run_server(
     // Install OAuth provider
     if let Some(google) = config.authn.oauth.google {
         let google_resolved = google.resolve(param_path)?;
+        let google_public_url = public_url.clone();
         v_ctx.insert_oauth_provider(
             OAuthProviderName::Google,
             Box::new(move || {
                 Box::new(GoogleOAuthProvider::new(
                     google_resolved.clone(),
-                    public_url.clone(),
+                    google_public_url.clone(),
                     None,
                 ))
             }),
@@ -198,7 +199,7 @@ pub async fn run_server(
         .blob(BlobContext::new(
             config.backup.local_root,
             storage.clone(),
-            create_backup_storage(config.backup.remote, token_fetcher).await,
+            create_backup_storage(param_path.as_deref(), config.backup.remote, token_fetcher).await?,
         ))
         .idempotency(IdempotencyContext::new(storage.clone()))
         .oidc(OidcContext::new(

@@ -19,7 +19,7 @@ local-dev = ["dice-verifier/mock"]
 anyhow = { workspace = true }
 base64 = { workspace = true }
 chrono = { workspace = true }
-clap = { workspace = true }
+clap = { workspace = true, features = ["env"] }
 dice-verifier = { workspace = true, optional = true }
 futures = { workspace = true }
 futures-util = { workspace = true }

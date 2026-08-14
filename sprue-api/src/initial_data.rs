@@ -7,9 +7,9 @@ use newtype_uuid::TypedUuid;
 use serde::Deserialize;
 use thiserror::Error;
 use tracing::Instrument;
-use v_api::{VContext, mapper::MappingRulesData, response::ResourceError};
+use v_api::{VContext, response::ResourceError};
 use v_model::{
-    NewAccessGroup, NewMapper, Permissions,
+    NewAccessGroup, Permissions,
     storage::{AccessGroupFilter, StoreError},
 };
 
@@ -18,21 +18,12 @@ use crate::permissions::ApiPermissions;
 #[derive(Debug, Deserialize)]
 pub struct InitialData {
     pub groups: Vec<InitialGroup>,
-    pub mappers: Vec<InitialMapper>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct InitialGroup {
     pub name: String,
     pub permissions: Permissions<ApiPermissions>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct InitialMapper {
-    pub name: String,
-    #[serde(flatten)]
-    pub rule: MappingRulesData<ApiPermissions>,
-    pub max_activations: Option<u32>,
 }
 
 #[derive(Debug, Error)]
@@ -97,29 +88,6 @@ impl InitialData {
             }
             .instrument(span)
             .await?
-        }
-
-        for mapper in self.mappers {
-            let span = tracing::info_span!("Initializing mapper", mapper = ?mapper);
-            async {
-                let new_mapper = NewMapper {
-                    id: TypedUuid::new_v4(),
-                    name: mapper.name,
-                    rule: serde_json::to_value(&mapper.rule)?,
-                    activations: None,
-                    max_activations: mapper.max_activations.map(|i| i as i32),
-                };
-
-                ctx.mapping
-                    .add_mapper(&ctx.builtin_registration_user(), &new_mapper)
-                    .await
-                    .map(|_| ())
-                    .or_else(handle_unique_violation_error)?;
-
-                Ok::<(), InitError>(())
-            }
-            .instrument(span)
-            .await?;
         }
 
         Ok(())

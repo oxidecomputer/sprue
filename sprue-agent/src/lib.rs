@@ -7,7 +7,7 @@ use sprue_sdk::types::TypedUuidForServerRegistrationId;
 use std::path::PathBuf;
 use thiserror::Error;
 
-pub static DEFAULT_SPRUE_SOCKET: &str = "unix:/var/run/sprue.sock";
+pub static DEFAULT_SPRUE_SOCKET: &str = "/run/sprue-agent/agent.sock";
 
 #[derive(Error, Debug, Deserialize, Serialize)]
 pub enum SprueError {

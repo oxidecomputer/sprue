@@ -12114,7 +12114,7 @@ pub mod types {
 ///
 /// Shared Oxide VM support services
 ///
-/// Version: 0.2.0
+/// Version: 0.3.1
 pub struct Client {
     pub(crate) baseurl: String,
     pub(crate) client: reqwest::Client,
@@ -12155,7 +12155,7 @@ impl Client {
 
 impl ClientInfo<()> for Client {
     fn api_version() -> &'static str {
-        "0.2.0"
+        "0.3.1"
     }
 
     fn baseurl(&self) -> &str {

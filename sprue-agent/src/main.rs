@@ -58,7 +58,7 @@ enum Commands {
         #[clap(short, long, env = "SPRUE_SERVER")]
         server: String,
         /// Name of the service to register as
-        #[clap(long)]
+        #[clap(long, env = "SPRUE_SERVICE")]
         service: String,
     },
 }

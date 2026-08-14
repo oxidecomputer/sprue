@@ -55,7 +55,7 @@ enum Commands {
     /// Serve the sprue agent as a standalone service
     Serve {
         /// The URL of the Sprue server
-        #[clap(short, long)]
+        #[clap(short, long, env = "SPRUE_SERVER")]
         server: String,
         /// Name of the service to register as
         #[clap(long)]

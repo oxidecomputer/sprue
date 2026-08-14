@@ -1,4 +1,4 @@
-name: Release sprue-api
+name: Release
 
 on:
   push:
@@ -42,12 +42,14 @@ jobs:
       - run: |
           rustup toolchain install
 
-      - name: Build Release Binary
+      - name: Build Release Binaries
         run: |
-          cargo build --release --package sprue-api
+          cargo build --release --package sprue-api --package sprue-agent
 
-      - name: Upload Release Artifact
+      - name: Upload Release Artifacts
         run: |
-          gh release upload "${{ steps.tag.outputs.value }}" "target/release/sprue-api"
+          gh release upload "${{ steps.tag.outputs.value }}" \
+            "target/release/sprue-api" \
+            "target/release/sprue-agent"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

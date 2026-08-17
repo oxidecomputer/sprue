@@ -5694,7 +5694,7 @@ dependencies = [
 
 [[package]]
 name = "sprue-agent"
-version = "0.3.3"
+version = "0.3.4"
 dependencies = [
  "anyhow",
  "base64",
@@ -5724,7 +5724,7 @@ dependencies = [
 
 [[package]]
 name = "sprue-api"
-version = "0.3.3"
+version = "0.3.4"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -5788,7 +5788,7 @@ dependencies = [
 
 [[package]]
 name = "sprue-cli"
-version = "0.3.3"
+version = "0.3.4"
 dependencies = [
  "anyhow",
  "chrono",
@@ -5819,7 +5819,7 @@ dependencies = [
 
 [[package]]
 name = "sprue-model"
-version = "0.3.3"
+version = "0.3.4"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -5840,7 +5840,7 @@ dependencies = [
 
 [[package]]
 name = "sprue-sdk"
-version = "0.3.3"
+version = "0.3.4"
 dependencies = [
  "chrono",
  "futures",

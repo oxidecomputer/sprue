@@ -5,7 +5,7 @@ resolver = "2"
 [workspace.package]
 publish = false
 edition = "2024"
-version = "0.3.5"
+version = "0.3.6"
 
 [workspace.dependencies]
 anyhow = "1.0"
@@ -65,6 +65,9 @@ progenitor = { version = "0.14" }
 progenitor-client = { version = "0.14" }
 rand = "0.10.1"
 ratatui = "0.30"
+# Transitively present via dice-verifier, which re-exports `Corim` but not the
+# builder used to construct one in tests.
+rats-corim = { git = "https://github.com/oxidecomputer/rats-corim" }
 regex = "1.12.3"
 reqwest = { version = "0.13", default-features = false, features = ["json", "form", "rustls"] }
 rsa = "0.9.10"

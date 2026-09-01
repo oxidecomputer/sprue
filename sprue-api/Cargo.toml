@@ -78,6 +78,7 @@ aws-smithy-mocks = "0.2"
 bytes = { workspace = true }
 dice-verifier = { workspace = true, features = ["mock"] }
 rand = { workspace = true }
+rats-corim = { workspace = true }
 reqwest = { workspace = true }
 sprue-model = { path = "../sprue-model", features = ["test-util"] }
 sprue-sdk = { path = "../sprue-sdk" }

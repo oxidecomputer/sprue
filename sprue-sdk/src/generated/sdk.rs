@@ -50,6 +50,7 @@ pub mod types {
     ///    "id",
     ///    "name",
     ///    "permissions",
+    ///    "source",
     ///    "updated_at"
     ///  ],
     ///  "properties": {
@@ -73,6 +74,9 @@ pub mod types {
     ///    "permissions": {
     ///      "$ref": "#/components/schemas/Permissions_for_ApiPermissions"
     ///    },
+    ///    "source": {
+    ///      "$ref": "#/components/schemas/AccessGroupSource"
+    ///    },
     ///    "updated_at": {
     ///      "type": "string",
     ///      "format": "date-time"
@@ -94,6 +98,7 @@ pub mod types {
         pub id: TypedUuidForAccessGroupId,
         pub name: ::std::string::String,
         pub permissions: PermissionsForApiPermissions,
+        pub source: AccessGroupSource,
         pub updated_at: ::chrono::DateTime<::chrono::offset::Utc>,
     }
 
@@ -126,6 +131,107 @@ pub mod types {
     )]
     #[serde(deny_unknown_fields)]
     pub enum AccessGroupId {}
+
+    /// Where an access group is defined. Groups loaded from service
+    /// configuration are immutable at runtime; only their membership can
+    /// change.
+    ///
+    /// <details><summary>JSON schema</summary>
+    ///
+    /// ```json
+    /// {
+    ///  "description": "Where an access group is defined. Groups loaded from
+    /// service configuration are immutable at runtime; only their membership
+    /// can change.",
+    ///  "oneOf": [
+    ///    {
+    ///      "description": "Created via the API and persisted in the database",
+    ///      "type": "string",
+    ///      "enum": [
+    ///        "dynamic"
+    ///      ]
+    ///    },
+    ///    {
+    ///      "description": "Loaded from service configuration, in-memory only,
+    /// name and permissions are fixed",
+    ///      "type": "string",
+    ///      "enum": [
+    ///        "preset"
+    ///      ]
+    ///    }
+
+    ///  ]
+    /// }
+
+    /// ```
+    /// </details>
+    #[derive(
+        :: serde :: Deserialize,
+        :: serde :: Serialize,
+        Clone,
+        Copy,
+        Debug,
+        Eq,
+        Hash,
+        Ord,
+        PartialEq,
+        PartialOrd,
+        schemars :: JsonSchema,
+    )]
+    pub enum AccessGroupSource {
+        /// Created via the API and persisted in the database
+        #[serde(rename = "dynamic")]
+        Dynamic,
+        /// Loaded from service configuration, in-memory only, name and
+        /// permissions are fixed
+        #[serde(rename = "preset")]
+        Preset,
+    }
+
+    impl ::std::fmt::Display for AccessGroupSource {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            match *self {
+                Self::Dynamic => f.write_str("dynamic"),
+                Self::Preset => f.write_str("preset"),
+            }
+        }
+    }
+
+    impl ::std::str::FromStr for AccessGroupSource {
+        type Err = self::error::ConversionError;
+        fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+            match value {
+                "dynamic" => Ok(Self::Dynamic),
+                "preset" => Ok(Self::Preset),
+                _ => Err("invalid value".into()),
+            }
+        }
+    }
+
+    impl ::std::convert::TryFrom<&str> for AccessGroupSource {
+        type Error = self::error::ConversionError;
+        fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+            value.parse()
+        }
+    }
+
+    impl ::std::convert::TryFrom<&::std::string::String> for AccessGroupSource {
+        type Error = self::error::ConversionError;
+        fn try_from(
+            value: &::std::string::String,
+        ) -> ::std::result::Result<Self, self::error::ConversionError> {
+            value.parse()
+        }
+    }
+
+    impl ::std::convert::TryFrom<::std::string::String> for AccessGroupSource {
+        type Error = self::error::ConversionError;
+        fn try_from(
+            value: ::std::string::String,
+        ) -> ::std::result::Result<Self, self::error::ConversionError> {
+            value.parse()
+        }
+    }
 
     /// `AccessGroupUpdateParamsForApiPermissions`
     ///
@@ -4280,11 +4386,47 @@ pub mod types {
     /// {
     ///  "type": "object",
     ///  "required": [
-    ///    "jwks_uri"
+    ///    "claims_supported",
+    ///    "id_token_signing_alg_values_supported",
+    ///    "issuer",
+    ///    "jwks_uri",
+    ///    "response_types_supported",
+    ///    "subject_types_supported"
     ///  ],
     ///  "properties": {
+    ///    "claims_supported": {
+    ///      "type": "array",
+    ///      "items": {
+    ///        "type": "string"
+    ///      }
+
+    ///    },
+    ///    "id_token_signing_alg_values_supported": {
+    ///      "type": "array",
+    ///      "items": {
+    ///        "type": "string"
+    ///      }
+
+    ///    },
+    ///    "issuer": {
+    ///      "type": "string"
+    ///    },
     ///    "jwks_uri": {
     ///      "type": "string"
+    ///    },
+    ///    "response_types_supported": {
+    ///      "type": "array",
+    ///      "items": {
+    ///        "type": "string"
+    ///      }
+
+    ///    },
+    ///    "subject_types_supported": {
+    ///      "type": "array",
+    ///      "items": {
+    ///        "type": "string"
+    ///      }
+
     ///    }
 
     ///  }
@@ -4297,7 +4439,12 @@ pub mod types {
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
     pub struct OpenIdConfiguration {
+        pub claims_supported: ::std::vec::Vec<::std::string::String>,
+        pub id_token_signing_alg_values_supported: ::std::vec::Vec<::std::string::String>,
+        pub issuer: ::std::string::String,
         pub jwks_uri: ::std::string::String,
+        pub response_types_supported: ::std::vec::Vec<::std::string::String>,
+        pub subject_types_supported: ::std::vec::Vec<::std::string::String>,
     }
 
     impl OpenIdConfiguration {
@@ -6828,6 +6975,7 @@ pub mod types {
             name: ::std::result::Result<::std::string::String, ::std::string::String>,
             permissions:
                 ::std::result::Result<super::PermissionsForApiPermissions, ::std::string::String>,
+            source: ::std::result::Result<super::AccessGroupSource, ::std::string::String>,
             updated_at: ::std::result::Result<
                 ::chrono::DateTime<::chrono::offset::Utc>,
                 ::std::string::String,
@@ -6842,6 +6990,7 @@ pub mod types {
                     id: Err("no value supplied for id".to_string()),
                     name: Err("no value supplied for name".to_string()),
                     permissions: Err("no value supplied for permissions".to_string()),
+                    source: Err("no value supplied for source".to_string()),
                     updated_at: Err("no value supplied for updated_at".to_string()),
                 }
             }
@@ -6900,6 +7049,16 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for permissions: {e}"));
                 self
             }
+            pub fn source<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::AccessGroupSource>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.source = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for source: {e}"));
+                self
+            }
             pub fn updated_at<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
@@ -6923,6 +7082,7 @@ pub mod types {
                     id: value.id?,
                     name: value.name?,
                     permissions: value.permissions?,
+                    source: value.source?,
                     updated_at: value.updated_at?,
                 })
             }
@@ -6936,6 +7096,7 @@ pub mod types {
                     id: Ok(value.id),
                     name: Ok(value.name),
                     permissions: Ok(value.permissions),
+                    source: Ok(value.source),
                     updated_at: Ok(value.updated_at),
                 }
             }
@@ -11351,18 +11512,79 @@ pub mod types {
 
         #[derive(Clone, Debug)]
         pub struct OpenIdConfiguration {
+            claims_supported: ::std::result::Result<
+                ::std::vec::Vec<::std::string::String>,
+                ::std::string::String,
+            >,
+            id_token_signing_alg_values_supported: ::std::result::Result<
+                ::std::vec::Vec<::std::string::String>,
+                ::std::string::String,
+            >,
+            issuer: ::std::result::Result<::std::string::String, ::std::string::String>,
             jwks_uri: ::std::result::Result<::std::string::String, ::std::string::String>,
+            response_types_supported: ::std::result::Result<
+                ::std::vec::Vec<::std::string::String>,
+                ::std::string::String,
+            >,
+            subject_types_supported: ::std::result::Result<
+                ::std::vec::Vec<::std::string::String>,
+                ::std::string::String,
+            >,
         }
 
         impl ::std::default::Default for OpenIdConfiguration {
             fn default() -> Self {
                 Self {
+                    claims_supported: Err("no value supplied for claims_supported".to_string()),
+                    id_token_signing_alg_values_supported: Err(
+                        "no value supplied for id_token_signing_alg_values_supported".to_string(),
+                    ),
+                    issuer: Err("no value supplied for issuer".to_string()),
                     jwks_uri: Err("no value supplied for jwks_uri".to_string()),
+                    response_types_supported: Err(
+                        "no value supplied for response_types_supported".to_string()
+                    ),
+                    subject_types_supported: Err(
+                        "no value supplied for subject_types_supported".to_string()
+                    ),
                 }
             }
         }
 
         impl OpenIdConfiguration {
+            pub fn claims_supported<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.claims_supported = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for claims_supported: {e}")
+                });
+                self
+            }
+            pub fn id_token_signing_alg_values_supported<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.id_token_signing_alg_values_supported = value.try_into().map_err(|e| {
+                    format!(
+                        "error converting supplied value for \
+                         id_token_signing_alg_values_supported: {e}"
+                    )
+                });
+                self
+            }
+            pub fn issuer<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.issuer = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for issuer: {e}"));
+                self
+            }
             pub fn jwks_uri<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::std::string::String>,
@@ -11373,6 +11595,26 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for jwks_uri: {e}"));
                 self
             }
+            pub fn response_types_supported<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.response_types_supported = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for response_types_supported: {e}")
+                });
+                self
+            }
+            pub fn subject_types_supported<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.subject_types_supported = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for subject_types_supported: {e}")
+                });
+                self
+            }
         }
 
         impl ::std::convert::TryFrom<OpenIdConfiguration> for super::OpenIdConfiguration {
@@ -11381,7 +11623,13 @@ pub mod types {
                 value: OpenIdConfiguration,
             ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
+                    claims_supported: value.claims_supported?,
+                    id_token_signing_alg_values_supported: value
+                        .id_token_signing_alg_values_supported?,
+                    issuer: value.issuer?,
                     jwks_uri: value.jwks_uri?,
+                    response_types_supported: value.response_types_supported?,
+                    subject_types_supported: value.subject_types_supported?,
                 })
             }
         }
@@ -11389,7 +11637,14 @@ pub mod types {
         impl ::std::convert::From<super::OpenIdConfiguration> for OpenIdConfiguration {
             fn from(value: super::OpenIdConfiguration) -> Self {
                 Self {
+                    claims_supported: Ok(value.claims_supported),
+                    id_token_signing_alg_values_supported: Ok(
+                        value.id_token_signing_alg_values_supported
+                    ),
+                    issuer: Ok(value.issuer),
                     jwks_uri: Ok(value.jwks_uri),
+                    response_types_supported: Ok(value.response_types_supported),
+                    subject_types_supported: Ok(value.subject_types_supported),
                 }
             }
         }
@@ -12114,7 +12369,7 @@ pub mod types {
 ///
 /// Shared Oxide VM support services
 ///
-/// Version: 0.3.3
+/// Version: 0.3.5
 pub struct Client {
     pub(crate) baseurl: String,
     pub(crate) client: reqwest::Client,
@@ -12155,7 +12410,7 @@ impl Client {
 
 impl ClientInfo<()> for Client {
     fn api_version() -> &'static str {
-        "0.3.3"
+        "0.3.5"
     }
 
     fn baseurl(&self) -> &str {

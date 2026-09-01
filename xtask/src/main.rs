@@ -51,25 +51,20 @@ fn main() -> Result<(), String> {
 }
 
 fn bump_package_versions(place: &VersionPlace) -> Result<(), String> {
-    let packages = vec!["sprue-agent", "sprue-api", "sprue-cli", "sprue-sdk"];
-
     let crate_version_pattern = Regex::new(r#"(?m)^version = "(.*)"$"#).unwrap();
 
-    for package in packages {
-        let path = format!("{}/Cargo.toml", package);
-        let contents = fs::read_to_string(&path).unwrap();
-        let version_line = crate_version_pattern.captures(&contents).unwrap();
-        let mut version: Version = version_line.get(1).unwrap().as_str().parse().unwrap();
-        version = version.up(place);
+    let contents = fs::read_to_string("Cargo.toml").unwrap();
+    let version_line = crate_version_pattern.captures(&contents).unwrap();
+    let mut version: Version = version_line.get(1).unwrap().as_str().parse().unwrap();
+    version = version.up(place);
 
-        let old_version_line = version_line.get(0).unwrap().as_str();
-        let new_version_line = format!(r#"version = "{}""#, version);
-        let new_contents = contents.replace(old_version_line, &new_version_line);
+    let old_version_line = version_line.get(0).unwrap().as_str();
+    let new_version_line = format!(r#"version = "{}""#, version);
+    let new_contents = contents.replace(old_version_line, &new_version_line);
 
-        fs::write(path, new_contents).unwrap();
+    fs::write("Cargo.toml", new_contents).unwrap();
 
-        println!("Updated {} to {}", package, version);
-    }
+    println!("Updated to {}", version);
 
     Ok(())
 }

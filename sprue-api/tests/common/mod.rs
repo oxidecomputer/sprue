@@ -35,7 +35,7 @@ use strum::IntoEnumIterator;
 use tokio::task::JoinHandle;
 use v_api::{
     ApiContext as VApiContext, MagicLinkMessage, MagicLinkTarget, VContextBuilder,
-    config::AsymmetricKey,
+    config::ResolvedAsymmetricKey,
     messenger::{Message, Messenger, MessengerError},
 };
 use v_model::{
@@ -118,13 +118,13 @@ impl SeededContext {
             .with_storage_url(db.url())
             .with_jwt_expiration(24 * 60 * 60)
             .with_keys(vec![
-                AsymmetricKey::LocalVerifier {
+                ResolvedAsymmetricKey::LocalVerifier {
                     kid: "test-key".to_string(),
                     public: include_str!("../../test-data/api/cert.pem")
                         .to_string()
                         .into(),
                 },
-                AsymmetricKey::LocalSigner {
+                ResolvedAsymmetricKey::LocalSigner {
                     kid: "test-key".to_string(),
                     private: include_str!("../../test-data/api/key.pem")
                         .to_string()

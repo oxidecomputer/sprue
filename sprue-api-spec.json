@@ -7,7 +7,7 @@
       "url": "https://oxide.computer",
       "email": "augustus@oxidecomputer.com"
     },
-    "version": "0.3.3"
+    "version": "0.3.5"
   },
   "paths": {
     "/.well-known/jwks.json": {
@@ -2793,6 +2793,25 @@
       "AccessGroupId": {
         "not": {}
       },
+      "AccessGroupSource": {
+        "description": "Where an access group is defined. Groups loaded from service configuration are immutable at runtime; only their membership can change.",
+        "oneOf": [
+          {
+            "description": "Created via the API and persisted in the database",
+            "type": "string",
+            "enum": [
+              "dynamic"
+            ]
+          },
+          {
+            "description": "Loaded from service configuration, in-memory only, name and permissions are fixed",
+            "type": "string",
+            "enum": [
+              "preset"
+            ]
+          }
+        ]
+      },
       "AccessGroupUpdateParams_for_ApiPermissions": {
         "type": "object",
         "properties": {
@@ -2829,6 +2848,9 @@
           "permissions": {
             "$ref": "#/components/schemas/Permissions_for_ApiPermissions"
           },
+          "source": {
+            "$ref": "#/components/schemas/AccessGroupSource"
+          },
           "updated_at": {
             "type": "string",
             "format": "date-time"
@@ -2839,6 +2861,7 @@
           "id",
           "name",
           "permissions",
+          "source",
           "updated_at"
         ]
       },
@@ -4633,12 +4656,44 @@
       "OpenIdConfiguration": {
         "type": "object",
         "properties": {
+          "claims_supported": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "id_token_signing_alg_values_supported": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "issuer": {
+            "type": "string"
+          },
           "jwks_uri": {
             "type": "string"
+          },
+          "response_types_supported": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "subject_types_supported": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
-          "jwks_uri"
+          "claims_supported",
+          "id_token_signing_alg_values_supported",
+          "issuer",
+          "jwks_uri",
+          "response_types_supported",
+          "subject_types_supported"
         ]
       },
       "Permissions_for_ApiPermissions": {

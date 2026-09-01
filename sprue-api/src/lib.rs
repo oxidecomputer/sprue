@@ -20,6 +20,7 @@ use thiserror::Error;
 use tokio::select;
 use v_api::{
     VContextBuilder, VContextBuilderError,
+    authn::SigningKeyError,
     endpoints::login::oauth::{OAuthProviderName, remote::google::GoogleOAuthProvider},
 };
 use v_api_param::ParamResolutionError;
@@ -79,6 +80,8 @@ pub enum ServerError {
     ParamResolution(#[from] ParamResolutionError),
     #[error("Failed to load root cert chain")]
     RootCertChain(#[from] x509_cert::der::Error),
+    #[error("Failed to load signing key")]
+    SingingKey(#[from] SigningKeyError),
     #[error("Task failed")]
     TaskFailed(String),
     #[error("Failed to build VContext")]
@@ -104,7 +107,14 @@ pub async fn run_server(
         .with_public_url(public_url.clone())
         .with_jwt_expiration(config.jwt.default_expiration)
         .with_storage_url(database_url_secret.expose_secret().to_string())
-        .with_keys(config.jwt.keys)
+        .with_keys(
+            config
+                .jwt
+                .keys
+                .into_iter()
+                .map(|k| k.resolve(param_path.as_deref()))
+                .collect::<Result<Vec<_>, _>>()?,
+        )
         .with_saga_backend(node_id, None)
         .with_additional_builtin_permissions(ApiPermissions::iter().collect())
         .with_mappers(config.presets.map(|p| p.mappers).unwrap_or_default())

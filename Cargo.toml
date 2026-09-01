@@ -84,7 +84,7 @@ steno = { git = "https://github.com/oxidecomputer/steno" }
 strum = { version = "0.28.0", features = ["derive"] }
 tabwriter = "1.4.1"
 tap = "1.0.1"
-tarpc = { version = "0.37.0", features = ["serde", "serde-transport-json", "unix"] }
+tarpc = { version = "0.38.0", features = ["serde", "serde-transport-json", "unix"] }
 thiserror = "2"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal"] }
 tokio-util = { version = "0.7", features = ["io"] }

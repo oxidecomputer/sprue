@@ -97,8 +97,8 @@ fn extract_corim<R: Read + Seek>(
         String::from_utf8_lossy(&data).into_owned()
     };
 
-    let corpus_pattern =
-        Regex::new("measurement_corpus-staging-corim.*?.tar.gz").expect("Known valid regex");
+    let corpus_pattern = Regex::new("measurement_corpus-(?:staging|production)-corim.*?.tar.gz")
+        .expect("Known valid regex");
     let corpus_files = corpus_pattern
         .find_iter(manifest.as_bytes())
         .map(|m| String::from_utf8_lossy(m.as_bytes()))
@@ -233,4 +233,135 @@ pub async fn fetch_measurements(
     );
     Ok(TryFrom::<&[Corim]>::try_from(&measurements)
         .map_err(MeasurementError::ReferenceMeasurements)?)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rats_corim::CorimBuilder;
+    use std::io::Cursor;
+    use zip::write::SimpleFileOptions;
+
+    const MANIFEST: &str = "repo/targets/0123456789abcdef.artifacts.json";
+    const STAGING: &str = "measurement_corpus-staging-corim-all-sp-v1.0.67-1.0.67.tar.gz";
+    const PRODUCTION: &str =
+        "measurement_corpus-production-corim-oxide-rot-1-v1.0.38-1.0.38.tar.gz";
+
+    fn corim(id: &str) -> Vec<u8> {
+        let mut builder = CorimBuilder::new();
+        builder.id(id.to_string());
+        builder.vendor("test-vendor".to_string());
+        builder.tag_id("test-tag".to_string());
+        builder.version("1.0.0".to_string());
+        builder.add_hash("test-measurement".to_string(), 1, vec![0xab; 32]);
+        builder
+            .build()
+            .expect("Valid corim")
+            .to_vec()
+            .expect("Serializable corim")
+    }
+
+    /// Builds a manifest listing `targets`, in the shape the TUF repository
+    /// uses: each entry references a target by its hash-prefixed file name.
+    fn manifest(targets: &[&str]) -> Vec<u8> {
+        let artifacts = targets
+            .iter()
+            .map(|target| format!(r#"{{"name":"corpus","target":"{}"}}"#, target_name(target)))
+            .collect::<Vec<_>>()
+            .join(",");
+        format!(r#"{{"artifacts":[{artifacts}]}}"#).into_bytes()
+    }
+
+    fn target_name(name: &str) -> String {
+        format!("{}.{name}", "0".repeat(64))
+    }
+
+    fn archive(entries: Vec<(String, Vec<u8>)>) -> ZipArchive<Cursor<Vec<u8>>> {
+        let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
+        for (name, data) in entries {
+            writer
+                .start_file(name, SimpleFileOptions::default())
+                .expect("Started archive entry");
+            writer.write_all(&data).expect("Wrote archive entry");
+        }
+        ZipArchive::new(writer.finish().expect("Finished archive")).expect("Opened archive")
+    }
+
+    /// Builds an archive containing a manifest listing `targets` plus a corim
+    /// for each of them, mirroring the layout of a real release repository.
+    fn release(targets: &[&str]) -> ZipArchive<Cursor<Vec<u8>>> {
+        let mut entries = vec![(MANIFEST.to_string(), manifest(targets))];
+        entries.extend(targets.iter().map(|target| {
+            (
+                format!("repo/targets/{}", target_name(target)),
+                corim(target),
+            )
+        }));
+        archive(entries)
+    }
+
+    #[test]
+    fn extracts_every_corpus_in_the_manifest() {
+        let measurements =
+            extract_corim(&mut release(&[STAGING, PRODUCTION])).expect("Extracted measurements");
+
+        assert_eq!(
+            measurements
+                .iter()
+                .map(|c| c.id.as_str())
+                .collect::<Vec<_>>(),
+            vec![STAGING, PRODUCTION]
+        );
+    }
+
+    #[test]
+    fn skips_artifacts_that_are_not_a_corpus() {
+        let measurements = extract_corim(&mut release(&[
+            "host-1.0.67.tar.gz",
+            STAGING,
+            "trampoline-1.0.67.tar.gz",
+        ]))
+        .expect("Extracted measurements");
+
+        assert_eq!(
+            measurements
+                .iter()
+                .map(|c| c.id.as_str())
+                .collect::<Vec<_>>(),
+            vec![STAGING]
+        );
+    }
+
+    #[test]
+    fn skips_corpora_from_unknown_channels() {
+        let measurements = extract_corim(&mut release(&[
+            "measurement_corpus-dev-corim-all-sp-v1.0.67.tar.gz",
+        ]))
+        .expect("Extracted measurements");
+
+        assert!(measurements.is_empty());
+    }
+
+    #[test]
+    fn errors_when_the_manifest_is_absent() {
+        let mut archive = archive(vec![(
+            format!("repo/targets/{}", target_name(STAGING)),
+            corim(STAGING),
+        )]);
+
+        assert!(matches!(
+            extract_corim(&mut archive),
+            Err(MeasurementError::MissingManifest)
+        ));
+    }
+
+    #[test]
+    fn errors_when_a_referenced_corpus_is_absent() {
+        let mut archive = archive(vec![(MANIFEST.to_string(), manifest(&[STAGING]))]);
+
+        assert!(matches!(
+            extract_corim(&mut archive),
+            Err(MeasurementError::MissingMeasurement)
+        ));
+    }
 }

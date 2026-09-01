@@ -6043,6 +6043,7 @@ dependencies = [
  "lazy_static",
  "newtype-uuid",
  "rand 0.10.2",
+ "rats-corim",
  "regex",
  "reqwest",
  "rustls",

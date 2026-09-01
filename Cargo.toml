@@ -13,8 +13,19 @@ async-trait = "0.1"
 attest-data = { git = "https://github.com/oxidecomputer/dice-util", rev = "d7472bfa91aee859c3fe0bdc1dbb1e320285228e" }
 aws-config = { version = "1.10", features = ["behavior-version-latest"] }
 aws-credential-types = "1.3"
-aws-sdk-s3 = "1.141"
-aws-sdk-sts = "1.110"
+# The default features of the AWS SDK crates enable the legacy `rustls` feature, which pins
+# rustls 0.21 (and therefore ring). `default-https-client` provides the rustls + aws-lc-rs client.
+aws-sdk-s3 = { version = "1.141", default-features = false, features = [
+    "default-https-client",
+    "http-1x",
+    "rt-tokio",
+    "sigv4a",
+] }
+aws-sdk-sts = { version = "1.110", default-features = false, features = [
+    "default-https-client",
+    "rt-tokio",
+    "sigv4a",
+] }
 aws-smithy-mocks = "0.3"
 aws-smithy-types = "1.6"
 base64 = "0.22"
@@ -57,7 +68,7 @@ ratatui = "0.29"
 regex = "1.12.3"
 reqwest = { version = "0.13", default-features = false, features = ["json", "form", "rustls"] }
 rsa = "0.9.10"
-rustls = { version = "0.23.37", default-features = false, features = ["ring"] }
+rustls = { version = "0.23.37", default-features = false, features = ["aws-lc-rs"] }
 rustfmt-wrapper = "0.2.1"
 schemars = { version = "0.8.21", features = ["chrono"] }
 secrecy = "0.10.3"
@@ -68,7 +79,7 @@ sha2 = "0.10.9"
 similar = "2.7.0"
 slog = "2.8.2"
 slog-async = "2.8.0"
-sqlx = { version = "0.8", features = ["chrono", "json", "uuid", "postgres", "runtime-tokio", "tls-rustls", "migrate"] }
+sqlx = { version = "0.8", features = ["chrono", "json", "uuid", "postgres", "runtime-tokio", "tls-rustls-aws-lc-rs", "migrate"] }
 steno = { git = "https://github.com/oxidecomputer/steno" }
 strum = { version = "0.28.0", features = ["derive"] }
 tabwriter = "1.4.1"

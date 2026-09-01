@@ -45,7 +45,7 @@ pub enum ServerCommand {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    crypto::ring::default_provider()
+    crypto::aws_lc_rs::default_provider()
         .install_default()
         .expect("Installed default crypto provider");
 

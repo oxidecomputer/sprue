@@ -1712,6 +1712,105 @@ pub mod types {
         }
     }
 
+    /// The audience of a token. It must only contain printable ASCII characters
+    /// without whitespace.
+    ///
+    /// <details><summary>JSON schema</summary>
+    ///
+    /// ```json
+    /// {
+    ///  "description": "The audience of a token. It must only contain printable
+    /// ASCII characters without whitespace.",
+    ///  "type": "string",
+    ///  "maxLength": 512,
+    ///  "minLength": 1,
+    ///  "pattern": "^[!-~]+$"
+    /// }
+
+    /// ```
+    /// </details>
+    #[derive(
+        :: serde :: Serialize,
+        Clone,
+        Debug,
+        Eq,
+        Hash,
+        Ord,
+        PartialEq,
+        PartialOrd,
+        schemars :: JsonSchema,
+    )]
+    #[serde(transparent)]
+    pub struct Audience(::std::string::String);
+    impl ::std::ops::Deref for Audience {
+        type Target = ::std::string::String;
+        fn deref(&self) -> &::std::string::String {
+            &self.0
+        }
+    }
+
+    impl ::std::convert::From<Audience> for ::std::string::String {
+        fn from(value: Audience) -> Self {
+            value.0
+        }
+    }
+
+    impl ::std::str::FromStr for Audience {
+        type Err = self::error::ConversionError;
+        fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+            if value.chars().count() > 512usize {
+                return Err("longer than 512 characters".into());
+            }
+            if value.chars().count() < 1usize {
+                return Err("shorter than 1 characters".into());
+            }
+            static PATTERN: ::std::sync::LazyLock<::regress::Regex> =
+                ::std::sync::LazyLock::new(|| ::regress::Regex::new("^[!-~]+$").unwrap());
+            if PATTERN.find(value).is_none() {
+                return Err("doesn't match pattern \"^[!-~]+$\"".into());
+            }
+            Ok(Self(value.to_string()))
+        }
+    }
+
+    impl ::std::convert::TryFrom<&str> for Audience {
+        type Error = self::error::ConversionError;
+        fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+            value.parse()
+        }
+    }
+
+    impl ::std::convert::TryFrom<&::std::string::String> for Audience {
+        type Error = self::error::ConversionError;
+        fn try_from(
+            value: &::std::string::String,
+        ) -> ::std::result::Result<Self, self::error::ConversionError> {
+            value.parse()
+        }
+    }
+
+    impl ::std::convert::TryFrom<::std::string::String> for Audience {
+        type Error = self::error::ConversionError;
+        fn try_from(
+            value: ::std::string::String,
+        ) -> ::std::result::Result<Self, self::error::ConversionError> {
+            value.parse()
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for Audience {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            ::std::string::String::deserialize(deserializer)?
+                .parse()
+                .map_err(|e: self::error::ConversionError| {
+                    <D::Error as ::serde::de::Error>::custom(e.to_string())
+                })
+        }
+    }
+
     /// `Blob`
     ///
     /// <details><summary>JSON schema</summary>
@@ -4378,6 +4477,63 @@ pub mod types {
         }
     }
 
+    /// `OidcTokenRequestBody`
+    ///
+    /// <details><summary>JSON schema</summary>
+    ///
+    /// ```json
+    /// {
+    ///  "type": "object",
+    ///  "properties": {
+    ///    "audience": {
+    ///      "description": "The audience of the issued token. The token is
+    /// issued for sprue itself when no audience is requested.",
+    ///      "oneOf": [
+    ///        {
+    ///          "type": "null"
+    ///        },
+    ///        {
+    ///          "allOf": [
+    ///            {
+    ///              "$ref": "#/components/schemas/Audience"
+    ///            }
+
+    ///          ]
+    ///        }
+
+    ///      ]
+    ///    }
+
+    ///  }
+
+    /// }
+
+    /// ```
+    /// </details>
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
+    pub struct OidcTokenRequestBody {
+        /// The audience of the issued token. The token is issued for sprue
+        /// itself when no audience is requested.
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub audience: ::std::option::Option<Audience>,
+    }
+
+    impl ::std::default::Default for OidcTokenRequestBody {
+        fn default() -> Self {
+            Self {
+                audience: Default::default(),
+            }
+        }
+    }
+
+    impl OidcTokenRequestBody {
+        pub fn builder() -> builder::OidcTokenRequestBody {
+            Default::default()
+        }
+    }
+
     /// `OpenIdConfiguration`
     ///
     /// <details><summary>JSON schema</summary>
@@ -4602,17 +4758,14 @@ pub mod types {
         }
     }
 
-    /// A challenge issued to a VM that wants to join a service. The VM answers
-    /// the challenge by attesting over the nonce, and the server registration
-    /// is then built from the attested identity.
+    /// A challenge issued to a VM that wants to join a service.
     ///
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
     /// {
     ///  "description": "A challenge issued to a VM that wants to join a
-    /// service. The VM answers the challenge by attesting over the nonce, and
-    /// the server registration is then built from the attested identity.",
+    /// service.",
     ///  "type": "object",
     ///  "required": [
     ///    "created_at",
@@ -4898,19 +5051,13 @@ pub mod types {
     #[serde(deny_unknown_fields)]
     pub enum ServerRegistrationInstanceId {}
 
-    /// The lifecycle of a server registration. New registrations start out as
-    /// Proven because they are only created once an attestation has been
-    /// verified. The Pending state remains so that older state history can
-    /// still be read.
+    /// The lifecycle of a server registration.
     ///
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
     /// {
-    ///  "description": "The lifecycle of a server registration. New
-    /// registrations start out as Proven because they are only created once an
-    /// attestation has been verified. The Pending state remains so that older
-    /// state history can still be read.",
+    ///  "description": "The lifecycle of a server registration.",
     ///  "type": "string",
     ///  "enum": [
     ///    "Pending",
@@ -5164,6 +5311,15 @@ pub mod types {
     ///    "updated_at"
     ///  ],
     ///  "properties": {
+    ///    "audience": {
+    ///      "description": "The audience of the token that this request issues.
+    /// This is None only for requests that were made before audiences were
+    /// recorded.",
+    ///      "type": [
+    ///        "string",
+    ///        "null"
+    ///      ]
+    ///    },
     ///    "created_at": {
     ///      "type": "string",
     ///      "format": "date-time"
@@ -5205,6 +5361,10 @@ pub mod types {
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
     pub struct TokenRequest {
+        /// The audience of the token that this request issues. This is None
+        /// only for requests that were made before audiences were recorded.
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub audience: ::std::option::Option<::std::string::String>,
         pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub expires_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
@@ -11582,6 +11742,54 @@ pub mod types {
         }
 
         #[derive(Clone, Debug)]
+        pub struct OidcTokenRequestBody {
+            audience: ::std::result::Result<
+                ::std::option::Option<super::Audience>,
+                ::std::string::String,
+            >,
+        }
+
+        impl ::std::default::Default for OidcTokenRequestBody {
+            fn default() -> Self {
+                Self {
+                    audience: Ok(Default::default()),
+                }
+            }
+        }
+
+        impl OidcTokenRequestBody {
+            pub fn audience<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<super::Audience>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.audience = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for audience: {e}"));
+                self
+            }
+        }
+
+        impl ::std::convert::TryFrom<OidcTokenRequestBody> for super::OidcTokenRequestBody {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: OidcTokenRequestBody,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    audience: value.audience?,
+                })
+            }
+        }
+
+        impl ::std::convert::From<super::OidcTokenRequestBody> for OidcTokenRequestBody {
+            fn from(value: super::OidcTokenRequestBody) -> Self {
+                Self {
+                    audience: Ok(value.audience),
+                }
+            }
+        }
+
+        #[derive(Clone, Debug)]
         pub struct OpenIdConfiguration {
             claims_supported: ::std::result::Result<
                 ::std::vec::Vec<::std::string::String>,
@@ -12232,6 +12440,10 @@ pub mod types {
 
         #[derive(Clone, Debug)]
         pub struct TokenRequest {
+            audience: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
             created_at: ::std::result::Result<
                 ::chrono::DateTime<::chrono::offset::Utc>,
                 ::std::string::String,
@@ -12259,6 +12471,7 @@ pub mod types {
         impl ::std::default::Default for TokenRequest {
             fn default() -> Self {
                 Self {
+                    audience: Ok(Default::default()),
                     created_at: Err("no value supplied for created_at".to_string()),
                     expires_at: Ok(Default::default()),
                     id: Err("no value supplied for id".to_string()),
@@ -12273,6 +12486,16 @@ pub mod types {
         }
 
         impl TokenRequest {
+            pub fn audience<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.audience = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for audience: {e}"));
+                self
+            }
             pub fn created_at<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
@@ -12353,6 +12576,7 @@ pub mod types {
                 value: TokenRequest,
             ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
+                    audience: value.audience?,
                     created_at: value.created_at?,
                     expires_at: value.expires_at?,
                     id: value.id?,
@@ -12367,6 +12591,7 @@ pub mod types {
         impl ::std::convert::From<super::TokenRequest> for TokenRequest {
             fn from(value: super::TokenRequest) -> Self {
                 Self {
+                    audience: Ok(value.audience),
                     created_at: Ok(value.created_at),
                     expires_at: Ok(value.expires_at),
                     id: Ok(value.id),
@@ -13239,12 +13464,8 @@ impl Client {
         builder::DeleteOauthClientSecret::new(self)
     }
 
-    /// Answer a registration challenge with an attestation
-    ///
-    /// The server registration is built from the instance identity in the
-    /// verified attestation. An instance that is already registered receives
-    /// its existing registration, so a server also uses this to learn the
-    /// current state of its registration.
+    /// Answer a registration challenge with an attestation to register as a
+    /// server
     ///
     /// Sends a `POST` request to `/registration/{challenge}/prove`
     ///
@@ -13379,13 +13600,16 @@ impl Client {
     /// Register a request for a server OIDC token
     ///
     /// The server will be issued a challenge that it must sign and return to
-    /// prove its identity.
+    /// prove its identity. The server may request any audience for the token.
+    /// Without one the token is issued for sprue itself. The audience is
+    /// recorded on the request.
     ///
     /// Sends a `POST` request to `/server/{server}/oidc/token`
     ///
     /// ```ignore
     /// let response = client.register_oidc_token_request()
     ///    .server(server)
+    ///    .body(body)
     ///    .send()
     ///    .await;
     /// ```
@@ -13396,7 +13620,9 @@ impl Client {
     /// Complete a server OIDC token request
     ///
     /// Server must provide an attestation that proves the server's identity
-    /// along with the challenge that was issued in the initial request.
+    /// along with the challenge that was issued in the initial request. The
+    /// token carries the audience that was recorded when the request was
+    /// registered.
     ///
     /// Sends a `POST` request to `/server/{server}/oidc/token/prove`
     ///
@@ -19014,6 +19240,7 @@ pub mod builder {
     pub struct RegisterOidcTokenRequest<'a> {
         client: &'a super::Client,
         server: Result<types::TypedUuidForServerRegistrationId, String>,
+        body: Result<types::builder::OidcTokenRequestBody, String>,
     }
 
     impl<'a> RegisterOidcTokenRequest<'a> {
@@ -19021,6 +19248,7 @@ pub mod builder {
             Self {
                 client: client,
                 server: Err("server was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
             }
         }
 
@@ -19034,10 +19262,41 @@ pub mod builder {
             self
         }
 
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::OidcTokenRequestBody>,
+            <V as std::convert::TryInto<types::OidcTokenRequestBody>>::Error: std::fmt::Display,
+        {
+            self.body = value.try_into().map(From::from).map_err(|s| {
+                format!(
+                    "conversion to `OidcTokenRequestBody` for body failed: {}",
+                    s
+                )
+            });
+            self
+        }
+
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::OidcTokenRequestBody,
+                ) -> types::builder::OidcTokenRequestBody,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+
         /// Sends a `POST` request to `/server/{server}/oidc/token`
         pub async fn send(self) -> Result<ResponseValue<types::TokenRequest>, Error<types::Error>> {
-            let Self { client, server } = self;
+            let Self {
+                client,
+                server,
+                body,
+            } = self;
             let server = server.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| types::OidcTokenRequestBody::try_from(v).map_err(|e| e.to_string()))
+                .map_err(Error::InvalidRequest)?;
             let url = format!(
                 "{}/server/{}/oidc/token",
                 client.baseurl,
@@ -19056,6 +19315,7 @@ pub mod builder {
                     ::reqwest::header::ACCEPT,
                     ::reqwest::header::HeaderValue::from_static("application/json"),
                 )
+                .json(&body)
                 .headers(header_map)
                 .build()?;
             let info = OperationInfo {

@@ -7,7 +7,7 @@ use newtype_uuid::TypedUuid;
 use serde::{Deserialize, Serialize};
 use sprue_model::{
     InvalidTokenRequestStateTransition, ProjectId, ServerRegistration, ServerRegistrationId,
-    ServerRegistrationInstanceId, ServiceId, SiloId, TokenRequest, TokenRequestId,
+    ServerRegistrationInstanceId, Service, ServiceId, SiloId, TokenRequest, TokenRequestId,
     db::NewTokenRequestModel,
     storage::{StorageError, TokenRequestStorage},
 };
@@ -17,7 +17,7 @@ use uuid::Uuid;
 use v_api::response::{OptionalResource, ResourceError, ResourceErrorInner, ResourceResult};
 use v_api_param::ParamResolutionError;
 
-use crate::config::OidcConfig;
+use crate::{config::OidcConfig, schema::Audience};
 
 #[derive(Debug, Error)]
 pub enum OidcContextError {
@@ -58,6 +58,8 @@ pub struct VmClaims {
     pub nbf: i64,
     pub jti: Uuid,
     pub svc: TypedUuid<ServiceId>,
+    /// The name of the service that the server is registered to.
+    pub svn: String,
     pub oxc: OxideVmClaims,
 }
 
@@ -81,10 +83,14 @@ impl OidcContext {
         })
     }
 
+    /// Register a token request. The audience of the token is recorded on the
+    /// request and defaults to this issuer when the server does not ask for
+    /// one.
     pub async fn register_token_request(
         &self,
         server: ServerRegistration,
         nonce: String,
+        audience: Option<Audience>,
     ) -> ResourceResult<TokenRequest, OidcContextError> {
         Ok(self
             .storage
@@ -93,6 +99,11 @@ impl OidcContext {
                 nonce: Some(nonce),
                 expires_at: Some(
                     Utc::now().add(Duration::from_secs(self.oidc.token.token_request_duration)),
+                ),
+                audience: Some(
+                    audience
+                        .map(String::from)
+                        .unwrap_or_else(|| self.issuer.clone()),
                 ),
             })
             .await
@@ -117,9 +128,12 @@ impl OidcContext {
             .into())
     }
 
+    /// Consume the token request and build the claims for the server. The
+    /// token carries the audience that was recorded on the request.
     pub async fn generate_claims(
         &self,
         server: &ServerRegistration,
+        service: &Service,
         token_request: TokenRequest,
     ) -> ResourceResult<VmClaims, OidcContextError> {
         self.storage
@@ -135,18 +149,26 @@ impl OidcContext {
             .await
             .map_err(ResourceError::InternalError)
             .inner_err_into()?;
-        Ok(self.create_claims(server))
+        Ok(self.create_claims(server, service, token_request.audience))
     }
 
-    fn create_claims(&self, server: &ServerRegistration) -> VmClaims {
+    // A request without a recorded audience was made before audiences were
+    // recorded, and those requests were always issued for this issuer.
+    fn create_claims(
+        &self,
+        server: &ServerRegistration,
+        service: &Service,
+        audience: Option<String>,
+    ) -> VmClaims {
         VmClaims {
             iss: self.issuer.to_string(),
-            aud: self.issuer.to_string(),
+            aud: audience.unwrap_or_else(|| self.issuer.clone()),
             sub: server.id,
             exp: Utc::now().timestamp() + (self.oidc.token.token_lifetime as i64),
             nbf: Utc::now().timestamp(),
             jti: Uuid::new_v4(),
             svc: server.service_id,
+            svn: service.name.clone(),
             oxc: OxideVmClaims {
                 ins: server.instance_id,
                 prj: server.project_id,

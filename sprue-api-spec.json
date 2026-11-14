@@ -1981,8 +1981,7 @@
     },
     "/registration/{challenge}/prove": {
       "post": {
-        "summary": "Answer a registration challenge with an attestation",
-        "description": "The server registration is built from the instance identity in the verified attestation. An instance that is already registered receives its existing registration, so a server also uses this to learn the current state of its registration.",
+        "summary": "Answer a registration challenge with an attestation to register as a server.",
         "operationId": "prove_registration",
         "parameters": [
           {
@@ -2306,7 +2305,7 @@
     "/server/{server}/oidc/token": {
       "post": {
         "summary": "Register a request for a server OIDC token.",
-        "description": "The server will be issued a challenge that it must sign and return to prove its identity.",
+        "description": "The server will be issued a challenge that it must sign and return to prove its identity. The server may request any audience for the token. Without one the token is issued for sprue itself. The audience is recorded on the request.",
         "operationId": "register_oidc_token_request",
         "parameters": [
           {
@@ -2318,6 +2317,16 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OidcTokenRequestBody"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "successful operation",
@@ -2341,7 +2350,7 @@
     "/server/{server}/oidc/token/prove": {
       "post": {
         "summary": "Complete a server OIDC token request",
-        "description": "Server must provide an attestation that proves the server's identity along with the challenge that was issued in the initial request.",
+        "description": "Server must provide an attestation that proves the server's identity along with the challenge that was issued in the initial request. The token carries the audience that was recorded when the request was registered.",
         "operationId": "prove_oidc_token_request",
         "parameters": [
           {
@@ -3675,6 +3684,13 @@
           "measurement_logs"
         ]
       },
+      "Audience": {
+        "description": "The audience of a token. It must only contain printable ASCII characters without whitespace.",
+        "type": "string",
+        "pattern": "^[!-~]+$",
+        "minLength": 1,
+        "maxLength": 512
+      },
       "Blob": {
         "type": "object",
         "properties": {
@@ -4651,6 +4667,20 @@
           "token"
         ]
       },
+      "OidcTokenRequestBody": {
+        "type": "object",
+        "properties": {
+          "audience": {
+            "nullable": true,
+            "description": "The audience of the issued token. The token is issued for sprue itself when no audience is requested.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Audience"
+              }
+            ]
+          }
+        }
+      },
       "OpenIdConfiguration": {
         "type": "object",
         "properties": {
@@ -4736,7 +4766,7 @@
         ]
       },
       "RegistrationChallenge": {
-        "description": "A challenge issued to a VM that wants to join a service. The VM answers the challenge by attesting over the nonce, and the server registration is then built from the attested identity.",
+        "description": "A challenge issued to a VM that wants to join a service.",
         "type": "object",
         "properties": {
           "created_at": {
@@ -4830,7 +4860,7 @@
         "not": {}
       },
       "ServerRegistrationState": {
-        "description": "The lifecycle of a server registration. New registrations start out as Proven because they are only created once an attestation has been verified. The Pending state remains so that older state history can still be read.",
+        "description": "The lifecycle of a server registration.",
         "type": "string",
         "enum": [
           "Pending",
@@ -4870,6 +4900,11 @@
       "TokenRequest": {
         "type": "object",
         "properties": {
+          "audience": {
+            "nullable": true,
+            "description": "The audience of the token that this request issues. This is None only for requests that were made before audiences were recorded.",
+            "type": "string"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"

@@ -4,8 +4,10 @@
 
 #![allow(dead_code)]
 
+use newtype_uuid::GenericUuid;
+use sprue_sdk::ClientInfo;
 use reqwest::StatusCode;
-use sprue_api::permissions::ApiPermissions;
+use sprue_api::{context::oidc::VmClaims, permissions::ApiPermissions};
 use sprue_sdk::types::{ServerRegistration, ServerRegistrationState, Service};
 use uuid::Uuid;
 use vm_attest::VmInstanceConf;
@@ -309,4 +311,102 @@ async fn test_delete_service_requires_terminated_servers() {
         .await
         .unwrap_err();
     assert_eq!(err.status(), Some(StatusCode::NOT_FOUND));
+}
+
+fn claims(token: &str) -> VmClaims {
+    jsonwebtoken::dangerous::insecure_decode::<VmClaims>(token)
+        .unwrap()
+        .claims
+}
+
+/// A token carries the name of its service and is issued for sprue itself
+/// unless the server requests another audience.
+#[tokio::test]
+async fn test_token_audience_and_service_name() {
+    let _ = tracing_subscriber::fmt::try_init();
+    let seed = SeededContext::create("token_audience").await.unwrap();
+    let _handle = seed.server().run();
+    let (user, services) = user_with_services(&seed, &["test"]).await;
+    let (mut vm, registration) = accepted_vm(&seed, &user, &services[0]).await;
+
+    let default = claims(&vm.token(&registration.id, None).await);
+    assert_eq!(default.aud, default.iss);
+    assert_eq!(default.svn, "test");
+    assert_eq!(*default.svc.as_untyped_uuid(), services[0].id.0);
+
+    let audience = "https://relying-party.example.com";
+    let token = vm.token(&registration.id, Some(audience)).await;
+    let custom = claims(&token);
+    assert_eq!(custom.aud, audience);
+    assert_eq!(custom.svn, "test");
+
+    // Sprue only accepts tokens that were issued for sprue
+    vm.install_token(&token);
+    let err = vm
+        .client
+        .checkin_server()
+        .server(registration.id.clone())
+        .body_map(|body| body.checked_in_at(chrono::Utc::now()))
+        .send()
+        .await
+        .unwrap_err();
+    assert_eq!(err.status(), Some(StatusCode::UNAUTHORIZED));
+}
+
+/// An audience that is empty or holds whitespace is refused.
+#[tokio::test]
+async fn test_token_audience_format() {
+    let _ = tracing_subscriber::fmt::try_init();
+    let seed = SeededContext::create("token_audience_format").await.unwrap();
+    let _handle = seed.server().run();
+    let (user, services) = user_with_services(&seed, &["test"]).await;
+    let (vm, registration) = accepted_vm(&seed, &user, &services[0]).await;
+
+    for audience in ["", "has space", "line\nbreak"] {
+        let response = reqwest::Client::new()
+            .post(format!(
+                "{}/server/{}/oidc/token",
+                vm.client.baseurl(),
+                registration.id.0
+            ))
+            .json(&serde_json::json!({ "audience": audience }))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST, "{audience:?}");
+    }
+}
+
+/// The audience of a token is recorded on its request.
+#[tokio::test]
+async fn test_token_request_records_audience() {
+    let _ = tracing_subscriber::fmt::try_init();
+    let seed = SeededContext::create("token_audience_recorded").await.unwrap();
+    let _handle = seed.server().run();
+    let (user, services) = user_with_services(&seed, &["test"]).await;
+    let (vm, registration) = accepted_vm(&seed, &user, &services[0]).await;
+
+    let audience = "sts.amazonaws.com";
+    let request = vm
+        .client
+        .register_oidc_token_request()
+        .server(registration.id.clone())
+        .body_map(|body| body.audience(Some(audience.try_into().unwrap())))
+        .send()
+        .await
+        .unwrap()
+        .into_inner();
+    assert_eq!(request.audience.as_deref(), Some(audience));
+
+    let default = vm
+        .client
+        .register_oidc_token_request()
+        .server(registration.id.clone())
+        .body_map(|body| body.audience(None))
+        .send()
+        .await
+        .unwrap()
+        .into_inner();
+    let token = vm.token(&registration.id, None).await;
+    assert_eq!(default.audience, Some(claims(&token).iss));
 }

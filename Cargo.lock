@@ -6100,6 +6100,7 @@ dependencies = [
  "chrono",
  "futures",
  "progenitor-client",
+ "regress",
  "reqwest",
  "schemars 0.8.22",
  "serde",

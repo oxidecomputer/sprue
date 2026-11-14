@@ -66,6 +66,7 @@ pub struct TokenRequestModel {
     pub server_registration_id: TypedUuid<ServerRegistrationId>,
     pub nonce: Option<String>,
     pub expires_at: Option<DateTime<Utc>>,
+    pub audience: Option<String>,
     #[partial(NewTokenRequestModel(skip))]
     pub state: TokenRequestState,
     #[partial(NewTokenRequestModel(skip))]

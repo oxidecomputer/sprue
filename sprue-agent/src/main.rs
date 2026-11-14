@@ -45,7 +45,11 @@ struct Args {
 #[derive(Debug, Parser)]
 enum Commands {
     /// Retrieve an OIDC token from the sprue service
-    GetToken,
+    GetToken {
+        /// The audience of the token. This must not be the sprue server.
+        #[arg(long)]
+        audience: String,
+    },
     /// Register and store an arbitrary blob to remote backup storage
     Backup {
         /// Path to file to store
@@ -97,9 +101,11 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     match &args.command {
-        Commands::GetToken => {
+        Commands::GetToken { audience } => {
             let client = svc_client(&socket).await?;
-            let token = client.get_token(context::current()).await??;
+            let token = client
+                .get_token(context::current(), audience.clone())
+                .await??;
             println!("{}", token);
         }
         Commands::Backup { path } => {

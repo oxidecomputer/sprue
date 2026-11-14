@@ -152,9 +152,7 @@ impl JsonSchema for Audience {
     }
 
     fn json_schema(_: &mut schemars::r#gen::SchemaGenerator) -> schemars::schema::Schema {
-        use schemars::schema::{
-            InstanceType, Metadata, Schema, SchemaObject, StringValidation,
-        };
+        use schemars::schema::{InstanceType, Metadata, Schema, SchemaObject, StringValidation};
 
         Schema::Object(SchemaObject {
             metadata: Some(Box::new(Metadata {

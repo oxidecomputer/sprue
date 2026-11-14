@@ -5,9 +5,9 @@
 #![allow(dead_code)]
 
 use newtype_uuid::GenericUuid;
-use sprue_sdk::ClientInfo;
 use reqwest::StatusCode;
 use sprue_api::{context::oidc::VmClaims, permissions::ApiPermissions};
+use sprue_sdk::ClientInfo;
 use sprue_sdk::types::{ServerRegistration, ServerRegistrationState, Service};
 use uuid::Uuid;
 use vm_attest::VmInstanceConf;
@@ -357,7 +357,9 @@ async fn test_token_audience_and_service_name() {
 #[tokio::test]
 async fn test_token_audience_format() {
     let _ = tracing_subscriber::fmt::try_init();
-    let seed = SeededContext::create("token_audience_format").await.unwrap();
+    let seed = SeededContext::create("token_audience_format")
+        .await
+        .unwrap();
     let _handle = seed.server().run();
     let (user, services) = user_with_services(&seed, &["test"]).await;
     let (vm, registration) = accepted_vm(&seed, &user, &services[0]).await;
@@ -381,7 +383,9 @@ async fn test_token_audience_format() {
 #[tokio::test]
 async fn test_token_request_records_audience() {
     let _ = tracing_subscriber::fmt::try_init();
-    let seed = SeededContext::create("token_audience_recorded").await.unwrap();
+    let seed = SeededContext::create("token_audience_recorded")
+        .await
+        .unwrap();
     let _handle = seed.server().run();
     let (user, services) = user_with_services(&seed, &["test"]).await;
     let (vm, registration) = accepted_vm(&seed, &user, &services[0]).await;

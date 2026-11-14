@@ -2,16 +2,19 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crossterm::{
-    event::{self, Event, KeyCode, KeyEventKind},
-    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
-};
+// The `crossterm` re-exported by `ratatui` must be used rather than a direct
+// dependency on the `crossterm` crate. Crossterm records the terminal mode it
+// found on entry in a process global, so two versions of it in the same binary
+// each keep their own snapshot and clobber one another on teardown, leaving the
+// terminal in raw mode after exit.
+use chrono::{DateTime, Utc};
 use ratatui::{
     DefaultTerminal, Frame,
+    crossterm::event::{self, Event, KeyCode, KeyEventKind},
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Cell, Paragraph, Row, Table, TableState, Tabs},
+    widgets::{Block, Borders, Cell, Clear, Padding, Paragraph, Row, Table, TableState, Tabs},
 };
 use sprue_sdk::Client;
 use sprue_sdk::types::*;
@@ -25,12 +28,35 @@ const PAGE_SIZE: u32 = 50;
 const POLL_INTERVAL: Duration = Duration::from_secs(5);
 const EVENT_POLL: Duration = Duration::from_millis(50);
 
+// Oxide brand colours, taken from the design tokens the docs site ships at
+// <https://docs.oxide.computer>. Those are published in OKLCH; the sRGB
+// conversions are inlined here, and the token name is kept so the source of
+// each value stays traceable.
+
+/// `yellow-800` — the single accent, used for every "this is the active thing"
+/// cue: the breadcrumb, the selected tab, and the focused pane's border.
+const ACCENT: Color = Color::Rgb(0xFE, 0xBB, 0x55);
+
+/// `green-800` — the marker dots down the left of every list.
+const MARK: Color = Color::Rgb(0x00, 0xD8, 0x92);
+
+/// `neutral-600` — secondary text that should sit behind the data without
+/// disappearing: column headers, the key hints, the refresh countdown.
+const MUTED: Color = Color::Rgb(0x81, 0x82, 0x84);
+
+/// Width of the marker column. Three columns so the dot sits centred with a
+/// space either side, and fixed so a terminal that renders the dots
+/// double-width cannot shift the columns beside them.
+const MARK_COLUMN: Constraint = Constraint::Length(3);
+
 /// What data needs loading after a key press.
 enum Reload {
     None,
     Detail,
     Inspect,
     NextPage,
+    /// Run the action the user just confirmed.
+    Action,
 }
 
 // ---------------------------------------------------------------------------
@@ -77,6 +103,72 @@ impl InspectTab {
 }
 
 // ---------------------------------------------------------------------------
+// Server registration actions
+// ---------------------------------------------------------------------------
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ServerAction {
+    Accept,
+    Terminate,
+    Delete,
+}
+
+impl ServerAction {
+    fn label(self) -> &'static str {
+        match self {
+            ServerAction::Accept => "Accept",
+            ServerAction::Terminate => "Terminate",
+            ServerAction::Delete => "Delete",
+        }
+    }
+
+    fn progressive(self) -> &'static str {
+        match self {
+            ServerAction::Accept => "Accepting",
+            ServerAction::Terminate => "Terminating",
+            ServerAction::Delete => "Deleting",
+        }
+    }
+
+    fn past(self) -> &'static str {
+        match self {
+            ServerAction::Accept => "Accepted",
+            ServerAction::Terminate => "Terminated",
+            ServerAction::Delete => "Deleted",
+        }
+    }
+
+    fn description(self) -> &'static str {
+        match self {
+            ServerAction::Accept => "Add the server as a representative instance of the service.",
+            ServerAction::Terminate => {
+                "Remove the server from the pool of representative instances."
+            }
+            ServerAction::Delete => "Permanently delete the registration. This cannot be undone.",
+        }
+    }
+
+    /// Whether the registration state permits this action. Mirrors the
+    /// transitions enforced by the API so an invalid key press reports the
+    /// reason locally instead of round-tripping to a 400.
+    fn permitted(self, state: ServerRegistrationState) -> bool {
+        match self {
+            // A registration must prove itself before it can be accepted.
+            ServerAction::Accept => state == ServerRegistrationState::Proven,
+            ServerAction::Terminate => state != ServerRegistrationState::Terminated,
+            // Deletion drops the record outright, from any state.
+            ServerAction::Delete => true,
+        }
+    }
+}
+
+/// An action awaiting a yes/no answer from the user.
+struct Confirm {
+    action: ServerAction,
+    server: ServerRegistration,
+}
+
+// ---------------------------------------------------------------------------
 // App state
 // ---------------------------------------------------------------------------
 
@@ -106,6 +198,9 @@ struct App {
     checkin_state: TableState,
     checkin_next_page: Option<String>,
 
+    // Pending confirmation prompt
+    confirm: Option<Confirm>,
+
     // Polling
     next_refresh: Instant,
     status: String,
@@ -132,6 +227,7 @@ impl App {
             checkins: Vec::new(),
             checkin_state: TableState::default(),
             checkin_next_page: None,
+            confirm: None,
             next_refresh: Instant::now(),
             status: "Loading...".into(),
         }
@@ -203,8 +299,28 @@ impl App {
                 {
                     self.service_server_state.select(Some(0));
                 }
+                self.sync_inspect_server();
             }
             Err(e) => self.status = format!("Servers: {}", e),
+        }
+    }
+
+    /// Re-point the inspected server at its freshly loaded copy so the summary
+    /// pane reflects state changes. If it is gone from the service, drop out of
+    /// the inspect view.
+    fn sync_inspect_server(&mut self) {
+        let Some(id) = self.inspect_server.as_ref().map(|s| s.id.0) else {
+            return;
+        };
+
+        match self.service_servers.iter().find(|s| s.id.0 == id) {
+            Some(server) => self.inspect_server = Some(server.clone()),
+            None => {
+                self.inspect_server = None;
+                if self.focus == Focus::ServerInspect {
+                    self.focus = Focus::Detail;
+                }
+            }
         }
     }
 
@@ -288,10 +404,71 @@ impl App {
             .and_then(|i| self.service_servers.get(i))
     }
 
+    // -- Registration actions -----------------------------------------------
+
+    /// The registration that action keys apply to in the current view.
+    fn action_target(&self) -> Option<&ServerRegistration> {
+        match self.focus {
+            Focus::ServerInspect => self.inspect_server.as_ref(),
+            Focus::Detail if self.detail_tab == DetailTab::Servers => self.selected_detail_server(),
+            _ => None,
+        }
+    }
+
+    /// Raise a confirmation prompt for `action` against the current target.
+    fn arm_action(&mut self, action: ServerAction) {
+        let Some(server) = self.action_target().cloned() else {
+            self.status = "No server selected".into();
+            return;
+        };
+
+        if !action.permitted(server.state) {
+            self.status = format!(
+                "Cannot {} a server in state {:?}",
+                action.label().to_lowercase(),
+                server.state
+            );
+            return;
+        }
+
+        self.confirm = Some(Confirm { action, server });
+    }
+
+    /// Run the confirmed action, then reload so the change is visible.
+    async fn apply_action(&mut self) {
+        let Some(Confirm { action, server }) = self.confirm.take() else {
+            return;
+        };
+
+        let id = server.id.0;
+        self.status = format!("{} {}...", action.progressive(), short_uuid(&id));
+
+        let result = match action {
+            ServerAction::Accept => self.client.accept_server().server(id).send().await,
+            ServerAction::Terminate => self.client.terminate_server().server(id).send().await,
+            ServerAction::Delete => self.client.delete_server().server(id).send().await,
+        };
+
+        match result {
+            Ok(_) => {
+                self.status = format!("{} server {}", action.past(), short_uuid(&id));
+                // `load_detail` re-reads the registration list, which drops the
+                // inspect view if the server is no longer there.
+                self.load_detail().await;
+            }
+            Err(e) => self.status = format!("{} failed: {}", action.label(), e),
+        }
+    }
+
     // -- Input handling -----------------------------------------------------
 
     /// Returns what data needs loading after this key press.
     fn handle_key(&mut self, key: KeyCode) -> Reload {
+        // A confirmation prompt is modal: it swallows every other binding.
+        if self.confirm.is_some() {
+            return self.handle_confirm_key(key);
+        }
+
         match key {
             KeyCode::Char('q') | KeyCode::Esc => {
                 match self.focus {
@@ -328,6 +505,18 @@ impl App {
             Focus::Services => self.handle_services_key(key),
             Focus::Detail => self.handle_detail_key(key),
             Focus::ServerInspect => self.handle_inspect_key(key),
+        }
+    }
+
+    fn handle_confirm_key(&mut self, key: KeyCode) -> Reload {
+        match key {
+            KeyCode::Char('y') | KeyCode::Char('Y') => Reload::Action,
+            KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc | KeyCode::Char('q') => {
+                self.confirm = None;
+                self.status = "Cancelled".into();
+                Reload::None
+            }
+            _ => Reload::None,
         }
     }
 
@@ -379,6 +568,18 @@ impl App {
                 }
                 Reload::None
             }
+            KeyCode::Char('a') if self.detail_tab == DetailTab::Servers => {
+                self.arm_action(ServerAction::Accept);
+                Reload::None
+            }
+            KeyCode::Char('t') if self.detail_tab == DetailTab::Servers => {
+                self.arm_action(ServerAction::Terminate);
+                Reload::None
+            }
+            KeyCode::Char('d') if self.detail_tab == DetailTab::Servers => {
+                self.arm_action(ServerAction::Delete);
+                Reload::None
+            }
             _ => Reload::None,
         }
     }
@@ -413,6 +614,9 @@ impl App {
                     }
                 }
             },
+            KeyCode::Char('a') => self.arm_action(ServerAction::Accept),
+            KeyCode::Char('t') => self.arm_action(ServerAction::Terminate),
+            KeyCode::Char('d') => self.arm_action(ServerAction::Delete),
             _ => {}
         }
         Reload::None
@@ -446,7 +650,62 @@ impl App {
             self.draw_main(frame, chunks[1]);
         }
 
+        self.draw_confirm(frame, chunks[1]);
         self.draw_status(frame, chunks[2]);
+    }
+
+    fn draw_confirm(&self, frame: &mut Frame, area: Rect) {
+        let Some(Confirm { action, server }) = &self.confirm else {
+            return;
+        };
+
+        let accent = match action {
+            ServerAction::Accept => Color::Green,
+            ServerAction::Terminate | ServerAction::Delete => Color::Red,
+        };
+        let bold = Style::default().add_modifier(Modifier::BOLD);
+
+        let body = Paragraph::new(vec![
+            Line::from(vec![
+                Span::styled(" Registration: ", bold),
+                Span::raw(server.id.0.to_string()),
+            ]),
+            Line::from(vec![
+                Span::styled(" Instance:     ", bold),
+                Span::raw(server.instance_id.0.to_string()),
+            ]),
+            Line::from(vec![
+                Span::styled(" State:        ", bold),
+                Span::styled(format!("{:?}", server.state), state_color(server.state)),
+            ]),
+            Line::raw(""),
+            Line::styled(
+                format!(" {}", action.description()),
+                Style::default().fg(Color::Gray),
+            ),
+            Line::raw(""),
+            Line::from(vec![
+                Span::styled(" y", bold),
+                Span::raw(": confirm    "),
+                Span::styled("n", bold),
+                Span::raw("/"),
+                Span::styled("Esc", bold),
+                Span::raw(": cancel"),
+            ]),
+        ])
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(accent))
+                .title(Span::styled(
+                    format!(" {} server {}? ", action.label(), short_uuid(&server.id.0)),
+                    Style::default().fg(accent).add_modifier(Modifier::BOLD),
+                )),
+        );
+
+        let popup = centered_rect(area, 76, 9);
+        frame.render_widget(Clear, popup);
+        frame.render_widget(body, popup);
     }
 
     fn draw_title(&self, frame: &mut Frame, area: Rect) {
@@ -487,28 +746,31 @@ impl App {
         let line = Line::from(vec![
             Span::styled(
                 breadcrumb,
-                Style::default()
-                    .fg(Color::Cyan)
-                    .add_modifier(Modifier::BOLD),
+                Style::default().fg(ACCENT).add_modifier(Modifier::BOLD),
             ),
             Span::raw(" ".repeat(pad)),
-            Span::styled(right, Style::default().fg(Color::DarkGray)),
+            Span::styled(right, Style::default().fg(MUTED)),
         ]);
         frame.render_widget(Paragraph::new(line), area);
     }
 
     fn draw_status(&self, frame: &mut Frame, area: Rect) {
-        let help = match self.focus {
-            Focus::Services => " ↑↓: navigate | Enter: details | r: refresh | q: quit ",
-            Focus::Detail => {
-                " ↑↓: navigate | ←→: tab | Enter: inspect server | Esc: back | r: refresh | q: quit "
-            }
-            Focus::ServerInspect => {
-                " ↑↓: navigate (auto-loads more) | ←→: tab | Esc: back | r: refresh "
+        let help = if self.confirm.is_some() {
+            " y: confirm | n/Esc: cancel "
+        } else {
+            match self.focus {
+                Focus::Services => " ↑↓: navigate | Enter: details | r: refresh | q: quit ",
+                Focus::Detail if self.detail_tab == DetailTab::Servers => {
+                    " ↑↓: navigate | ←→: tab | Enter: inspect | a: accept | t: terminate | d: delete | Esc: back | r: refresh "
+                }
+                Focus::Detail => " ↑↓: navigate | ←→: tab | Esc: back | r: refresh | q: quit ",
+                Focus::ServerInspect => {
+                    " ↑↓: navigate | ←→: tab | a: accept | t: terminate | d: delete | Esc: back | r: refresh "
+                }
             }
         };
         let line = Line::from(vec![
-            Span::styled(help, Style::default().fg(Color::DarkGray)),
+            Span::styled(help, Style::default().fg(MUTED)),
             Span::raw(" "),
             Span::styled(&self.status, Style::default().fg(Color::Yellow)),
         ]);
@@ -526,31 +788,37 @@ impl App {
     }
 
     fn draw_services(&mut self, frame: &mut Frame, area: Rect) {
-        let highlight = if self.focus == Focus::Services {
-            Style::default()
-                .bg(Color::DarkGray)
-                .add_modifier(Modifier::BOLD)
-        } else {
-            Style::default().add_modifier(Modifier::DIM)
+        let active = self.focus == Focus::Services;
+        let cursor = self.service_state.selected();
+        // Drilling into a service fills its dot in: you are now working inside
+        // it rather than picking between them.
+        let marks = ListMarks {
+            cursor: if active { cursor } else { None },
+            chosen: if active { None } else { cursor },
         };
 
         let rows: Vec<Row> = self
             .services
             .iter()
-            .map(|s| {
+            .enumerate()
+            .map(|(i, s)| {
                 Row::new(vec![
+                    marks.cell(i),
                     Cell::from(s.name.clone()),
                     Cell::from(short_uuid(&s.id.0)),
                 ])
             })
             .collect();
 
-        let table = Table::new(rows, [Constraint::Min(16), Constraint::Length(10)])
-            .header(
-                Row::new(vec!["Name", "ID"]).style(Style::default().add_modifier(Modifier::BOLD)),
-            )
-            .block(Block::default().borders(Borders::ALL).title(" Services "))
-            .row_highlight_style(highlight);
+        let table = Table::new(
+            rows,
+            [MARK_COLUMN, Constraint::Min(16), Constraint::Length(8)],
+        )
+        .header(Row::new(vec!["", "Name", "ID"]).style(header_style()))
+        // The Name column flexes to fill the pane, which pushes ID hard against
+        // the right border; inset the inner area to give it room.
+        .block(pane(" Services ", active).padding(Padding::right(1)))
+        .row_highlight_style(marks.row_style());
 
         frame.render_stateful_widget(table, area, &mut self.service_state);
     }
@@ -572,12 +840,8 @@ impl App {
             .unwrap_or(0);
         let tabs = Tabs::new(titles)
             .select(selected)
-            .block(Block::default().borders(Borders::ALL))
-            .highlight_style(
-                Style::default()
-                    .fg(Color::Green)
-                    .add_modifier(Modifier::BOLD),
-            );
+            .block(pane("", self.focus == Focus::Detail))
+            .highlight_style(tab_highlight());
         frame.render_widget(tabs, chunks[0]);
 
         match self.detail_tab {
@@ -587,13 +851,25 @@ impl App {
     }
 
     fn draw_deployments(&mut self, frame: &mut Frame, area: Rect) {
-        let highlight = detail_highlight(self.focus == Focus::Detail);
+        let active = self.focus == Focus::Detail;
+        let marks = ListMarks {
+            // Nothing is marked until this pane is the one taking input.
+            cursor: if active {
+                self.deployment_state.selected()
+            } else {
+                None
+            },
+            // There is nothing to open from a deployment, so no dot ever fills.
+            chosen: None,
+        };
 
         let rows: Vec<Row> = self
             .deployments
             .iter()
-            .map(|d| {
+            .enumerate()
+            .map(|(i, d)| {
                 Row::new(vec![
+                    marks.cell(i),
                     Cell::from(short_uuid(&d.id.0)),
                     Cell::from(short_uuid(&d.project_id.0)),
                     Cell::from(short_uuid(&d.silo_id.0)),
@@ -605,38 +881,49 @@ impl App {
         let table = Table::new(
             rows,
             [
-                Constraint::Length(10),
-                Constraint::Length(10),
-                Constraint::Length(10),
-                Constraint::Length(18),
+                MARK_COLUMN,
+                Constraint::Length(8),
+                Constraint::Length(8),
+                Constraint::Length(8),
+                Constraint::Length(16),
             ],
         )
-        .header(
-            Row::new(vec!["ID", "Project", "Silo", "Created"])
-                .style(Style::default().add_modifier(Modifier::BOLD)),
-        )
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(" Deployments "),
-        )
-        .row_highlight_style(highlight);
+        .header(Row::new(vec!["", "ID", "Project", "Silo", "Created"]).style(header_style()))
+        .block(pane(" Deployments ", active))
+        .row_highlight_style(marks.row_style());
 
         frame.render_stateful_widget(table, area, &mut self.deployment_state);
     }
 
     fn draw_servers(&mut self, frame: &mut Frame, area: Rect) {
-        let highlight = detail_highlight(self.focus == Focus::Detail);
+        let active = self.focus == Focus::Detail;
+        let marks = ListMarks {
+            // Nothing is marked until this pane is the one taking input.
+            cursor: if active {
+                self.service_server_state.selected()
+            } else {
+                None
+            },
+            // The server being inspected. Inert while the inspect view replaces
+            // this pane outright, but it is the rule for the list: open a
+            // server and its dot fills in.
+            chosen: self.inspect_server.as_ref().and_then(|open| {
+                self.service_servers
+                    .iter()
+                    .position(|s| s.id.0 == open.id.0)
+            }),
+        };
 
-        let rows: Vec<Row> = self.service_servers.iter().map(|s| server_row(s)).collect();
+        let rows: Vec<Row> = self
+            .service_servers
+            .iter()
+            .enumerate()
+            .map(|(i, s)| server_row(marks.cell(i), s))
+            .collect();
 
         let table = server_table(rows)
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title(" Servers (Enter to inspect) "),
-            )
-            .row_highlight_style(highlight);
+            .block(pane(" Servers (Enter to inspect) ", active))
+            .row_highlight_style(marks.row_style());
 
         frame.render_stateful_widget(table, area, &mut self.service_server_state);
     }
@@ -670,7 +957,8 @@ impl App {
                     Span::raw(server.silo_id.0.to_string()),
                 ]),
             ])
-            .block(Block::default().borders(Borders::ALL).title(" Server "));
+            // Read-only summary: nothing to navigate, so no accent.
+            .block(pane(" Server ", false));
             frame.render_widget(summary, chunks[0]);
         }
 
@@ -685,12 +973,8 @@ impl App {
             .unwrap_or(0);
         let tabs = Tabs::new(titles)
             .select(selected)
-            .block(Block::default().borders(Borders::ALL))
-            .highlight_style(
-                Style::default()
-                    .fg(Color::Green)
-                    .add_modifier(Modifier::BOLD),
-            );
+            .block(pane("", true))
+            .highlight_style(tab_highlight());
         frame.render_widget(tabs, chunks[1]);
 
         match self.inspect_tab {
@@ -700,12 +984,21 @@ impl App {
     }
 
     fn draw_blobs(&mut self, frame: &mut Frame, area: Rect) {
+        // A leaf list: it takes input the whole time it is on screen, and there
+        // is nothing to open from a backup, so no dot ever fills.
+        let marks = ListMarks {
+            cursor: self.blob_state.selected(),
+            chosen: None,
+        };
+
         let rows: Vec<Row> = self
             .blobs
             .iter()
-            .map(|b| {
+            .enumerate()
+            .map(|(i, b)| {
                 let state_str = format!("{:?}", b.state);
                 Row::new(vec![
+                    marks.cell(i),
                     Cell::from(short_uuid(&b.id.0)),
                     Cell::from(state_str),
                     Cell::from(format_size(b.size)),
@@ -718,67 +1011,60 @@ impl App {
         let table = Table::new(
             rows,
             [
-                Constraint::Length(10),
+                MARK_COLUMN,
+                Constraint::Length(8),
                 Constraint::Length(24),
                 Constraint::Length(10),
                 Constraint::Length(10),
-                Constraint::Length(18),
+                Constraint::Length(16),
             ],
         )
-        .header(
-            Row::new(vec!["ID", "State", "Size", "Total", "Time"])
-                .style(Style::default().add_modifier(Modifier::BOLD)),
-        )
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(format!(" Backups ({}) ", self.blobs.len())),
-        )
-        .row_highlight_style(
-            Style::default()
-                .bg(Color::DarkGray)
-                .add_modifier(Modifier::BOLD),
-        );
+        .header(Row::new(vec!["", "ID", "State", "Size", "Total", "Time"]).style(header_style()))
+        // The inspect view owns the focus whenever it is on screen.
+        .block(pane(format!(" Backups ({}) ", self.blobs.len()), true))
+        .row_highlight_style(marks.row_style());
 
         frame.render_stateful_widget(table, area, &mut self.blob_state);
     }
 
     fn draw_checkins(&mut self, frame: &mut Frame, area: Rect) {
+        let marks = ListMarks {
+            cursor: self.checkin_state.selected(),
+            chosen: None,
+        };
+
         let rows: Vec<Row> = self
             .checkins
             .iter()
-            .map(|c| {
+            .enumerate()
+            .map(|(i, c)| {
                 Row::new(vec![
+                    marks.cell(i),
                     Cell::from(short_uuid(&c.id.0)),
                     Cell::from(c.checked_in_at.format("%Y-%m-%d %H:%M:%S").to_string()),
                 ])
             })
             .collect();
 
+        // Don't assume the page order: take the newest record we hold.
         let latest = self
             .checkins
-            .first()
-            .map(|c| {
-                let ago = chrono::Utc::now() - c.checked_in_at;
-                format!(" Latest: {}s ago ", ago.num_seconds())
-            })
+            .iter()
+            .map(|c| c.checked_in_at)
+            .max()
+            .map(|at| format!(" Latest: {} ", describe_age(at)))
             .unwrap_or_default();
 
-        let table = Table::new(rows, [Constraint::Length(10), Constraint::Min(22)])
-            .header(
-                Row::new(vec!["ID", "Checked In"])
-                    .style(Style::default().add_modifier(Modifier::BOLD)),
-            )
-            .block(Block::default().borders(Borders::ALL).title(format!(
-                " Checkins ({}) {}",
-                self.checkins.len(),
-                latest
-            )))
-            .row_highlight_style(
-                Style::default()
-                    .bg(Color::DarkGray)
-                    .add_modifier(Modifier::BOLD),
-            );
+        let table = Table::new(
+            rows,
+            [MARK_COLUMN, Constraint::Length(8), Constraint::Min(22)],
+        )
+        .header(Row::new(vec!["", "ID", "Checked In"]).style(header_style()))
+        .block(pane(
+            format!(" Checkins ({}){}", self.checkins.len(), latest),
+            true,
+        ))
+        .row_highlight_style(marks.row_style());
 
         frame.render_stateful_widget(table, area, &mut self.checkin_state);
     }
@@ -805,14 +1091,85 @@ fn nav_down(state: &mut TableState, len: usize) {
     state.select(Some(i));
 }
 
-fn detail_highlight(focused: bool) -> Style {
-    if focused {
-        Style::default()
-            .bg(Color::DarkGray)
-            .add_modifier(Modifier::BOLD)
-    } else {
-        Style::default().add_modifier(Modifier::DIM)
+/// A `width` x `height` rect centered in `area`, clamped to it.
+fn centered_rect(area: Rect, width: u16, height: u16) -> Rect {
+    let width = width.min(area.width);
+    let height = height.min(area.height);
+    Rect {
+        x: area.x + (area.width - width) / 2,
+        y: area.y + (area.height - height) / 2,
+        width,
+        height,
     }
+}
+
+/// Style for a table's column-header row: grey, so the labels sit behind the
+/// data instead of competing with it.
+fn header_style() -> Style {
+    Style::default().fg(MUTED)
+}
+
+/// Which rows of one list are marked this frame.
+///
+/// Two distinct things: the row the cursor sits on, and the row that has been
+/// opened. A list whose pane is not taking input has neither, and so shows no
+/// selection at all.
+struct ListMarks {
+    /// Row the cursor sits on, when this list is the one taking input.
+    cursor: Option<usize>,
+    /// Row that has been opened — the service you are working inside, the
+    /// server you are inspecting. Takes precedence over the cursor.
+    chosen: Option<usize>,
+}
+
+impl ListMarks {
+    /// Cell for the marker column: an open dot on the cursor row, filled once
+    /// that row has been opened, blank everywhere else.
+    fn cell(&self, index: usize) -> Cell<'static> {
+        let glyph = if self.chosen == Some(index) {
+            "●"
+        } else if self.cursor == Some(index) {
+            "○"
+        } else {
+            " "
+        };
+
+        Cell::from(Line::styled(glyph, Style::default().fg(MARK)).centered())
+    }
+
+    /// Style to patch over the marked row.
+    ///
+    /// Bold, and only when this list marks something — a list whose pane is
+    /// inactive leaves its rows alone. It sets no foreground or background on
+    /// purpose: ratatui patches `row_highlight_style` over cells that have
+    /// already been drawn, so a colour here would flatten the State column's
+    /// own colour on the very row you are looking at.
+    fn row_style(&self) -> Style {
+        if self.cursor.is_some() || self.chosen.is_some() {
+            Style::default().add_modifier(Modifier::BOLD)
+        } else {
+            Style::default()
+        }
+    }
+}
+
+/// A bordered pane whose border carries the accent colour when it holds focus.
+fn pane<'a, T: Into<Line<'a>>>(title: T, focused: bool) -> Block<'a> {
+    let border = if focused {
+        Style::default().fg(ACCENT)
+    } else {
+        Style::default()
+    };
+
+    Block::default()
+        .borders(Borders::ALL)
+        .border_style(border)
+        .title(title)
+}
+
+/// Style for the selected entry of a tab bar.
+fn tab_highlight() -> Style {
+    Style::default().fg(ACCENT).add_modifier(Modifier::BOLD)
 }
 
 fn state_color(state: ServerRegistrationState) -> Style {
@@ -828,8 +1185,9 @@ fn state_color(state: ServerRegistrationState) -> Style {
     }
 }
 
-fn server_row(s: &ServerRegistration) -> Row<'static> {
+fn server_row(marker: Cell<'static>, s: &ServerRegistration) -> Row<'static> {
     Row::new(vec![
+        marker,
         Cell::from(short_uuid(&s.id.0)),
         Cell::from(short_uuid(&s.instance_id.0)),
         Cell::from(Span::styled(format!("{:?}", s.state), state_color(s.state))),
@@ -843,24 +1201,55 @@ fn server_table(rows: Vec<Row<'_>>) -> Table<'_> {
     Table::new(
         rows,
         [
-            Constraint::Length(10),
-            Constraint::Length(10),
+            MARK_COLUMN,
+            Constraint::Length(8),
+            Constraint::Length(8),
             Constraint::Length(12),
-            Constraint::Length(10),
-            Constraint::Length(10),
-            Constraint::Length(18),
+            Constraint::Length(8),
+            Constraint::Length(8),
+            Constraint::Length(16),
         ],
     )
     .header(
         Row::new(vec![
-            "ID", "Instance", "State", "Project", "Silo", "Updated",
+            "", "ID", "Instance", "State", "Project", "Silo", "Updated",
         ])
-        .style(Style::default().add_modifier(Modifier::BOLD)),
+        .style(header_style()),
     )
 }
 
 fn short_uuid(uuid: &uuid::Uuid) -> String {
     uuid.to_string()[..8].to_string()
+}
+
+/// How long ago `then` was, relative to this machine's clock.
+///
+/// A check-in is timestamped by the guest that sent it (`sprue-agent` stamps
+/// `checked_in_at` from its own clock), so a guest running ahead of the viewer
+/// puts the timestamp in the future. Say so rather than reporting a negative
+/// age, since the difference is clock skew and not elapsed time.
+fn describe_age(then: DateTime<Utc>) -> String {
+    let seconds = (Utc::now() - then).num_seconds();
+    match seconds {
+        // Sub-second skew is just latency and rounding; don't make noise of it.
+        -1..=1 => "just now".to_string(),
+        s if s < 0 => format!("{} ahead (clock skew)", format_duration(-s)),
+        s => format!("{} ago", format_duration(s)),
+    }
+}
+
+/// Coarse duration for a non-negative number of seconds: two units, largest
+/// first, so the width stays roughly stable as the value grows.
+fn format_duration(seconds: i64) -> String {
+    const MINUTE: i64 = 60;
+    const HOUR: i64 = 60 * MINUTE;
+    const DAY: i64 = 24 * HOUR;
+    match seconds {
+        s if s >= DAY => format!("{}d {}h", s / DAY, (s % DAY) / HOUR),
+        s if s >= HOUR => format!("{}h {}m", s / HOUR, (s % HOUR) / MINUTE),
+        s if s >= MINUTE => format!("{}m {}s", s / MINUTE, s % MINUTE),
+        s => format!("{}s", s),
+    }
 }
 
 fn format_size(bytes: i64) -> String {
@@ -883,14 +1272,11 @@ fn format_size(bytes: i64) -> String {
 // ---------------------------------------------------------------------------
 
 pub async fn run(client: Client) -> io::Result<()> {
-    enable_raw_mode()?;
-    crossterm::execute!(io::stdout(), EnterAlternateScreen)?;
-
-    let terminal = ratatui::init();
+    // `init` enables raw mode, enters the alternate screen, and installs a panic
+    // hook that restores both; `restore` undoes it. Doing any of that by hand as
+    // well leaves the terminal in raw mode on exit.
+    let terminal = ratatui::try_init()?;
     let result = run_app(terminal, client).await;
-
-    disable_raw_mode()?;
-    crossterm::execute!(io::stdout(), LeaveAlternateScreen)?;
     ratatui::restore();
 
     result
@@ -904,8 +1290,9 @@ async fn run_app(mut terminal: DefaultTerminal, client: Client) -> io::Result<()
     loop {
         terminal.draw(|f| app.draw(f))?;
 
-        // Auto-refresh
-        if Instant::now() >= app.next_refresh {
+        // Auto-refresh, held off while a confirmation prompt is up so the
+        // registration being acted on cannot shift underneath it.
+        if app.confirm.is_none() && Instant::now() >= app.next_refresh {
             app.refresh_all().await;
             last_service_idx = app.service_state.selected();
             continue;
@@ -917,7 +1304,7 @@ async fn run_app(mut terminal: DefaultTerminal, client: Client) -> io::Result<()
                     continue;
                 }
 
-                if key.code == KeyCode::Char('r') {
+                if key.code == KeyCode::Char('r') && app.confirm.is_none() {
                     app.status = "Refreshing...".into();
                     app.refresh_all().await;
                     last_service_idx = app.service_state.selected();
@@ -938,6 +1325,9 @@ async fn run_app(mut terminal: DefaultTerminal, client: Client) -> io::Result<()
                     }
                     Reload::Inspect => {
                         app.load_inspect().await;
+                    }
+                    Reload::Action => {
+                        app.apply_action().await;
                     }
                     Reload::NextPage => match app.inspect_tab {
                         InspectTab::Blobs => {

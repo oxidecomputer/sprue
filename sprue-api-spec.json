@@ -1979,6 +1979,51 @@
         }
       }
     },
+    "/registration/{challenge}/prove": {
+      "post": {
+        "summary": "Answer a registration challenge with an attestation",
+        "description": "The server registration is built from the instance identity in the verified attestation. An instance that is already registered receives its existing registration, so a server also uses this to learn the current state of its registration.",
+        "operationId": "prove_registration",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "challenge",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TypedUuidForRegistrationChallengeId"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServerAttestation"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerRegistration"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
     "/self": {
       "get": {
         "summary": "View details for the calling user",
@@ -2338,43 +2383,6 @@
         }
       }
     },
-    "/server/{server}/prove": {
-      "post": {
-        "summary": "Prove the identity of a server",
-        "operationId": "prove_server",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "server",
-            "required": true,
-            "schema": {
-              "$ref": "#/components/schemas/TypedUuidForServerRegistrationId"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ServerAttestation"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "204": {
-            "description": "resource updated"
-          },
-          "4XX": {
-            "$ref": "#/components/responses/Error"
-          },
-          "5XX": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
     "/server/{server}/reject": {
       "post": {
         "summary": "Reject a server's request to be added as a representative instance of a service",
@@ -2706,8 +2714,8 @@
     },
     "/service/{service}/register": {
       "post": {
-        "summary": "Request a server be registered as a representative instance of a service",
-        "description": "The server will need to prove its identity via an attestation. Once its identity is verified the server will need to either be accepted by policy or manual intervention.",
+        "summary": "Request a challenge for registering a server as an instance of a service",
+        "description": "The server must answer the challenge with an attestation. The registration is only created once that attestation has been verified, and it is then either accepted by policy or by manual intervention.",
         "operationId": "register_server",
         "parameters": [
           {
@@ -2719,23 +2727,13 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RegisterServerBody"
-              }
-            }
-          },
-          "required": true
-        },
         "responses": {
           "200": {
             "description": "successful operation",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegisterServerResponse"
+                  "$ref": "#/components/schemas/RegistrationChallenge"
                 }
               }
             }
@@ -4737,35 +4735,38 @@
           "blob"
         ]
       },
-      "RegisterServerBody": {
+      "RegistrationChallenge": {
+        "description": "A challenge issued to a VM that wants to join a service. The VM answers the challenge by attesting over the nonce, and the server registration is then built from the attested identity.",
         "type": "object",
         "properties": {
-          "instance": {
-            "$ref": "#/components/schemas/TypedUuidForServerRegistrationInstanceId"
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
           },
-          "project_id": {
-            "$ref": "#/components/schemas/TypedUuidForProjectId"
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
           },
-          "silo_id": {
-            "$ref": "#/components/schemas/TypedUuidForSiloId"
+          "id": {
+            "$ref": "#/components/schemas/TypedUuidForRegistrationChallengeId"
+          },
+          "nonce": {
+            "type": "string"
+          },
+          "service_id": {
+            "$ref": "#/components/schemas/TypedUuidForServiceId"
           }
         },
         "required": [
-          "instance",
-          "project_id",
-          "silo_id"
+          "created_at",
+          "expires_at",
+          "id",
+          "nonce",
+          "service_id"
         ]
       },
-      "RegisterServerResponse": {
-        "type": "object",
-        "properties": {
-          "registration": {
-            "$ref": "#/components/schemas/ServerRegistration"
-          }
-        },
-        "required": [
-          "registration"
-        ]
+      "RegistrationChallengeId": {
+        "not": {}
       },
       "SecretString": {
         "type": "string"
@@ -4788,20 +4789,11 @@
             "type": "string",
             "format": "date-time"
           },
-          "expires_at": {
-            "nullable": true,
-            "type": "string",
-            "format": "date-time"
-          },
           "id": {
             "$ref": "#/components/schemas/TypedUuidForServerRegistrationId"
           },
           "instance_id": {
             "$ref": "#/components/schemas/TypedUuidForServerRegistrationInstanceId"
-          },
-          "nonce": {
-            "nullable": true,
-            "type": "string"
           },
           "project_id": {
             "$ref": "#/components/schemas/TypedUuidForProjectId"
@@ -4838,6 +4830,7 @@
         "not": {}
       },
       "ServerRegistrationState": {
+        "description": "The lifecycle of a server registration. New registrations start out as Proven because they are only created once an attestation has been verified. The Pending state remains so that older state history can still be read.",
         "type": "string",
         "enum": [
           "Pending",
@@ -5114,6 +5107,20 @@
           "parameters": [
             {
               "$ref": "#/components/schemas/ProjectId"
+            }
+          ]
+        },
+        "type": "string",
+        "format": "uuid"
+      },
+      "TypedUuidForRegistrationChallengeId": {
+        "x-rust-type": {
+          "crate": "newtype-uuid",
+          "version": "1",
+          "path": "newtype_uuid::TypedUuid",
+          "parameters": [
+            {
+              "$ref": "#/components/schemas/RegistrationChallengeId"
             }
           ]
         },

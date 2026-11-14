@@ -11,8 +11,8 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use thiserror::Error;
 
 use crate::db::{
-    BlobModel, DeploymentModel, HealthCheckModel, IdempotentRequestModel, ServerRegistrationModel,
-    ServiceModel, TokenRequestModel,
+    BlobModel, DeploymentModel, HealthCheckModel, IdempotentRequestModel,
+    RegistrationChallengeModel, ServerRegistrationModel, ServiceModel, TokenRequestModel,
 };
 
 pub mod db;
@@ -209,8 +209,42 @@ impl TypedUuidKind for TokenRequestId {
     }
 }
 
+#[derive(JsonSchema)]
+pub enum RegistrationChallengeId {}
+impl TypedUuidKind for RegistrationChallengeId {
+    fn tag() -> TypedUuidTag {
+        const TAG: TypedUuidTag = TypedUuidTag::new("registration_challenge");
+        TAG
+    }
+}
+
+/// A challenge issued to a VM that wants to join a service.
+#[derive(Debug, Clone, Serialize, JsonSchema)]
+pub struct RegistrationChallenge {
+    pub id: TypedUuid<RegistrationChallengeId>,
+    pub service_id: TypedUuid<ServiceId>,
+    pub nonce: String,
+    pub expires_at: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
+}
+
+impl From<RegistrationChallengeModel> for RegistrationChallenge {
+    fn from(model: RegistrationChallengeModel) -> Self {
+        Self {
+            id: model.id,
+            service_id: model.service_id,
+            nonce: model.nonce,
+            expires_at: model.expires_at,
+            created_at: model.created_at,
+        }
+    }
+}
+
+/// The lifecycle of a server registration.
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 pub enum ServerRegistrationState {
+    // Deprecated: Registrations are split from challenges so a server is not
+    // registered until it has proven itself via a challenge.
     Pending,
     Proven,
     Accepted,
@@ -229,31 +263,6 @@ pub struct InvalidStateTransition {
 }
 
 impl ServerRegistrationState {
-    pub fn prove(&self) -> Result<Self, InvalidStateTransition> {
-        match self {
-            Self::Pending => Ok(Self::Proven),
-            Self::Proven => Err(InvalidStateTransition {
-                from: *self,
-                to: Self::Proven,
-            }),
-            Self::Accepted => Err(InvalidStateTransition {
-                from: *self,
-                to: Self::Proven,
-            }),
-            Self::Rejected => Err(InvalidStateTransition {
-                from: *self,
-                to: Self::Proven,
-            }),
-            Self::Terminated => Err(InvalidStateTransition {
-                from: *self,
-                to: Self::Proven,
-            }),
-            Self::Expired => Err(InvalidStateTransition {
-                from: *self,
-                to: Self::Proven,
-            }),
-        }
-    }
     pub fn accept(&self) -> Result<Self, InvalidStateTransition> {
         match self {
             Self::Pending => Err(InvalidStateTransition {
@@ -428,9 +437,7 @@ pub struct ServerRegistration {
     pub instance_id: TypedUuid<ServerRegistrationInstanceId>,
     pub project_id: TypedUuid<ProjectId>,
     pub silo_id: TypedUuid<SiloId>,
-    pub nonce: Option<String>,
     pub state: ServerRegistrationState,
-    pub expires_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -443,9 +450,7 @@ impl From<ServerRegistrationModel> for ServerRegistration {
             instance_id: model.instance_id,
             project_id: model.project_id,
             silo_id: model.silo_id,
-            nonce: model.nonce,
             state: model.state,
-            expires_at: model.expires_at,
             created_at: model.created_at,
             updated_at: model.updated_at,
         }

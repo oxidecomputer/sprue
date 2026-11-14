@@ -72,6 +72,7 @@ impl<T: CliConfig> Cli<T> {
             }
             CliCommand::CreateOauthClientSecret => Self::cli_create_oauth_client_secret(),
             CliCommand::DeleteOauthClientSecret => Self::cli_delete_oauth_client_secret(),
+            CliCommand::ProveRegistration => Self::cli_prove_registration(),
             CliCommand::GetSelf => Self::cli_get_self(),
             CliCommand::DeleteServer => Self::cli_delete_server(),
             CliCommand::AcceptServer => Self::cli_accept_server(),
@@ -81,7 +82,6 @@ impl<T: CliConfig> Cli<T> {
             CliCommand::CheckinServer => Self::cli_checkin_server(),
             CliCommand::RegisterOidcTokenRequest => Self::cli_register_oidc_token_request(),
             CliCommand::ProveOidcTokenRequest => Self::cli_prove_oidc_token_request(),
-            CliCommand::ProveServer => Self::cli_prove_server(),
             CliCommand::RejectServer => Self::cli_reject_server(),
             CliCommand::TerminateServer => Self::cli_terminate_server(),
             CliCommand::ListServices => Self::cli_list_services(),
@@ -1242,6 +1242,39 @@ impl<T: CliConfig> Cli<T> {
             .about("Delete an OAuth client secret")
     }
 
+    pub fn cli_prove_registration() -> ::clap::Command {
+        ::clap::Command::new("")
+            .arg(
+                ::clap::Arg::new("challenge")
+                    .long("challenge")
+                    .value_parser(::clap::value_parser!(
+                        types::TypedUuidForRegistrationChallengeId
+                    ))
+                    .required(true),
+            )
+            .arg(
+                ::clap::Arg::new("json-body")
+                    .long("json-body")
+                    .value_name("JSON-FILE")
+                    .required(true)
+                    .value_parser(::clap::value_parser!(std::path::PathBuf))
+                    .help("Path to a file that contains the full json body."),
+            )
+            .arg(
+                ::clap::Arg::new("json-body-template")
+                    .long("json-body-template")
+                    .action(::clap::ArgAction::SetTrue)
+                    .help("XXX"),
+            )
+            .about("Answer a registration challenge with an attestation")
+            .long_about(
+                "The server registration is built from the instance identity in the verified \
+                 attestation. An instance that is already registered receives its existing \
+                 registration, so a server also uses this to learn the current state of its \
+                 registration.",
+            )
+    }
+
     pub fn cli_get_self() -> ::clap::Command {
         ::clap::Command::new("").about("View details for the calling user")
     }
@@ -1453,33 +1486,6 @@ impl<T: CliConfig> Cli<T> {
             )
     }
 
-    pub fn cli_prove_server() -> ::clap::Command {
-        ::clap::Command::new("")
-            .arg(
-                ::clap::Arg::new("server")
-                    .long("server")
-                    .value_parser(::clap::value_parser!(
-                        types::TypedUuidForServerRegistrationId
-                    ))
-                    .required(true),
-            )
-            .arg(
-                ::clap::Arg::new("json-body")
-                    .long("json-body")
-                    .value_name("JSON-FILE")
-                    .required(true)
-                    .value_parser(::clap::value_parser!(std::path::PathBuf))
-                    .help("Path to a file that contains the full json body."),
-            )
-            .arg(
-                ::clap::Arg::new("json-body-template")
-                    .long("json-body-template")
-                    .action(::clap::ArgAction::SetTrue)
-                    .help("XXX"),
-            )
-            .about("Prove the identity of a server")
-    }
-
     pub fn cli_reject_server() -> ::clap::Command {
         ::clap::Command::new("")
             .arg(
@@ -1647,50 +1653,16 @@ impl<T: CliConfig> Cli<T> {
     pub fn cli_register_server() -> ::clap::Command {
         ::clap::Command::new("")
             .arg(
-                ::clap::Arg::new("instance")
-                    .long("instance")
-                    .value_parser(::clap::value_parser!(
-                        types::TypedUuidForServerRegistrationInstanceId
-                    ))
-                    .required_unless_present("json-body"),
-            )
-            .arg(
-                ::clap::Arg::new("project-id")
-                    .long("project-id")
-                    .value_parser(::clap::value_parser!(types::TypedUuidForProjectId))
-                    .required_unless_present("json-body"),
-            )
-            .arg(
                 ::clap::Arg::new("service")
                     .long("service")
                     .value_parser(::clap::value_parser!(types::ServiceIdentifier))
                     .required(true),
             )
-            .arg(
-                ::clap::Arg::new("silo-id")
-                    .long("silo-id")
-                    .value_parser(::clap::value_parser!(types::TypedUuidForSiloId))
-                    .required_unless_present("json-body"),
-            )
-            .arg(
-                ::clap::Arg::new("json-body")
-                    .long("json-body")
-                    .value_name("JSON-FILE")
-                    .required(false)
-                    .value_parser(::clap::value_parser!(std::path::PathBuf))
-                    .help("Path to a file that contains the full json body."),
-            )
-            .arg(
-                ::clap::Arg::new("json-body-template")
-                    .long("json-body-template")
-                    .action(::clap::ArgAction::SetTrue)
-                    .help("XXX"),
-            )
-            .about("Request a server be registered as a representative instance of a service")
+            .about("Request a challenge for registering a server as an instance of a service")
             .long_about(
-                "The server will need to prove its identity via an attestation. Once its identity \
-                 is verified the server will need to either be accepted by policy or manual \
-                 intervention.",
+                "The server must answer the challenge with an attestation. The registration is \
+                 only created once that attestation has been verified, and it is then either \
+                 accepted by policy or by manual intervention.",
             )
     }
 
@@ -1785,6 +1757,7 @@ impl<T: CliConfig> Cli<T> {
             CliCommand::DeleteOauthClientSecret => {
                 self.execute_delete_oauth_client_secret(matches).await
             }
+            CliCommand::ProveRegistration => self.execute_prove_registration(matches).await,
             CliCommand::GetSelf => self.execute_get_self(matches).await,
             CliCommand::DeleteServer => self.execute_delete_server(matches).await,
             CliCommand::AcceptServer => self.execute_accept_server(matches).await,
@@ -1798,7 +1771,6 @@ impl<T: CliConfig> Cli<T> {
             CliCommand::ProveOidcTokenRequest => {
                 self.execute_prove_oidc_token_request(matches).await
             }
-            CliCommand::ProveServer => self.execute_prove_server(matches).await,
             CliCommand::RejectServer => self.execute_reject_server(matches).await,
             CliCommand::TerminateServer => self.execute_terminate_server(matches).await,
             CliCommand::ListServices => self.execute_list_services(matches).await,
@@ -3319,6 +3291,40 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
+    pub async fn execute_prove_registration(
+        &self,
+        matches: &::clap::ArgMatches,
+    ) -> anyhow::Result<()> {
+        let mut request = self.client.prove_registration();
+        if let Some(value) =
+            matches.get_one::<types::TypedUuidForRegistrationChallengeId>("challenge")
+        {
+            request = request.challenge(value.clone());
+        }
+
+        if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
+            let body_txt = std::fs::read_to_string(value)
+                .with_context(|| format!("failed to read {}", value.display()))?;
+            let body_value = serde_json::from_str::<types::ServerAttestation>(&body_txt)
+                .with_context(|| format!("failed to parse {}", value.display()))?;
+            request = request.body(body_value);
+        }
+
+        self.config
+            .execute_prove_registration(matches, &mut request)?;
+        let result = request.send().await;
+        match result {
+            Ok(r) => {
+                self.config.success_item(&r);
+                Ok(())
+            }
+            Err(r) => {
+                self.config.error(&r);
+                Err(anyhow::Error::new(r))
+            }
+        }
+    }
+
     pub async fn execute_get_self(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
         let mut request = self.client.get_self();
         self.config.execute_get_self(matches, &mut request)?;
@@ -3590,34 +3596,6 @@ impl<T: CliConfig> Cli<T> {
         }
     }
 
-    pub async fn execute_prove_server(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
-        let mut request = self.client.prove_server();
-        if let Some(value) = matches.get_one::<types::TypedUuidForServerRegistrationId>("server") {
-            request = request.server(value.clone());
-        }
-
-        if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
-            let body_txt = std::fs::read_to_string(value)
-                .with_context(|| format!("failed to read {}", value.display()))?;
-            let body_value = serde_json::from_str::<types::ServerAttestation>(&body_txt)
-                .with_context(|| format!("failed to parse {}", value.display()))?;
-            request = request.body(body_value);
-        }
-
-        self.config.execute_prove_server(matches, &mut request)?;
-        let result = request.send().await;
-        match result {
-            Ok(r) => {
-                self.config.success_no_item(&r);
-                Ok(())
-            }
-            Err(r) => {
-                self.config.error(&r);
-                Err(anyhow::Error::new(r))
-            }
-        }
-    }
-
     pub async fn execute_reject_server(&self, matches: &::clap::ArgMatches) -> anyhow::Result<()> {
         let mut request = self.client.reject_server();
         if let Some(value) = matches.get_one::<types::TypedUuidForServerRegistrationId>("server") {
@@ -3867,30 +3845,8 @@ impl<T: CliConfig> Cli<T> {
         matches: &::clap::ArgMatches,
     ) -> anyhow::Result<()> {
         let mut request = self.client.register_server();
-        if let Some(value) =
-            matches.get_one::<types::TypedUuidForServerRegistrationInstanceId>("instance")
-        {
-            request = request.body_map(|body| body.instance(value.clone()))
-        }
-
-        if let Some(value) = matches.get_one::<types::TypedUuidForProjectId>("project-id") {
-            request = request.body_map(|body| body.project_id(value.clone()))
-        }
-
         if let Some(value) = matches.get_one::<types::ServiceIdentifier>("service") {
             request = request.service(value.clone());
-        }
-
-        if let Some(value) = matches.get_one::<types::TypedUuidForSiloId>("silo-id") {
-            request = request.body_map(|body| body.silo_id(value.clone()))
-        }
-
-        if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
-            let body_txt = std::fs::read_to_string(value)
-                .with_context(|| format!("failed to read {}", value.display()))?;
-            let body_value = serde_json::from_str::<types::RegisterServerBody>(&body_txt)
-                .with_context(|| format!("failed to parse {}", value.display()))?;
-            request = request.body(body_value);
         }
 
         self.config.execute_register_server(matches, &mut request)?;
@@ -4368,6 +4324,14 @@ pub trait CliConfig {
         Ok(())
     }
 
+    fn execute_prove_registration(
+        &self,
+        matches: &::clap::ArgMatches,
+        request: &mut builder::ProveRegistration,
+    ) -> anyhow::Result<()> {
+        Ok(())
+    }
+
     fn execute_get_self(
         &self,
         matches: &::clap::ArgMatches,
@@ -4436,14 +4400,6 @@ pub trait CliConfig {
         &self,
         matches: &::clap::ArgMatches,
         request: &mut builder::ProveOidcTokenRequest,
-    ) -> anyhow::Result<()> {
-        Ok(())
-    }
-
-    fn execute_prove_server(
-        &self,
-        matches: &::clap::ArgMatches,
-        request: &mut builder::ProveServer,
     ) -> anyhow::Result<()> {
         Ok(())
     }
@@ -4599,6 +4555,7 @@ pub enum CliCommand {
     DeleteOauthClientRedirectUri,
     CreateOauthClientSecret,
     DeleteOauthClientSecret,
+    ProveRegistration,
     GetSelf,
     DeleteServer,
     AcceptServer,
@@ -4608,7 +4565,6 @@ pub enum CliCommand {
     CheckinServer,
     RegisterOidcTokenRequest,
     ProveOidcTokenRequest,
-    ProveServer,
     RejectServer,
     TerminateServer,
     ListServices,
@@ -4678,6 +4634,7 @@ impl CliCommand {
             CliCommand::DeleteOauthClientRedirectUri,
             CliCommand::CreateOauthClientSecret,
             CliCommand::DeleteOauthClientSecret,
+            CliCommand::ProveRegistration,
             CliCommand::GetSelf,
             CliCommand::DeleteServer,
             CliCommand::AcceptServer,
@@ -4687,7 +4644,6 @@ impl CliCommand {
             CliCommand::CheckinServer,
             CliCommand::RegisterOidcTokenRequest,
             CliCommand::ProveOidcTokenRequest,
-            CliCommand::ProveServer,
             CliCommand::RejectServer,
             CliCommand::TerminateServer,
             CliCommand::ListServices,
@@ -4758,6 +4714,7 @@ impl CliCommand {
             CliCommand::DeleteOauthClientRedirectUri => "delete_oauth_client_redirect_uri",
             CliCommand::CreateOauthClientSecret => "create_oauth_client_secret",
             CliCommand::DeleteOauthClientSecret => "delete_oauth_client_secret",
+            CliCommand::ProveRegistration => "prove_registration",
             CliCommand::GetSelf => "get_self",
             CliCommand::DeleteServer => "delete_server",
             CliCommand::AcceptServer => "accept_server",
@@ -4767,7 +4724,6 @@ impl CliCommand {
             CliCommand::CheckinServer => "checkin_server",
             CliCommand::RegisterOidcTokenRequest => "register_oidc_token_request",
             CliCommand::ProveOidcTokenRequest => "prove_oidc_token_request",
-            CliCommand::ProveServer => "prove_server",
             CliCommand::RejectServer => "reject_server",
             CliCommand::TerminateServer => "terminate_server",
             CliCommand::ListServices => "list_services",

@@ -4,7 +4,10 @@
 
 use futures::future;
 use futures_util::StreamExt;
-use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderValue};
+use reqwest::{
+    StatusCode,
+    header::{AUTHORIZATION, HeaderMap, HeaderValue},
+};
 use sprue_sdk::{Client, types::TypedUuidForServerRegistrationId};
 use sprue_svc::{SprueError, SprueService};
 use std::{
@@ -23,6 +26,7 @@ use tokio::time::Instant;
 use crate::{
     cmd::{self, BackupRequest, CheckinRequest, TokenRequest},
     platform::Platform,
+    registration::{Registration, Standing},
 };
 
 /// Guard that removes the unix socket file when dropped.
@@ -52,19 +56,21 @@ impl Drop for SocketGuard {
 const TOKEN_EXPIRY_BUFFER: Duration = Duration::from_secs(30);
 
 struct CachedToken {
+    registration_id: TypedUuidForServerRegistrationId,
     token: String,
     client: Client,
     expires_at: Instant,
 }
 
 /// A shared, lazily-authenticated client that caches its bearer token and
-/// rebuilds the underlying `sprue_sdk::Client` when the token expires.
+/// rebuilds the underlying `sprue_sdk::Client` when the token expires. Tokens
+/// are only requested while the registration is accepted.
 ///
-/// Unauthenticated operations (e.g. `register_server`) use a plain `Client`
+/// Unauthenticated operations (e.g. registration) use a plain `Client`
 /// without a bearer token.
 pub struct AuthenticatedClient {
     server: String,
-    registration_id: TypedUuidForServerRegistrationId,
+    registration: Arc<Registration>,
     platform: Arc<dyn Platform + Sync>,
     /// Cached token and pre-built client. Reads are cheap (`std::sync::RwLock`
     /// never crosses an await point). The semaphore below gates the async
@@ -78,12 +84,12 @@ pub struct AuthenticatedClient {
 impl AuthenticatedClient {
     fn new(
         server: String,
-        registration_id: TypedUuidForServerRegistrationId,
+        registration: Arc<Registration>,
         platform: Arc<dyn Platform + Sync>,
     ) -> Self {
         Self {
             server,
-            registration_id,
+            registration,
             platform,
             cache: RwLock::new(None),
             refresh_semaphore: Semaphore::new(1),
@@ -95,79 +101,112 @@ impl AuthenticatedClient {
         Client::new(&self.server)
     }
 
-    /// Read the cached client if the token is still valid.
-    fn cached_client(&self) -> Option<Client> {
+    /// Return the id of the registration when it is accepted. Any other
+    /// standing means that the agent must not request a token.
+    fn accepted_id(&self) -> Result<TypedUuidForServerRegistrationId, SprueError> {
+        match self.registration.standing() {
+            Standing::Accepted(id) => Ok(id),
+            standing => Err(SprueError::NotAccepted(standing.to_string())),
+        }
+    }
+
+    /// Read the cached token and client if they belong to the given
+    /// registration and the token is still valid.
+    fn cached(&self, id: &TypedUuidForServerRegistrationId) -> Option<(String, Client)> {
         let guard = self.cache.read().unwrap_or_else(|e| e.into_inner());
         match &*guard {
-            Some(cached) if Instant::now() < cached.expires_at => Some(cached.client.clone()),
+            Some(cached)
+                if cached.registration_id.0 == id.0 && Instant::now() < cached.expires_at =>
+            {
+                Some((cached.token.clone(), cached.client.clone()))
+            }
             _ => None,
         }
     }
 
-    /// Read the cached token if it is still valid.
-    fn cached_token(&self) -> Option<String> {
-        let guard = self.cache.read().unwrap_or_else(|e| e.into_inner());
-        match &*guard {
-            Some(cached) if Instant::now() < cached.expires_at => Some(cached.token.clone()),
-            _ => None,
-        }
+    /// Return a token and a `Client` that carries it, refreshing if necessary.
+    async fn authenticated(
+        &self,
+    ) -> Result<(TypedUuidForServerRegistrationId, String, Client), SprueError> {
+        let id = self.accepted_id()?;
+        let (token, client) = match self.cached(&id) {
+            Some(cached) => cached,
+            None => self.refresh(&id).await?,
+        };
+        Ok((id, token, client))
     }
 
-    /// Return a `Client` with a valid bearer token, refreshing if necessary.
-    async fn client(&self) -> Result<Client, SprueError> {
-        // Fast path: no locking beyond the std RwLock (never held across await).
-        if let Some(client) = self.cached_client() {
-            return Ok(client);
-        }
-
-        // Slow path: acquire the single refresh permit.
+    /// Exchange an attestation for a new token. Only one refresh runs at a
+    /// time, and a token cached by another task while waiting is reused.
+    async fn refresh(
+        &self,
+        id: &TypedUuidForServerRegistrationId,
+    ) -> Result<(String, Client), SprueError> {
         let _permit = self
             .refresh_semaphore
             .acquire()
             .await
             .map_err(|_| SprueError::Failure("Refresh semaphore closed".to_string()))?;
 
-        // Re-check — another task may have refreshed while we waited.
-        if let Some(client) = self.cached_client() {
-            return Ok(client);
+        match self.cached(id) {
+            Some(cached) => Ok(cached),
+            None => {
+                tracing::info!("Refreshing authentication token");
+
+                let plain = self.unauthenticated();
+                let token = cmd::get_token(TokenRequest {
+                    client: &plain,
+                    registration_id: id.clone(),
+                    platform: self.platform.as_ref(),
+                    issuer: &self.server,
+                })
+                .await
+                .map_err(|err| {
+                    tracing::error!(?err, "Failed to refresh token");
+
+                    // Sprue refuses to issue a token to a registration that
+                    // is not accepted or no longer exists.
+                    if status_of(&err).is_some_and(|status| status.is_client_error()) {
+                        self.registration.recheck();
+                    }
+                    SprueError::Failure(err.to_string())
+                })?;
+
+                let expires_at = token_expiry(&token)?;
+                let client = build_client(&self.server, &token)?;
+
+                // Write lock is held only for the assignment — no await.
+                {
+                    let mut guard = self.cache.write().unwrap_or_else(|e| e.into_inner());
+                    *guard = Some(CachedToken {
+                        registration_id: id.clone(),
+                        token: token.clone(),
+                        client: client.clone(),
+                        expires_at,
+                    });
+                }
+
+                Ok((token, client))
+            }
         }
-
-        tracing::info!("Refreshing authentication token");
-
-        let plain = self.unauthenticated();
-        let token = cmd::get_token(TokenRequest {
-            client: &plain,
-            registration_id: self.registration_id.clone(),
-            platform: self.platform.as_ref(),
-            issuer: &self.server,
-        })
-        .await
-        .map_err(|err| {
-            tracing::error!(?err, "Failed to refresh token");
-            SprueError::Failure(err.to_string())
-        })?;
-
-        let expires_at = token_expiry(&token)?;
-        let client = build_client(&self.server, &token)?;
-
-        // Write lock is held only for the assignment — no await.
-        {
-            let mut guard = self.cache.write().unwrap_or_else(|e| e.into_inner());
-            *guard = Some(CachedToken {
-                token,
-                client: client.clone(),
-                expires_at,
-            });
-        }
-
-        Ok(client)
     }
 
-    /// Return the raw token string, refreshing if necessary.
-    async fn token(&self) -> Result<String, SprueError> {
-        self.client().await?;
-        Ok(self.cached_token().expect("just refreshed"))
+    /// React to a failed request that carried this agent's token. Sprue
+    /// refuses such requests once the registration is no longer accepted, so
+    /// the cached token is dropped and the standing is checked again.
+    fn observe(&self, err: &anyhow::Error) {
+        if status_of(err) == Some(StatusCode::FORBIDDEN) {
+            tracing::info!("Sprue refused the agent token");
+            *self.cache.write().unwrap_or_else(|e| e.into_inner()) = None;
+            self.registration.recheck();
+        }
     }
+}
+
+/// The HTTP status of a failed sprue request, when the error came from one.
+fn status_of(err: &anyhow::Error) -> Option<StatusCode> {
+    err.downcast_ref::<sprue_sdk::Error<sprue_sdk::types::Error>>()
+        .and_then(|err| err.status())
 }
 
 /// Decode the JWT `exp` claim and convert to a tokio `Instant`, applying a
@@ -226,7 +265,6 @@ fn build_client(server: &str, token: &str) -> Result<Client, SprueError> {
 
 #[derive(Clone)]
 pub struct SprueAgent {
-    service: String,
     auth: Arc<AuthenticatedClient>,
 }
 
@@ -236,14 +274,15 @@ impl SprueService for SprueAgent {
         _context: tarpc::context::Context,
     ) -> impl Future<Output = Result<(), SprueError>> {
         async move {
-            let client = self.auth.client().await?;
+            let (registration_id, _, client) = self.auth.authenticated().await?;
             cmd::checkin(CheckinRequest {
                 client: &client,
-                registration_id: self.auth.registration_id.clone(),
+                registration_id,
             })
             .await
             .map_err(|err| {
                 tracing::error!(?err, "Failed to checkin");
+                self.auth.observe(&err);
                 SprueError::Failure(err.to_string())
             })
         }
@@ -255,15 +294,16 @@ impl SprueService for SprueAgent {
         path: PathBuf,
     ) -> impl Future<Output = Result<String, SprueError>> {
         async move {
-            let client = self.auth.client().await?;
+            let (registration_id, _, client) = self.auth.authenticated().await?;
             Ok(cmd::backup(BackupRequest {
                 client: &client,
-                registration_id: self.auth.registration_id.clone(),
+                registration_id,
                 path: &path,
             })
             .await
             .map_err(|err| {
                 tracing::error!(?err, "Failed to backup");
+                self.auth.observe(&err);
                 SprueError::Failure(err.to_string())
             })?
             .to_string())
@@ -275,11 +315,12 @@ impl SprueService for SprueAgent {
         _context: tarpc::context::Context,
     ) -> impl Future<Output = Result<String, SprueError>> {
         async move {
+            let (registration_id, token, _) = self.auth.authenticated().await?;
             tracing::info!(
-                registration = ?self.auth.registration_id.0,
-                "Retrieving token for registration id"
+                registration = ?registration_id.0,
+                "Retrieved token for registration id"
             );
-            self.auth.token().await
+            Ok(token)
         }
     }
 
@@ -288,21 +329,31 @@ impl SprueService for SprueAgent {
         _context: tarpc::context::Context,
     ) -> impl Future<Output = Result<TypedUuidForServerRegistrationId, SprueError>> {
         async move {
-            let client = self.auth.unauthenticated();
-            cmd::register_server(&client, &self.service, self.auth.platform.as_ref())
+            // Registration is driven in the background. Wait until it has
+            // produced a registration and report it.
+            let mut standing = self.auth.registration.subscribe();
+            let standing = standing
+                .wait_for(|standing| *standing != Standing::Unregistered)
                 .await
-                .map_err(|err| {
-                    tracing::error!(?err, "Failed to register server");
-                    SprueError::Failure(err.to_string())
-                })
+                .map_err(|_| SprueError::Failure("Registration task stopped".to_string()))?
+                .clone();
+            match standing {
+                Standing::Waiting(id) | Standing::Accepted(id) => Ok(id),
+                standing => Err(SprueError::NotAccepted(standing.to_string())),
+            }
         }
     }
 
     fn get_registration_id(
         self,
         _context: tarpc::context::Context,
-    ) -> impl Future<Output = TypedUuidForServerRegistrationId> {
-        async move { self.auth.registration_id.clone() }
+    ) -> impl Future<Output = Result<TypedUuidForServerRegistrationId, SprueError>> {
+        async move {
+            let standing = self.auth.registration.standing();
+            standing
+                .registration_id()
+                .ok_or_else(|| SprueError::NotAccepted(standing.to_string()))
+        }
     }
 }
 
@@ -332,34 +383,6 @@ impl SprueAgentStarter {
         }
     }
 
-    const INITIAL_RETRY_INTERVAL: Duration = Duration::from_secs(1);
-    const MAX_RETRY_INTERVAL: Duration = Duration::from_secs(60);
-
-    /// Attempt to register the server, retrying with exponential backoff if
-    /// the remote sprue server is not reachable yet.
-    async fn register_with_retry(
-        client: &Client,
-        service: &str,
-        platform: &dyn Platform,
-    ) -> anyhow::Result<TypedUuidForServerRegistrationId> {
-        let mut interval = Self::INITIAL_RETRY_INTERVAL;
-
-        loop {
-            match cmd::register_server(client, service, platform).await {
-                Ok(id) => return Ok(id),
-                Err(err) => {
-                    tracing::warn!(
-                        ?err,
-                        retry_in = ?interval,
-                        "Failed to register with sprue server, retrying"
-                    );
-                    tokio::time::sleep(interval).await;
-                    interval = (interval * 2).min(Self::MAX_RETRY_INTERVAL);
-                }
-            }
-        }
-    }
-
     pub async fn serve(&self) -> anyhow::Result<()> {
         // Verify that the socket parent directory exists
         if self.socket.parent().is_none() || !self.socket.parent().unwrap().exists() {
@@ -374,19 +397,16 @@ impl SprueAgentStarter {
             std::fs::remove_file(&self.socket)?;
         }
 
-        let client = Client::new(&self.server);
-
-        // Wait for the remote sprue server to become available and register.
-        // The server may not be running yet at boot time so we retry with
-        // exponential backoff rather than failing immediately.
-        let registration_id =
-            Self::register_with_retry(&client, &self.service, self.platform.as_ref()).await?;
-
+        // Registration is driven in the background so that the socket is
+        // available while the agent is not yet accepted.
+        let registration = Arc::new(Registration::new());
         let auth = Arc::new(AuthenticatedClient::new(
             self.server.clone(),
-            registration_id.clone(),
+            registration.clone(),
             self.platform.clone(),
         ));
+        let client = Client::new(&self.server);
+        let registration_loop = registration.run(&client, &self.service, self.platform.as_ref());
 
         let listener = tarpc::serde_transport::unix::listen(&self.socket, Json::default).await?;
 
@@ -399,10 +419,7 @@ impl SprueAgentStarter {
             .filter_map(|r| future::ready(r.ok()))
             .map(server::BaseChannel::with_defaults)
             .map(|channel| {
-                let agent = SprueAgent {
-                    service: self.service.clone(),
-                    auth: auth.clone(),
-                };
+                let agent = SprueAgent { auth: auth.clone() };
                 async { channel.execute(agent.serve()).for_each(spawn).await }
             })
             .buffer_unordered(10)
@@ -410,21 +427,21 @@ impl SprueAgentStarter {
 
         tracing::info!("Accepting connections");
 
-        // Start a checkin loop that periodically checks in with the server
-        let checkin_agent = SprueAgent {
-            service: self.service.clone(),
-            auth: auth.clone(),
-        };
+        // Check in periodically while the registration is accepted
+        let checkin_agent = SprueAgent { auth: auth.clone() };
+        let mut standing = registration.subscribe();
         let checkin_loop = async {
             loop {
-                match checkin_agent.clone().checkin(context::current()).await {
-                    Ok(_) => {
-                        tracing::trace!("Checkin successful");
-                    }
-                    Err(err) => {
-                        tracing::error!(?err, "Failed to checkin");
-                    }
-                };
+                let accepted = standing
+                    .wait_for(|standing| matches!(standing, Standing::Accepted(_)))
+                    .await
+                    .is_ok();
+                if accepted {
+                    match checkin_agent.clone().checkin(context::current()).await {
+                        Ok(_) => tracing::trace!("Checkin successful"),
+                        Err(err) => tracing::error!(?err, "Failed to checkin"),
+                    };
+                }
 
                 tokio::time::sleep(Duration::from_secs(5)).await;
             }
@@ -434,6 +451,7 @@ impl SprueAgentStarter {
         tokio::select! {
             _ = accept_loop => {},
             _ = checkin_loop => {},
+            _ = registration_loop => {},
             _ = tokio::signal::ctrl_c() => {
                 tracing::info!("Received shutdown signal");
             }

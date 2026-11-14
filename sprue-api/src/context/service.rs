@@ -9,20 +9,26 @@ use thiserror::Error;
 use v_model::permissions::Caller;
 
 use sprue_model::{
-    Deployment, DeploymentId, HealthCheck, InvalidStateTransition, ProjectId, ServerRegistration,
-    ServerRegistrationId, ServerRegistrationInstanceId, Service, ServiceId, ServiceIdentifier,
-    SiloId,
-    db::{NewDeploymentModel, NewHealthCheckModel, NewServerRegistrationModel, NewServiceModel},
+    Deployment, DeploymentId, HealthCheck, InvalidStateTransition, ProjectId,
+    RegistrationChallenge, RegistrationChallengeId, ServerRegistration, ServerRegistrationId,
+    Service, ServiceId, ServiceIdentifier, SiloId,
+    db::{
+        NewDeploymentModel, NewHealthCheckModel, NewRegistrationChallengeModel,
+        NewServerRegistrationModel, NewServiceModel,
+    },
     storage::{
-        DeploymentStorage, HealthCheckStorage, Paginated, ServerRegistrationStorage,
-        ServiceStorage, StorageError,
+        DeploymentStorage, HealthCheckStorage, Paginated, RegistrationChallengeStorage,
+        ServerRegistrationStorage, ServiceStorage, StorageError,
     },
 };
 use v_api::response::{
     OptionalResource, ResourceError, ResourceErrorInner, ResourceResult, resource_restricted,
 };
 
-use crate::{context::ServerCaller, permissions::ApiPermissions};
+use crate::{
+    context::{ServerCaller, server_identity::VerifiedInstance},
+    permissions::ApiPermissions,
+};
 
 #[derive(Debug, Error)]
 pub enum ServiceError {
@@ -33,11 +39,20 @@ pub enum ServiceError {
 }
 
 pub trait ServiceContextStorage:
-    ServiceStorage + DeploymentStorage + ServerRegistrationStorage + HealthCheckStorage
+    ServiceStorage
+    + DeploymentStorage
+    + RegistrationChallengeStorage
+    + ServerRegistrationStorage
+    + HealthCheckStorage
 {
 }
-impl<T: ServiceStorage + DeploymentStorage + ServerRegistrationStorage + HealthCheckStorage>
-    ServiceContextStorage for T
+impl<
+    T: ServiceStorage
+        + DeploymentStorage
+        + RegistrationChallengeStorage
+        + ServerRegistrationStorage
+        + HealthCheckStorage,
+> ServiceContextStorage for T
 {
 }
 
@@ -188,19 +203,70 @@ impl ServiceContext {
         }
     }
 
-    pub async fn register_server(
+    /// Issue a challenge to a VM that wants to join the given service.
+    pub async fn create_registration_challenge(
         &self,
         caller: &Caller<ApiPermissions>,
         service: TypedUuid<ServiceId>,
-        instance: TypedUuid<ServerRegistrationInstanceId>,
-        project_id: TypedUuid<ProjectId>,
-        silo_id: TypedUuid<SiloId>,
         nonce: String,
-    ) -> ResourceResult<ServerRegistration, ServiceError> {
+    ) -> ResourceResult<RegistrationChallenge, ServiceError> {
         if caller.can(&ApiPermissions::ManageService(service)) {
+            Ok(self
+                .storage
+                .create_registration_challenge(&NewRegistrationChallengeModel {
+                    service_id: service,
+                    nonce,
+                    expires_at: Utc::now().add(self.max_server_registration_age),
+                })
+                .await
+                .map_err(ResourceError::InternalError)
+                .inner_err_into()?
+                .into())
+        } else {
+            resource_restricted()
+        }
+    }
+
+    /// Get a registration challenge that can still be answered.
+    pub async fn get_registration_challenge(
+        &self,
+        caller: &Caller<ApiPermissions>,
+        id: TypedUuid<RegistrationChallengeId>,
+    ) -> ResourceResult<RegistrationChallenge, ServiceError> {
+        let challenge: RegistrationChallenge = self
+            .storage
+            .get_active_registration_challenge(id)
+            .await
+            .optional()?
+            .into();
+        if caller.can(&ApiPermissions::ManageService(challenge.service_id)) {
+            Ok(challenge)
+        } else {
+            resource_restricted()
+        }
+    }
+
+    /// Answer a registration challenge with an instance identity that has been
+    /// proven by attestation. The challenge is consumed so that it can not be
+    /// replayed. An instance that is already registered gets its existing
+    /// registration back, but only when that registration agrees with the
+    /// attested identity and the challenged service. Otherwise a new
+    /// registration is created.
+    pub async fn complete_registration_challenge(
+        &self,
+        caller: &Caller<ApiPermissions>,
+        challenge: &RegistrationChallenge,
+        instance: VerifiedInstance,
+    ) -> ResourceResult<ServerRegistration, ServiceError> {
+        if caller.can(&ApiPermissions::ManageService(challenge.service_id)) {
+            self.storage
+                .consume_registration_challenge(challenge.id)
+                .await
+                .optional()?;
+
             let existing = self
                 .storage
-                .get_server_registration_by_instance_id(instance)
+                .get_server_registration_by_instance_id(instance.instance_id())
                 .await
                 .map_err(ResourceError::InternalError)
                 .inner_err_into()?;
@@ -209,18 +275,30 @@ impl ServiceContext {
                 None => Ok(self
                     .storage
                     .create_server_registration(&NewServerRegistrationModel {
-                        service_id: service,
-                        instance_id: instance,
-                        project_id,
-                        silo_id,
-                        nonce: Some(nonce),
-                        expires_at: Some(Utc::now().add(self.max_server_registration_age)),
+                        service_id: challenge.service_id,
+                        instance_id: instance.instance_id(),
+                        project_id: instance.project_id(),
+                        silo_id: instance.silo_id(),
                     })
                     .await
                     .map_err(ResourceError::InternalError)
                     .inner_err_into()?
                     .into()),
-                Some(model) => Ok(model.into()),
+                Some(model)
+                    if model.service_id == challenge.service_id
+                        && model.project_id == instance.project_id()
+                        && model.silo_id == instance.silo_id() =>
+                {
+                    Ok(model.into())
+                }
+                Some(model) => {
+                    tracing::warn!(
+                        registration = ?model.id,
+                        instance = ?instance.instance_id(),
+                        "Existing registration does not match the attested identity or the challenged service"
+                    );
+                    Err(ResourceError::Conflict)
+                }
             }
         } else {
             resource_restricted()
@@ -241,30 +319,6 @@ impl ServiceContext {
                     server
                         .state
                         .accept()
-                        .map_err(ResourceError::InternalError)
-                        .inner_err_into()?,
-                )
-                .await
-                .optional()?)
-        } else {
-            resource_restricted()
-        }
-    }
-
-    pub async fn prove_server(
-        &self,
-        caller: &Caller<ApiPermissions>,
-        server: &ServerRegistration,
-    ) -> ResourceResult<(), ServiceError> {
-        if caller.can(&ApiPermissions::ManageService(server.service_id)) {
-            Ok(self
-                .storage
-                .update_server_registration_state(
-                    server.id,
-                    server.state,
-                    server
-                        .state
-                        .prove()
                         .map_err(ResourceError::InternalError)
                         .inner_err_into()?,
                 )

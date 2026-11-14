@@ -6,9 +6,10 @@
 
 use sprue_api::{context::policy::PolicyEngine, permissions::ApiPermissions};
 use sprue_sdk::types::ServerRegistrationState;
+use uuid::Uuid;
 use vm_attest::VmInstanceConf;
 
-use crate::common::{SeededContext, nonce_to_data};
+use crate::common::SeededContext;
 
 mod common;
 
@@ -71,36 +72,7 @@ async fn test_server_auto_registration() {
         .await
         .unwrap();
 
-    // Register the server — same flow as the manual test
-    let registration = vm
-        .client
-        .register_server()
-        .service(service.id.to_string())
-        .body_map(|body| {
-            body.instance(vm.conf.uuid)
-                .project_id(vm.conf().project)
-                .silo_id(vm.conf().silo)
-        })
-        .send()
-        .await
-        .unwrap()
-        .into_inner()
-        .registration;
-
-    // Transform the nonce into qualifying data
-    let qualifying_data = nonce_to_data(registration.nonce.as_ref().unwrap());
-
-    // Generate an attestation for the VM from our mock RoT to provide the VM's identity
-    let attestation = vm.rot().attest(&vm.conf(), &qualifying_data).await.unwrap();
-
-    // Prove identity — the policy engine should auto-accept the server
-    vm.client
-        .prove_server()
-        .server(registration.id.clone())
-        .body_map(|body| body.attestation(attestation))
-        .send()
-        .await
-        .unwrap();
+    let registration = vm.register(&service.id.to_string()).await;
 
     // No manual accept_server call — the policy engine should have done it.
     // Verify the server is in Accepted state.
@@ -115,5 +87,107 @@ async fn test_server_auto_registration() {
 
     assert_eq!(servers.len(), 1);
     assert_eq!(servers[0].id.0, registration.id.0);
+    assert_eq!(servers[0].state, ServerRegistrationState::Accepted);
+}
+
+/// A VM that runs in a different project than any deployment of the service is
+/// not accepted, because the policy sees the attested project rather than one
+/// the VM reports about itself.
+#[tokio::test]
+async fn test_server_auto_registration_uses_attested_project() {
+    let _ = tracing_subscriber::fmt::try_init();
+
+    let policy = PolicyEngine::new(POLICY).unwrap();
+    let seed = SeededContext::create_with_policy("server_auto_registration_attested", Some(policy))
+        .await
+        .unwrap();
+    let _handle = seed.server().run();
+
+    let user_group = seed
+        .group(vec![
+            ApiPermissions::GetApiUserSelf,
+            ApiPermissions::CreateService,
+        ])
+        .await;
+    let user = seed.user(USER_SCOPE, vec![user_group]).await;
+    let service = user
+        .client
+        .create_service()
+        .body_map(|body| body.name("test"))
+        .send()
+        .await
+        .unwrap()
+        .into_inner();
+
+    let deployed: VmInstanceConf =
+        serde_json::from_slice(include_bytes!("../test-data/attestation/vm.json")).unwrap();
+    user.client
+        .create_deployment()
+        .service(service.id.to_string())
+        .body_map(|body| body.project(deployed.project).silo(deployed.silo))
+        .send()
+        .await
+        .unwrap();
+
+    let mut elsewhere = deployed.clone();
+    elsewhere.project = Uuid::new_v4();
+    let vm = seed.vm(elsewhere);
+    let registration = vm.register(&service.id.to_string()).await;
+
+    assert_eq!(registration.state, ServerRegistrationState::Proven);
+}
+
+/// A server that is waiting for approval is accepted once a matching
+/// deployment is created, without the VM doing anything further.
+#[tokio::test]
+async fn test_new_deployment_accepts_waiting_server() {
+    let _ = tracing_subscriber::fmt::try_init();
+
+    let policy = PolicyEngine::new(POLICY).unwrap();
+    let seed =
+        SeededContext::create_with_policy("server_auto_registration_deployment", Some(policy))
+            .await
+            .unwrap();
+    let _handle = seed.server().run();
+
+    let user_group = seed
+        .group(vec![
+            ApiPermissions::GetApiUserSelf,
+            ApiPermissions::CreateService,
+        ])
+        .await;
+    let user = seed.user(USER_SCOPE, vec![user_group]).await;
+    let service = user
+        .client
+        .create_service()
+        .body_map(|body| body.name("test"))
+        .send()
+        .await
+        .unwrap()
+        .into_inner();
+
+    let vm_config: VmInstanceConf =
+        serde_json::from_slice(include_bytes!("../test-data/attestation/vm.json")).unwrap();
+    let vm = seed.vm(vm_config);
+    let registration = vm.register(&service.id.to_string()).await;
+    assert_eq!(registration.state, ServerRegistrationState::Proven);
+
+    user.client
+        .create_deployment()
+        .service(service.id.to_string())
+        .body_map(|body| body.project(vm.conf().project).silo(vm.conf().silo))
+        .send()
+        .await
+        .unwrap();
+
+    let servers = user
+        .client
+        .get_service_servers()
+        .service(service.id.to_string())
+        .send()
+        .await
+        .unwrap()
+        .into_inner();
+    assert_eq!(servers.len(), 1);
     assert_eq!(servers[0].state, ServerRegistrationState::Accepted);
 }

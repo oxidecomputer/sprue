@@ -3,37 +3,13 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 use anyhow::{Context, Result};
-use vm_attest::{MeasurementLog, QualifyingData, RotType, VmInstanceAttestation, VmInstanceConf};
-
-/// Extract the `VmInstanceConf` from attestation measurement logs.
-///
-/// The platform embeds the VM instance configuration as a JSON-serialized
-/// `OxideInstance` measurement log entry.
-pub fn extract_vm_conf(logs: &[MeasurementLog]) -> Result<VmInstanceConf> {
-    for log in logs {
-        if log.rot == RotType::OxideInstance {
-            let raw = std::str::from_utf8(&log.data)
-                .context("OxideInstance measurement log is not valid UTF-8")?;
-            let conf: VmInstanceConf =
-                serde_json::from_str(raw).context("Failed to parse VmInstanceConf from log")?;
-            return Ok(conf);
-        }
-    }
-    anyhow::bail!("No OxideInstance measurement log found in attestation")
-}
+#[cfg(feature = "local-dev")]
+use vm_attest::VmInstanceConf;
+use vm_attest::{QualifyingData, VmInstanceAttestation};
 
 /// Abstraction over the platform attestation mechanism.
 pub trait Platform: Send + Sync {
     fn attest(&self, data: &QualifyingData) -> Result<VmInstanceAttestation>;
-
-    /// Perform a discovery attestation with random qualifying data and extract the VM config.
-    fn discover_identity(&self) -> Result<(VmInstanceAttestation, VmInstanceConf)> {
-        let data = QualifyingData::from_platform_rng()
-            .map_err(|err| anyhow::anyhow!("Failed to generate random qualifying data: {}", err))?;
-        let attestation = self.attest(&data)?;
-        let conf = extract_vm_conf(&attestation.measurement_logs)?;
-        Ok((attestation, conf))
-    }
 }
 
 // Real Oxide platform – vsock to the RoT

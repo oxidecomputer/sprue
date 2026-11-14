@@ -8,8 +8,8 @@ use partial_struct::partial;
 
 use crate::{
     BlobId, BlobState, DeploymentId, HealthCheckId, IdempotentRequestId, IdempotentRequestState,
-    ProjectId, ServerRegistrationId, ServerRegistrationInstanceId, ServerRegistrationState,
-    ServiceId, SiloId, TokenRequestId, TokenRequestState,
+    ProjectId, RegistrationChallengeId, ServerRegistrationId, ServerRegistrationInstanceId,
+    ServerRegistrationState, ServiceId, SiloId, TokenRequestId, TokenRequestState,
 };
 
 #[partial(NewServiceModel)]
@@ -40,14 +40,23 @@ pub struct ServerRegistrationModel {
     pub instance_id: TypedUuid<ServerRegistrationInstanceId>,
     pub project_id: TypedUuid<ProjectId>,
     pub silo_id: TypedUuid<SiloId>,
-    pub nonce: Option<String>,
-    pub expires_at: Option<DateTime<Utc>>,
     #[partial(NewServerRegistrationModel(skip))]
     pub state: ServerRegistrationState,
     #[partial(NewServerRegistrationModel(skip))]
     pub created_at: DateTime<Utc>,
     #[partial(NewServerRegistrationModel(skip))]
     pub updated_at: DateTime<Utc>,
+}
+
+#[partial(NewRegistrationChallengeModel)]
+pub struct RegistrationChallengeModel {
+    #[partial(NewRegistrationChallengeModel(skip))]
+    pub id: TypedUuid<RegistrationChallengeId>,
+    pub service_id: TypedUuid<ServiceId>,
+    pub nonce: String,
+    pub expires_at: DateTime<Utc>,
+    #[partial(NewRegistrationChallengeModel(skip))]
+    pub created_at: DateTime<Utc>,
 }
 
 #[partial(NewTokenRequestModel)]

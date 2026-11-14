@@ -101,11 +101,20 @@ impl OidcContext {
             .into())
     }
 
+    /// Get a token request that was registered by the given server. A request
+    /// that belongs to a different server is treated as missing.
     pub async fn get_token_request(
         &self,
+        server: TypedUuid<ServerRegistrationId>,
         id: TypedUuid<TokenRequestId>,
     ) -> ResourceResult<TokenRequest, OidcContextError> {
-        Ok(self.storage.get_token_request(id).await.optional()?.into())
+        Ok(self
+            .storage
+            .get_token_request(id)
+            .await
+            .map(|request| request.filter(|r| r.server_registration_id == server))
+            .optional()?
+            .into())
     }
 
     pub async fn generate_claims(

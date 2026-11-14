@@ -71,7 +71,7 @@ fn cmd_path<'a>(cmd: &CliCommand) -> Option<&'a str> {
 
         CliCommand::RegisterServer => Some("server register"),
         CliCommand::AcceptServer => Some("server accept"),
-        CliCommand::ProveServer => Some("server prove"),
+        CliCommand::ProveRegistration => Some("server prove"),
         CliCommand::RejectServer => Some("server reject"),
         CliCommand::TerminateServer => Some("server terminate"),
         CliCommand::CheckinServer => Some("server checkin"),

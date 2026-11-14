@@ -196,9 +196,7 @@ mod tests {
             instance_id: new_id::<ServerRegistrationInstanceId>(),
             project_id: new_id::<ProjectId>(),
             silo_id: new_id::<SiloId>(),
-            nonce: None,
             state: ServerRegistrationState::Proven,
-            expires_at: None,
             created_at: Utc::now(),
             updated_at: Utc::now(),
         }

@@ -17,6 +17,7 @@ use crate::server::SprueAgentStarter;
 mod cmd;
 mod oidc;
 mod platform;
+mod registration;
 mod server;
 mod vsock;
 

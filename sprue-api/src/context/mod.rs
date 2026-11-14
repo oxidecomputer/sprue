@@ -5,13 +5,16 @@
 use derive_builder::Builder;
 use dropshot::{HttpError, RequestContext};
 use newtype_uuid::TypedUuid;
-use sprue_model::{ServerRegistrationId, ServerRegistrationInstanceId, ServiceId};
+use sprue_model::{
+    ServerRegistrationId, ServerRegistrationInstanceId, ServerRegistrationState, ServiceId,
+};
 use sprue_svc::SprueServiceClient;
 use std::{collections::HashMap, fmt::Debug, path::PathBuf, sync::Arc};
 use steno::ActionRegistry;
 use tarpc::tokio_serde::formats::Json;
 use thiserror::Error;
 use tokio::sync::OnceCell;
+use v_api::response::ResourceError;
 use v_api::{
     ApiContext as VApiContext, VContext,
     authn::jwt::{Jwt, JwtError},
@@ -42,6 +45,10 @@ pub mod service;
 pub enum ApiContextError {
     #[error("Failed to extract JWT")]
     FailedToExtractJwt(#[from] JwtError),
+    #[error("Failed to look up the server registration")]
+    RegistrationLookup,
+    #[error("Server registration is not accepted")]
+    RegistrationNotAccepted,
 }
 
 #[derive(Builder, Clone)]
@@ -110,11 +117,28 @@ impl ApiContext {
         rqctx: &RequestContext<ApiContext>,
     ) -> Result<ServerCaller, ApiContextError> {
         let jwt: Jwt<VmClaims> = Jwt::extract(rqctx).await?;
-        Ok(ServerCaller {
-            id: jwt.claims.sub,
-            service: jwt.claims.svc,
-            instance: jwt.claims.oxc.ins,
-        })
+
+        // A token is only honored while the registration it was issued for is
+        // still accepted. A terminated or deleted server loses access at once
+        // instead of when its token expires.
+        match self
+            .service
+            .get_server(&self.system_caller, jwt.claims.sub)
+            .await
+        {
+            Ok(server) if server.state == ServerRegistrationState::Accepted => Ok(ServerCaller {
+                id: jwt.claims.sub,
+                service: jwt.claims.svc,
+                instance: jwt.claims.oxc.ins,
+            }),
+            Ok(_) | Err(ResourceError::DoesNotExist) => {
+                Err(ApiContextError::RegistrationNotAccepted)
+            }
+            Err(err) => {
+                tracing::error!(?err, "Failed to look up server registration for token");
+                Err(ApiContextError::RegistrationLookup)
+            }
+        }
     }
 }
 
@@ -128,7 +152,16 @@ impl VApiContext for ApiContext {
 impl From<ApiContextError> for HttpError {
     fn from(err: ApiContextError) -> Self {
         tracing::warn!(?err, "Api context error");
-        HttpError::for_internal_error("Internal server error".to_string())
+        match err {
+            ApiContextError::RegistrationNotAccepted => HttpError::for_client_error(
+                None,
+                dropshot::ClientErrorStatusCode::FORBIDDEN,
+                "Server registration is not accepted".to_string(),
+            ),
+            ApiContextError::FailedToExtractJwt(_) | ApiContextError::RegistrationLookup => {
+                HttpError::for_internal_error("Internal server error".to_string())
+            }
+        }
     }
 }
 

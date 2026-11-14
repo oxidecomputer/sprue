@@ -21,7 +21,9 @@ pub enum SprueError {
 pub trait SprueService {
     async fn checkin() -> Result<(), SprueError>;
     async fn backup(path: PathBuf) -> Result<String, SprueError>;
-    async fn get_token() -> Result<String, SprueError>;
+    /// Get a token for this server with the given audience. Tokens for sprue
+    /// itself are kept inside the agent, so sprue can not be the audience.
+    async fn get_token(audience: String) -> Result<String, SprueError>;
     async fn get_registration_id() -> Result<TypedUuidForServerRegistrationId, SprueError>;
     async fn register_server() -> Result<TypedUuidForServerRegistrationId, SprueError>;
 }

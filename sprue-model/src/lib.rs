@@ -411,6 +411,9 @@ pub struct TokenRequest {
     pub server_registration_id: TypedUuid<ServerRegistrationId>,
     pub nonce: Option<String>,
     pub expires_at: Option<DateTime<Utc>>,
+    /// The audience of the token that this request issues. This is None only
+    /// for requests that were made before audiences were recorded.
+    pub audience: Option<String>,
     pub state: TokenRequestState,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -423,6 +426,7 @@ impl From<TokenRequestModel> for TokenRequest {
             server_registration_id: model.server_registration_id,
             nonce: model.nonce,
             expires_at: model.expires_at,
+            audience: model.audience,
             state: model.state,
             created_at: model.created_at,
             updated_at: model.updated_at,

@@ -68,6 +68,7 @@ ratatui = "0.30"
 # builder used to construct one in tests.
 rats-corim = { git = "https://github.com/oxidecomputer/rats-corim" }
 regex = "1.12.3"
+regress = "0.11"
 reqwest = { version = "0.13", default-features = false, features = ["json", "form", "rustls"] }
 rsa = "0.9.10"
 rustls = { version = "0.23.37", default-features = false, features = ["aws-lc-rs"] }

@@ -158,9 +158,17 @@ impl From<ApiContextError> for HttpError {
                 dropshot::ClientErrorStatusCode::FORBIDDEN,
                 "Server registration is not accepted".to_string(),
             ),
-            ApiContextError::FailedToExtractJwt(_) | ApiContextError::RegistrationLookup => {
+            // A broken signing key is a fault in sprue. Every other token
+            // error means the caller sent a token that sprue does not accept.
+            ApiContextError::FailedToExtractJwt(JwtError::InvalidJwk(_))
+            | ApiContextError::RegistrationLookup => {
                 HttpError::for_internal_error("Internal server error".to_string())
             }
+            ApiContextError::FailedToExtractJwt(_) => HttpError::for_client_error(
+                None,
+                dropshot::ClientErrorStatusCode::UNAUTHORIZED,
+                "Invalid token".to_string(),
+            ),
         }
     }
 }

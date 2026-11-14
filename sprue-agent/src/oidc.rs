@@ -73,6 +73,7 @@ fn decoding_key_from_jwk(jwk: &Jwk) -> Result<DecodingKey, JwtValidationError> {
 /// Returns the validated claims on success
 pub fn validate_jwt(
     issuer: &str,
+    audience: &str,
     token: &str,
     jwks: &Jwks,
 ) -> Result<VmClaims, JwtValidationError> {
@@ -92,8 +93,8 @@ pub fn validate_jwt(
     let mut validation = Validation::new(Algorithm::RS256);
     validation.set_issuer(&[issuer]);
 
-    // We expect the audience to match the issuer
-    validation.set_audience(&[issuer]);
+    // The token must carry the audience that was requested
+    validation.set_audience(&[audience]);
     validation.validate_aud = true;
 
     // Decode and validate the JWT

@@ -207,7 +207,12 @@ impl MockVm {
 
     /// Attest over the nonce of a challenge as this VM.
     pub async fn attest(&self, challenge: &RegistrationChallenge) -> Attestation {
-        let qualifying_data = super::nonce_to_data(&challenge.nonce);
+        self.attest_nonce(&challenge.nonce).await
+    }
+
+    /// Attest over a hex encoded nonce.
+    pub async fn attest_nonce(&self, nonce: &str) -> Attestation {
+        let qualifying_data = super::nonce_to_data(nonce);
         self.rot()
             .attest(self.conf(), &qualifying_data)
             .await
@@ -232,10 +237,21 @@ impl MockVm {
 
     /// Exchange an attestation for a token and use it for later requests.
     pub async fn authenticate(&mut self, registration: &TypedUuidForServerRegistrationId) {
+        let token = self.token(registration, None).await;
+        self.install_token(&token);
+    }
+
+    /// Exchange an attestation for a token with the given audience.
+    pub async fn token(
+        &self,
+        registration: &TypedUuidForServerRegistrationId,
+        audience: Option<&str>,
+    ) -> String {
         let request = self
             .client
             .register_oidc_token_request()
             .server(registration.clone())
+            .body_map(|body| body.audience(audience.map(|audience| audience.try_into().unwrap())))
             .send()
             .await
             .unwrap()
@@ -246,8 +262,7 @@ impl MockVm {
             .attest(self.conf(), &qualifying_data)
             .await
             .unwrap();
-        let token = self
-            .client
+        self.client
             .prove_oidc_token_request()
             .server(registration.clone())
             .body_map(|body| body.attestation(attestation).request(request.id))
@@ -255,8 +270,7 @@ impl MockVm {
             .await
             .unwrap()
             .into_inner()
-            .token;
-        self.install_token(&token);
+            .token
     }
 
     /// Run the full registration flow for the given service.

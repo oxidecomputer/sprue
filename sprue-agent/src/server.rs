@@ -8,7 +8,10 @@ use reqwest::{
     StatusCode,
     header::{AUTHORIZATION, HeaderMap, HeaderValue},
 };
-use sprue_sdk::{Client, types::TypedUuidForServerRegistrationId};
+use sprue_sdk::{
+    Client,
+    types::{Audience, TypedUuidForServerRegistrationId},
+};
 use sprue_svc::{SprueError, SprueService};
 use std::{
     path::PathBuf,
@@ -159,6 +162,7 @@ impl AuthenticatedClient {
                     registration_id: id.clone(),
                     platform: self.platform.as_ref(),
                     issuer: &self.server,
+                    audience: None,
                 })
                 .await
                 .map_err(|err| {
@@ -191,15 +195,60 @@ impl AuthenticatedClient {
         }
     }
 
+    /// Request a token for another audience. These tokens are not used to
+    /// talk to sprue, so they are not cached and a new one is requested on
+    /// every call.
+    async fn token_for(&self, audience: &Audience) -> Result<String, SprueError> {
+        let id = self.accepted_id()?;
+        let plain = self.unauthenticated();
+        cmd::get_token(TokenRequest {
+            client: &plain,
+            registration_id: id,
+            platform: self.platform.as_ref(),
+            issuer: &self.server,
+            audience: Some(audience),
+        })
+        .await
+        .map_err(|err| {
+            tracing::error!(?err, audience = %audience.as_str(), "Failed to get token");
+            if status_of(&err).is_some_and(|status| status.is_client_error()) {
+                self.registration.recheck();
+            }
+            SprueError::Failure(err.to_string())
+        })
+    }
+
     /// React to a failed request that carried this agent's token. Sprue
     /// refuses such requests once the registration is no longer accepted, so
     /// the cached token is dropped and the standing is checked again.
     fn observe(&self, err: &anyhow::Error) {
-        if status_of(err) == Some(StatusCode::FORBIDDEN) {
-            tracing::info!("Sprue refused the agent token");
-            *self.cache.write().unwrap_or_else(|e| e.into_inner()) = None;
-            self.registration.recheck();
+        match status_of(err) {
+            Some(StatusCode::FORBIDDEN) => {
+                tracing::info!("Sprue refused the agent token");
+                *self.cache.write().unwrap_or_else(|e| e.into_inner()) = None;
+                self.registration.recheck();
+            }
+            // Sprue did not accept the token itself, so a new one is
+            // requested on the next call.
+            Some(StatusCode::UNAUTHORIZED) => {
+                tracing::info!("Sprue did not accept the agent token");
+                *self.cache.write().unwrap_or_else(|e| e.into_inner()) = None;
+            }
+            _ => {}
         }
+    }
+}
+
+/// Parse an audience that a local caller asked for. The sprue server is
+/// refused as an audience because a token for sprue lets the caller act as
+/// this server towards sprue.
+fn external_audience(server: &str, audience: String) -> Result<Audience, SprueError> {
+    match audience.trim_end_matches('/') == server.trim_end_matches('/') {
+        true => Err(SprueError::Failure(
+            "Tokens for sprue are not handed out by the agent".to_string(),
+        )),
+        false => Audience::try_from(audience)
+            .map_err(|err| SprueError::Failure(format!("Invalid audience: {err}"))),
     }
 }
 
@@ -313,14 +362,11 @@ impl SprueService for SprueAgent {
     fn get_token(
         self,
         _context: tarpc::context::Context,
+        audience: String,
     ) -> impl Future<Output = Result<String, SprueError>> {
         async move {
-            let (registration_id, token, _) = self.auth.authenticated().await?;
-            tracing::info!(
-                registration = ?registration_id.0,
-                "Retrieved token for registration id"
-            );
-            Ok(token)
+            let audience = external_audience(&self.auth.server, audience)?;
+            self.auth.token_for(&audience).await
         }
     }
 
@@ -464,4 +510,18 @@ impl SprueAgentStarter {
 
 async fn spawn(fut: impl Future<Output = ()> + Send + 'static) {
     tokio::spawn(fut);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::external_audience;
+
+    #[test]
+    fn test_external_audience_refuses_sprue() {
+        let server = "https://sprue.example.com";
+        assert!(external_audience(server, server.to_string()).is_err());
+        assert!(external_audience(server, format!("{server}/")).is_err());
+        assert!(external_audience(server, "".to_string()).is_err());
+        assert!(external_audience(server, "sts.amazonaws.com".to_string()).is_ok());
+    }
 }

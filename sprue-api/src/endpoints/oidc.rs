@@ -9,11 +9,24 @@ use serde::{Deserialize, Serialize};
 use sprue_model::{ServerRegistrationState, TokenRequest, TokenRequestId};
 use v_api::ApiContext as VApiContext;
 
-use crate::{context::ApiContext, endpoints::service::ServerPath, schema::Attestation};
+use crate::{
+    context::ApiContext,
+    endpoints::service::ServerPath,
+    schema::{Attestation, Audience},
+};
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct OidcTokenRequestBody {
+    /// The audience of the issued token. The token is issued for sprue itself
+    /// when no audience is requested.
+    audience: Option<Audience>,
+}
 
 /// Register a request for a server OIDC token.
 ///
 /// The server will be issued a challenge that it must sign and return to prove its identity.
+/// The server may request any audience for the token. Without one the token is issued for
+/// sprue itself. The audience is recorded on the request.
 #[endpoint {
     method = POST,
     path = "/server/{server}/oidc/token",
@@ -21,16 +34,21 @@ use crate::{context::ApiContext, endpoints::service::ServerPath, schema::Attesta
 pub async fn register_oidc_token_request(
     rqctx: RequestContext<ApiContext>,
     path: Path<ServerPath>,
+    body: TypedBody<OidcTokenRequestBody>,
 ) -> Result<HttpResponseOk<TokenRequest>, HttpError> {
     let ctx = rqctx.context();
     let path = path.into_inner();
+    let body = body.into_inner();
     let server = ctx
         .service
         .get_server(ctx.system_caller(), path.server)
         .await?;
     let nonce = ctx.server_identity.generate_nonce()?;
 
-    let token_request = ctx.oidc.register_token_request(server, nonce).await?;
+    let token_request = ctx
+        .oidc
+        .register_token_request(server, nonce, body.audience)
+        .await?;
     Ok(HttpResponseOk(token_request))
 }
 
@@ -48,7 +66,8 @@ pub struct OidcServerToken {
 /// Complete a server OIDC token request
 ///
 /// Server must provide an attestation that proves the server's identity along with the challenge
-/// that was issued in the initial request.
+/// that was issued in the initial request. The token carries the audience that was recorded
+/// when the request was registered.
 #[endpoint {
     method = POST,
     path = "/server/{server}/oidc/token/prove",
@@ -68,6 +87,10 @@ pub async fn prove_oidc_token_request(
 
     if server.state == ServerRegistrationState::Accepted {
         let attestation = body.attestation.into_inner();
+        let service = ctx
+            .service
+            .get_service(ctx.system_caller(), server.service_id)
+            .await?;
         let token_request = ctx.oidc.get_token_request(server.id, body.request).await?;
 
         // Verify the attestation and learn which instance produced it
@@ -91,7 +114,10 @@ pub async fn prove_oidc_token_request(
         // Claims are only issued when the attested instance is the instance
         // that holds this registration.
         let claims = match instance.instance_id() == server.instance_id {
-            true => Ok(ctx.oidc.generate_claims(&server, token_request).await?),
+            true => Ok(ctx
+                .oidc
+                .generate_claims(&server, &service, token_request)
+                .await?),
             false => {
                 tracing::info!(
                     attested = ?instance.instance_id(),

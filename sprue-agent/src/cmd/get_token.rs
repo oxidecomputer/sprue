@@ -3,7 +3,10 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 use anyhow::anyhow;
-use sprue_sdk::{Client, types::TypedUuidForServerRegistrationId};
+use sprue_sdk::{
+    Client,
+    types::{Audience, TypedUuidForServerRegistrationId},
+};
 use vm_attest::QualifyingData;
 
 use crate::{oidc::validate_jwt, platform::Platform};
@@ -13,6 +16,9 @@ pub struct TokenRequest<'a> {
     pub registration_id: TypedUuidForServerRegistrationId,
     pub platform: &'a dyn Platform,
     pub issuer: &'a str,
+    /// The audience of the token. The token is issued for sprue itself when
+    /// this is None.
+    pub audience: Option<&'a Audience>,
 }
 
 pub async fn get_token<'a>(request: TokenRequest<'a>) -> anyhow::Result<String> {
@@ -21,6 +27,7 @@ pub async fn get_token<'a>(request: TokenRequest<'a>) -> anyhow::Result<String> 
         registration_id,
         platform,
         issuer,
+        audience,
     } = request;
 
     // Send our id to the server to register a token flow and receive back a nonce to prove
@@ -28,6 +35,7 @@ pub async fn get_token<'a>(request: TokenRequest<'a>) -> anyhow::Result<String> 
     let response = client
         .register_oidc_token_request()
         .server(registration_id.clone())
+        .body_map(|body| body.audience(audience.cloned()))
         .send()
         .await?
         .into_inner();
@@ -70,7 +78,8 @@ pub async fn get_token<'a>(request: TokenRequest<'a>) -> anyhow::Result<String> 
     let jwks = jwks_response.into_inner();
 
     // Validate the JWT against the JWKS
-    validate_jwt(issuer, &token, &jwks).map_err(|err| {
+    let expected = audience.map(|audience| audience.as_str()).unwrap_or(issuer);
+    validate_jwt(issuer, expected, &token, &jwks).map_err(|err| {
         tracing::error!(?err, "Failed to validate token against JWKS");
         err
     })?;

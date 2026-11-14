@@ -1266,13 +1266,7 @@ impl<T: CliConfig> Cli<T> {
                     .action(::clap::ArgAction::SetTrue)
                     .help("XXX"),
             )
-            .about("Answer a registration challenge with an attestation")
-            .long_about(
-                "The server registration is built from the instance identity in the verified \
-                 attestation. An instance that is already registered receives its existing \
-                 registration, so a server also uses this to learn the current state of its \
-                 registration.",
-            )
+            .about("Answer a registration challenge with an attestation to register as a server.")
     }
 
     pub fn cli_get_self() -> ::clap::Command {
@@ -1435,6 +1429,16 @@ impl<T: CliConfig> Cli<T> {
     pub fn cli_register_oidc_token_request() -> ::clap::Command {
         ::clap::Command::new("")
             .arg(
+                ::clap::Arg::new("audience")
+                    .long("audience")
+                    .value_parser(::clap::value_parser!(types::Audience))
+                    .required(false)
+                    .help(
+                        "The audience of the issued token. The token is issued for sprue itself \
+                         when no audience is requested.",
+                    ),
+            )
+            .arg(
                 ::clap::Arg::new("server")
                     .long("server")
                     .value_parser(::clap::value_parser!(
@@ -1442,10 +1446,25 @@ impl<T: CliConfig> Cli<T> {
                     ))
                     .required(true),
             )
+            .arg(
+                ::clap::Arg::new("json-body")
+                    .long("json-body")
+                    .value_name("JSON-FILE")
+                    .required(false)
+                    .value_parser(::clap::value_parser!(std::path::PathBuf))
+                    .help("Path to a file that contains the full json body."),
+            )
+            .arg(
+                ::clap::Arg::new("json-body-template")
+                    .long("json-body-template")
+                    .action(::clap::ArgAction::SetTrue)
+                    .help("XXX"),
+            )
             .about("Register a request for a server OIDC token.")
             .long_about(
                 "The server will be issued a challenge that it must sign and return to prove its \
-                 identity.",
+                 identity. The server may request any audience for the token. Without one the \
+                 token is issued for sprue itself. The audience is recorded on the request.",
             )
     }
 
@@ -1482,7 +1501,8 @@ impl<T: CliConfig> Cli<T> {
             .about("Complete a server OIDC token request")
             .long_about(
                 "Server must provide an attestation that proves the server's identity along with \
-                 the challenge that was issued in the initial request.",
+                 the challenge that was issued in the initial request. The token carries the \
+                 audience that was recorded when the request was registered.",
             )
     }
 
@@ -3541,8 +3561,20 @@ impl<T: CliConfig> Cli<T> {
         matches: &::clap::ArgMatches,
     ) -> anyhow::Result<()> {
         let mut request = self.client.register_oidc_token_request();
+        if let Some(value) = matches.get_one::<types::Audience>("audience") {
+            request = request.body_map(|body| body.audience(value.clone()))
+        }
+
         if let Some(value) = matches.get_one::<types::TypedUuidForServerRegistrationId>("server") {
             request = request.server(value.clone());
+        }
+
+        if let Some(value) = matches.get_one::<std::path::PathBuf>("json-body") {
+            let body_txt = std::fs::read_to_string(value)
+                .with_context(|| format!("failed to read {}", value.display()))?;
+            let body_value = serde_json::from_str::<types::OidcTokenRequestBody>(&body_txt)
+                .with_context(|| format!("failed to parse {}", value.display()))?;
+            request = request.body(body_value);
         }
 
         self.config

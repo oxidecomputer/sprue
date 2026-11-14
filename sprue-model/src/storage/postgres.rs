@@ -1539,14 +1539,15 @@ impl TokenRequestStorage for PostgresStorage {
         // Insert the token request record
         let row = sqlx::query(
             r#"
-            INSERT INTO token_request (server_registration_id, nonce, expires_at, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5)
-            RETURNING id, server_registration_id, nonce, expires_at, created_at, updated_at
+            INSERT INTO token_request (server_registration_id, nonce, expires_at, audience, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING id, server_registration_id, nonce, expires_at, audience, created_at, updated_at
             "#,
         )
         .bind(request.server_registration_id.as_untyped_uuid())
         .bind(request.nonce.as_deref().unwrap_or_default())
         .bind(request.expires_at)
+        .bind(request.audience.as_deref())
         .bind(now)
         .bind(now)
         .fetch_one(&mut *tx)
@@ -1577,6 +1578,7 @@ impl TokenRequestStorage for PostgresStorage {
             server_registration_id: TypedUuid::from_untyped_uuid(server_registration_id_uuid),
             nonce: row.try_get("nonce")?,
             expires_at: row.try_get("expires_at")?,
+            audience: row.try_get("audience")?,
             state: pending_state,
             created_at: row.try_get("created_at")?,
             updated_at: row.try_get("updated_at")?,
@@ -1589,7 +1591,7 @@ impl TokenRequestStorage for PostgresStorage {
     ) -> StorageResult<Option<TokenRequestModel>> {
         let row = sqlx::query(
             r#"
-            SELECT tr.id, tr.server_registration_id, tr.nonce, tr.expires_at, tr.created_at, tr.updated_at, trs.state
+            SELECT tr.id, tr.server_registration_id, tr.nonce, tr.expires_at, tr.audience, tr.created_at, tr.updated_at, trs.state
             FROM token_request tr
             JOIN token_request_state trs ON trs.token_request_id = tr.id
             WHERE tr.id = $1
@@ -1615,6 +1617,7 @@ impl TokenRequestStorage for PostgresStorage {
                     ),
                     nonce: row.try_get("nonce")?,
                     expires_at: row.try_get("expires_at")?,
+                    audience: row.try_get("audience")?,
                     state,
                     created_at: row.try_get("created_at")?,
                     updated_at: row.try_get("updated_at")?,
@@ -1630,7 +1633,7 @@ impl TokenRequestStorage for PostgresStorage {
     ) -> StorageResult<Vec<TokenRequestModel>> {
         let rows = sqlx::query(
             r#"
-            SELECT DISTINCT ON (tr.id) tr.id, tr.server_registration_id, tr.nonce, tr.expires_at, tr.created_at, tr.updated_at, trs.state
+            SELECT DISTINCT ON (tr.id) tr.id, tr.server_registration_id, tr.nonce, tr.expires_at, tr.audience, tr.created_at, tr.updated_at, trs.state
             FROM token_request tr
             JOIN token_request_state trs ON trs.token_request_id = tr.id
             WHERE tr.server_registration_id = $1
@@ -1656,6 +1659,7 @@ impl TokenRequestStorage for PostgresStorage {
                     ),
                     nonce: row.try_get("nonce")?,
                     expires_at: row.try_get("expires_at")?,
+                    audience: row.try_get("audience")?,
                     state,
                     created_at: row.try_get("created_at")?,
                     updated_at: row.try_get("updated_at")?,

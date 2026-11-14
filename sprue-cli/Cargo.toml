@@ -9,7 +9,7 @@ repository = "https://github.com/oxidecomputer/sprue"
 description = "Sprue CLI"
 
 [features]
-ui = ["crossterm", "ratatui"]
+ui = ["ratatui"]
 
 [package.metadata.dist]
 dist = true
@@ -19,7 +19,6 @@ anyhow = { workspace = true }
 chrono = { workspace = true }
 clap = { workspace = true }
 clap_complete = { workspace = true }
-crossterm = { workspace = true, optional = true }
 config = { workspace = true }
 dirs = { workspace = true }
 futures = { workspace = true }

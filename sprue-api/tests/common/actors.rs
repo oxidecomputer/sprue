@@ -7,7 +7,12 @@ use dice_verifier::AttestMock;
 use http::{HeaderValue, header::AUTHORIZATION};
 use newtype_uuid::{GenericUuid, TypedUuid};
 use sprue_api::{context::ApiContext, permissions::ApiPermissions};
-use sprue_sdk::Client as SprueClient;
+use sprue_sdk::{
+    Client as SprueClient,
+    types::{
+        Attestation, RegistrationChallenge, ServerRegistration, TypedUuidForServerRegistrationId,
+    },
+};
 use std::{
     ops::Add,
     path::{PathBuf, absolute},
@@ -187,5 +192,77 @@ impl MockVm {
             .unwrap(),
         );
         VmInstanceRot::new(attest)
+    }
+
+    /// Request a registration challenge for the given service.
+    pub async fn challenge(&self, service: &str) -> RegistrationChallenge {
+        self.client
+            .register_server()
+            .service(service.to_string())
+            .send()
+            .await
+            .unwrap()
+            .into_inner()
+    }
+
+    /// Attest over the nonce of a challenge as this VM.
+    pub async fn attest(&self, challenge: &RegistrationChallenge) -> Attestation {
+        let qualifying_data = super::nonce_to_data(&challenge.nonce);
+        self.rot()
+            .attest(self.conf(), &qualifying_data)
+            .await
+            .unwrap()
+            .into()
+    }
+
+    /// Answer a challenge with an attestation and return the raw response.
+    pub async fn prove(
+        &self,
+        challenge: &RegistrationChallenge,
+        attestation: Attestation,
+    ) -> Result<ServerRegistration, sprue_sdk::Error<sprue_sdk::types::Error>> {
+        self.client
+            .prove_registration()
+            .challenge(challenge.id.clone())
+            .body_map(|body| body.attestation(attestation))
+            .send()
+            .await
+            .map(|response| response.into_inner())
+    }
+
+    /// Exchange an attestation for a token and use it for later requests.
+    pub async fn authenticate(&mut self, registration: &TypedUuidForServerRegistrationId) {
+        let request = self
+            .client
+            .register_oidc_token_request()
+            .server(registration.clone())
+            .send()
+            .await
+            .unwrap()
+            .into_inner();
+        let qualifying_data = super::nonce_to_data(request.nonce.as_ref().unwrap());
+        let attestation = self
+            .rot()
+            .attest(self.conf(), &qualifying_data)
+            .await
+            .unwrap();
+        let token = self
+            .client
+            .prove_oidc_token_request()
+            .server(registration.clone())
+            .body_map(|body| body.attestation(attestation).request(request.id))
+            .send()
+            .await
+            .unwrap()
+            .into_inner()
+            .token;
+        self.install_token(&token);
+    }
+
+    /// Run the full registration flow for the given service.
+    pub async fn register(&self, service: &str) -> ServerRegistration {
+        let challenge = self.challenge(service).await;
+        let attestation = self.attest(&challenge).await;
+        self.prove(&challenge, attestation).await.unwrap()
     }
 }

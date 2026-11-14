@@ -9,20 +9,21 @@ use sqlx::{PgPool, Row};
 
 use super::{
     BlobFilter, BlobStateTransition, BlobStorage, DeploymentStorage, HealthCheckStorage,
-    IdempotentRequestStorage, Paginated, ServerRegistrationStateTransition,
-    ServerRegistrationStorage, ServiceStorage, Storage, StorageError, StorageResult,
-    TokenRequestStateTransition, TokenRequestStorage,
+    IdempotentRequestStorage, Paginated, RegistrationChallengeStorage,
+    ServerRegistrationStateTransition, ServerRegistrationStorage, ServiceStorage, Storage,
+    StorageError, StorageResult, TokenRequestStateTransition, TokenRequestStorage,
 };
 use crate::db::{
     BlobModel, DeploymentModel, HealthCheckModel, IdempotentRequestModel, NewBlobModel,
-    NewDeploymentModel, NewHealthCheckModel, NewIdempotentRequestModel, NewServerRegistrationModel,
-    NewServiceModel, NewTokenRequestModel, ServerRegistrationModel, ServiceModel,
+    NewDeploymentModel, NewHealthCheckModel, NewIdempotentRequestModel,
+    NewRegistrationChallengeModel, NewServerRegistrationModel, NewServiceModel,
+    NewTokenRequestModel, RegistrationChallengeModel, ServerRegistrationModel, ServiceModel,
     TokenRequestModel,
 };
 use crate::{
     BlobId, BlobState, DeploymentId, IdempotentRequestId, IdempotentRequestState,
-    ServerRegistrationId, ServerRegistrationInstanceId, ServerRegistrationState, ServiceId,
-    TokenRequestId, TokenRequestState,
+    RegistrationChallengeId, ServerRegistrationId, ServerRegistrationInstanceId,
+    ServerRegistrationState, ServiceId, TokenRequestId, TokenRequestState,
 };
 
 /// PostgreSQL storage implementation
@@ -299,6 +300,86 @@ impl DeploymentStorage for PostgresStorage {
     }
 }
 
+fn registration_challenge_from_row(
+    row: &sqlx::postgres::PgRow,
+) -> Result<RegistrationChallengeModel, sqlx::Error> {
+    let id_uuid: sqlx::types::Uuid = row.try_get("id")?;
+    let service_id_uuid: sqlx::types::Uuid = row.try_get("service_id")?;
+    Ok(RegistrationChallengeModel {
+        id: TypedUuid::from_untyped_uuid(id_uuid),
+        service_id: TypedUuid::from_untyped_uuid(service_id_uuid),
+        nonce: row.try_get("nonce")?,
+        expires_at: row.try_get("expires_at")?,
+        created_at: row.try_get("created_at")?,
+    })
+}
+
+#[async_trait]
+impl RegistrationChallengeStorage for PostgresStorage {
+    async fn create_registration_challenge(
+        &self,
+        challenge: &NewRegistrationChallengeModel,
+    ) -> StorageResult<RegistrationChallengeModel> {
+        let row = sqlx::query(
+            r#"
+            INSERT INTO registration_challenge (service_id, nonce, expires_at, created_at)
+            VALUES ($1, $2, $3, $4)
+            RETURNING id, service_id, nonce, expires_at, created_at
+            "#,
+        )
+        .bind(challenge.service_id.as_untyped_uuid())
+        .bind(&challenge.nonce)
+        .bind(challenge.expires_at)
+        .bind(Utc::now())
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(registration_challenge_from_row(&row)?)
+    }
+
+    async fn get_active_registration_challenge(
+        &self,
+        id: TypedUuid<RegistrationChallengeId>,
+    ) -> StorageResult<Option<RegistrationChallengeModel>> {
+        let row = sqlx::query(
+            r#"
+            SELECT id, service_id, nonce, expires_at, created_at
+            FROM registration_challenge
+            WHERE id = $1 AND consumed_at IS NULL AND expires_at > $2
+            "#,
+        )
+        .bind(id.as_untyped_uuid())
+        .bind(Utc::now())
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row
+            .as_ref()
+            .map(registration_challenge_from_row)
+            .transpose()?)
+    }
+
+    async fn consume_registration_challenge(
+        &self,
+        id: TypedUuid<RegistrationChallengeId>,
+    ) -> StorageResult<Option<()>> {
+        let now = Utc::now();
+        let result = sqlx::query(
+            r#"
+            UPDATE registration_challenge
+            SET consumed_at = $2
+            WHERE id = $1 AND consumed_at IS NULL AND expires_at > $2
+            "#,
+        )
+        .bind(id.as_untyped_uuid())
+        .bind(now)
+        .execute(&self.pool)
+        .await?;
+
+        Ok((result.rows_affected() > 0).then_some(()))
+    }
+}
+
 #[async_trait]
 impl ServerRegistrationStorage for PostgresStorage {
     async fn create_server_registration(
@@ -306,24 +387,22 @@ impl ServerRegistrationStorage for PostgresStorage {
         registration: &NewServerRegistrationModel,
     ) -> StorageResult<ServerRegistrationModel> {
         let now = Utc::now();
-        let pending_state = ServerRegistrationState::Pending;
+        let initial_state = ServerRegistrationState::Proven;
 
         let mut tx = self.pool.begin().await?;
 
         // Insert the server registration record
         let row = sqlx::query(
             r#"
-            INSERT INTO server_registration (service_id, instance_id, project_id, silo_id, nonce, expires_at, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-            RETURNING id, service_id, instance_id, project_id, silo_id, nonce, expires_at, created_at, updated_at
+            INSERT INTO server_registration (service_id, instance_id, project_id, silo_id, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING id, service_id, instance_id, project_id, silo_id, created_at, updated_at
             "#,
         )
         .bind(registration.service_id.as_untyped_uuid())
         .bind(registration.instance_id.as_untyped_uuid())
         .bind(registration.project_id.as_untyped_uuid())
         .bind(registration.silo_id.as_untyped_uuid())
-        .bind(registration.nonce.as_deref().unwrap_or_default())
-        .bind(registration.expires_at)
         .bind(now)
         .bind(now)
         .fetch_one(&mut *tx)
@@ -340,7 +419,7 @@ impl ServerRegistrationStorage for PostgresStorage {
         let id_uuid: sqlx::types::Uuid = row.try_get("id")?;
         let registration_id = TypedUuid::from_untyped_uuid(id_uuid);
 
-        // Insert initial Pending state into server_registration_state table
+        // Insert the initial Proven state into server_registration_state table
         sqlx::query(
             r#"
             INSERT INTO server_registration_state (server_registration_id, state, created_at)
@@ -348,7 +427,7 @@ impl ServerRegistrationStorage for PostgresStorage {
             "#,
         )
         .bind(registration_id.as_untyped_uuid())
-        .bind(pending_state)
+        .bind(initial_state)
         .bind(now)
         .execute(&mut *tx)
         .await?;
@@ -365,9 +444,7 @@ impl ServerRegistrationStorage for PostgresStorage {
             instance_id: TypedUuid::from_untyped_uuid(instance_id_uuid),
             project_id: TypedUuid::from_untyped_uuid(project_id_uuid),
             silo_id: TypedUuid::from_untyped_uuid(silo_id_uuid),
-            nonce: row.try_get("nonce")?,
-            expires_at: row.try_get("expires_at")?,
-            state: pending_state,
+            state: initial_state,
             created_at: row.try_get("created_at")?,
             updated_at: row.try_get("updated_at")?,
         })
@@ -379,7 +456,7 @@ impl ServerRegistrationStorage for PostgresStorage {
     ) -> StorageResult<Option<ServerRegistrationModel>> {
         let row = sqlx::query(
             r#"
-            SELECT sr.id, sr.service_id, sr.instance_id, sr.project_id, sr.silo_id, sr.nonce, sr.expires_at, sr.created_at, sr.updated_at, srs.state
+            SELECT sr.id, sr.service_id, sr.instance_id, sr.project_id, sr.silo_id, sr.created_at, sr.updated_at, srs.state
             FROM server_registration sr
             JOIN server_registration_state srs ON srs.server_registration_id = sr.id
             WHERE sr.id = $1 AND srs.state != $2
@@ -407,8 +484,6 @@ impl ServerRegistrationStorage for PostgresStorage {
                     instance_id: TypedUuid::from_untyped_uuid(instance_id_uuid),
                     project_id: TypedUuid::from_untyped_uuid(project_id_uuid),
                     silo_id: TypedUuid::from_untyped_uuid(silo_id_uuid),
-                    nonce: row.try_get("nonce")?,
-                    expires_at: row.try_get("expires_at")?,
                     state,
                     created_at: row.try_get("created_at")?,
                     updated_at: row.try_get("updated_at")?,
@@ -424,7 +499,7 @@ impl ServerRegistrationStorage for PostgresStorage {
     ) -> StorageResult<Option<ServerRegistrationModel>> {
         let row = sqlx::query(
             r#"
-            SELECT sr.id, sr.service_id, sr.instance_id, sr.project_id, sr.silo_id, sr.nonce, sr.expires_at, sr.created_at, sr.updated_at, srs.state
+            SELECT sr.id, sr.service_id, sr.instance_id, sr.project_id, sr.silo_id, sr.created_at, sr.updated_at, srs.state
             FROM server_registration sr
             JOIN server_registration_state srs ON srs.server_registration_id = sr.id
             WHERE sr.instance_id = $1 AND srs.state != $2
@@ -452,8 +527,6 @@ impl ServerRegistrationStorage for PostgresStorage {
                     instance_id: TypedUuid::from_untyped_uuid(instance_id_uuid),
                     project_id: TypedUuid::from_untyped_uuid(project_id_uuid),
                     silo_id: TypedUuid::from_untyped_uuid(silo_id_uuid),
-                    nonce: row.try_get("nonce")?,
-                    expires_at: row.try_get("expires_at")?,
                     state,
                     created_at: row.try_get("created_at")?,
                     updated_at: row.try_get("updated_at")?,
@@ -469,7 +542,7 @@ impl ServerRegistrationStorage for PostgresStorage {
     ) -> StorageResult<Vec<ServerRegistrationModel>> {
         let rows = sqlx::query(
             r#"
-            SELECT DISTINCT ON (sr.id) sr.id, sr.service_id, sr.instance_id, sr.project_id, sr.silo_id, sr.nonce, sr.expires_at, sr.created_at, sr.updated_at, srs.state
+            SELECT DISTINCT ON (sr.id) sr.id, sr.service_id, sr.instance_id, sr.project_id, sr.silo_id, sr.created_at, sr.updated_at, srs.state
             FROM server_registration sr
             JOIN server_registration_state srs ON srs.server_registration_id = sr.id
             WHERE sr.service_id = $1 AND srs.state != $2
@@ -497,8 +570,6 @@ impl ServerRegistrationStorage for PostgresStorage {
                     instance_id: TypedUuid::from_untyped_uuid(instance_id_uuid),
                     project_id: TypedUuid::from_untyped_uuid(project_id_uuid),
                     silo_id: TypedUuid::from_untyped_uuid(silo_id_uuid),
-                    nonce: row.try_get("nonce")?,
-                    expires_at: row.try_get("expires_at")?,
                     state,
                     created_at: row.try_get("created_at")?,
                     updated_at: row.try_get("updated_at")?,
@@ -519,12 +590,6 @@ impl ServerRegistrationStorage for PostgresStorage {
 
         // Use a CTE to atomically check the current state, insert the new state
         // transition, and update the registration in a single query.
-        //
-        // Any update to a server registration will mean blanking out the nonce. The only cases
-        // where a value will be present are when the previous state is Pending and we are
-        // transitioning to Proven, Rejected, or Terminated. In each of those cases we no longer
-        // want to be storing the nonce. Once a request has been proven, rejected, or terminated,
-        // the request is no longer active and we can also clear out the expiration time.
         let row = sqlx::query(
             r#"
             WITH current_state AS (
@@ -543,7 +608,7 @@ impl ServerRegistrationStorage for PostgresStorage {
             ),
             update_registration AS (
                 UPDATE server_registration
-                SET nonce = null, expires_at = null, updated_at = $3
+                SET updated_at = $3
                 WHERE id = $1
                 AND EXISTS (SELECT 1 FROM insert_new_state)
                 RETURNING id

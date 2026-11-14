@@ -11,14 +11,17 @@ use newtype_uuid::TypedUuid;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sprue_model::{
-    Blob, Deployment, DeploymentId, HealthCheck, ProjectId, ServerRegistration,
-    ServerRegistrationId, ServerRegistrationInstanceId, ServerRegistrationState, Service,
-    ServiceIdentifier, SiloId,
+    Blob, Deployment, DeploymentId, HealthCheck, ProjectId, RegistrationChallenge,
+    RegistrationChallengeId, ServerRegistration, ServerRegistrationId, ServerRegistrationState,
+    Service, ServiceIdentifier, SiloId,
 };
 use v_api::ApiContext as VApiContext;
 
 use crate::{
-    context::{ApiContext, policy::PolicyDecision},
+    context::{
+        ApiContext,
+        policy::{PolicyDecision, PolicyEngine},
+    },
     permissions::ApiPermissions,
     schema::Attestation,
 };
@@ -64,7 +67,7 @@ pub async fn delete_service(
     let servers = ctx.service.get_service_servers(&caller, service.id).await?;
     let has_servers = servers.iter().any(|s| {
         s.state != ServerRegistrationState::Expired
-            || s.state != ServerRegistrationState::Terminated
+            && s.state != ServerRegistrationState::Terminated
     });
 
     if !has_servers {
@@ -144,22 +147,11 @@ pub async fn get_service_servers(
     Ok(HttpResponseOk(servers))
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
-pub struct RegisterServerBody {
-    instance: TypedUuid<ServerRegistrationInstanceId>,
-    project_id: TypedUuid<ProjectId>,
-    silo_id: TypedUuid<SiloId>,
-}
-
-#[derive(Debug, Serialize, JsonSchema)]
-pub struct RegisterServerResponse {
-    registration: ServerRegistration,
-}
-
-/// Request a server be registered as a representative instance of a service
+/// Request a challenge for registering a server as an instance of a service
 ///
-/// The server will need to prove its identity via an attestation. Once its identity is verified
-/// the server will need to either be accepted by policy or manual intervention.
+/// The server must answer the challenge with an attestation. The registration is only created once
+/// that attestation has been verified, and it is then either accepted by policy or by manual
+/// intervention.
 #[endpoint {
     method = POST,
     path = "/service/{service}/register",
@@ -167,29 +159,20 @@ pub struct RegisterServerResponse {
 pub async fn register_server(
     rqctx: RequestContext<ApiContext>,
     path: Path<ServicePath>,
-    body: TypedBody<RegisterServerBody>,
-) -> Result<HttpResponseOk<RegisterServerResponse>, HttpError> {
+) -> Result<HttpResponseOk<RegistrationChallenge>, HttpError> {
     let ctx = rqctx.context();
     let path = path.into_inner();
-    let body = body.into_inner();
     let service = ctx
         .service
         .resolve_service(&ctx.system_caller(), &path.service)
         .await?;
     let nonce = ctx.server_identity.generate_nonce()?;
-    let registration = ctx
+    let challenge = ctx
         .service
-        .register_server(
-            ctx.system_caller(),
-            service.id,
-            body.instance,
-            body.project_id,
-            body.silo_id,
-            nonce,
-        )
+        .create_registration_challenge(ctx.system_caller(), service.id, nonce)
         .await?;
 
-    Ok(HttpResponseOk(RegisterServerResponse { registration }))
+    Ok(HttpResponseOk(challenge))
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -198,111 +181,109 @@ pub struct ServerPath {
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
+pub struct RegistrationChallengePath {
+    pub challenge: TypedUuid<RegistrationChallengeId>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
 pub struct ServerAttestation {
     attestation: Attestation,
 }
 
-/// Prove the identity of a server
+/// Answer a registration challenge with an attestation to register as a server.
 #[endpoint {
     method = POST,
-    path = "/server/{server}/prove",
+    path = "/registration/{challenge}/prove",
 }]
-pub async fn prove_server(
+pub async fn prove_registration(
     rqctx: RequestContext<ApiContext>,
-    path: Path<ServerPath>,
+    path: Path<RegistrationChallengePath>,
     body: TypedBody<ServerAttestation>,
-) -> Result<HttpResponseUpdatedNoContent, HttpError> {
+) -> Result<HttpResponseOk<ServerRegistration>, HttpError> {
     let ctx = rqctx.context();
     let path = path.into_inner();
-    let attestation = body.into_inner().attestation;
-    let server = ctx
+    let attestation = body.into_inner().attestation.into_inner();
+    let challenge = ctx
         .service
-        .get_server(ctx.system_caller(), path.server)
+        .get_registration_challenge(ctx.system_caller(), path.challenge)
         .await?;
 
-    // Verify the attestation
-    ctx.server_identity
-        .verify_instance_attestation(
-            server.instance_id,
-            &server.nonce.as_deref().ok_or_else(|| {
-                HttpError::for_bad_request(
-                    None,
-                    "Registration is not in a state that can be proven".to_string(),
-                )
-            })?,
-            &attestation,
-        )
+    let instance = ctx
+        .server_identity
+        .verify_instance_attestation(&challenge.nonce, &attestation)
         .await
         .map_err(|err| {
             tracing::info!(?err, "Failed to verify attestation");
             HttpError::for_bad_request(None, "Invalid attestation".to_string())
         })?;
 
-    // The server has proven its identity and we can mark it as proven
-    ctx.service
-        .prove_server(ctx.system_caller(), &server)
-        .await
-        .map_err(|err| {
-            // TODO: Currently all failures are emited as bad request errors. This is not strictly
-            // correct as we may have a misconfigured server. From the stance of the server though this
-            // request does not match what it is expecting
-            tracing::info!(?err, "Failed to prove server");
-            HttpError::for_bad_request(None, "Failed to prove server".to_string())
-        })?;
+    let server = ctx
+        .service
+        .complete_registration_challenge(ctx.system_caller(), &challenge, instance)
+        .await?;
 
-    // If a registration policy engine is configured, evaluate the policy to
-    // automatically accept or reject the server now that its identity is proven.
-    if let Some(ref policy) = ctx.policy {
-        // Retrieve the service and all known deployments for the service that this instance is
-        // attempting to register against.
-        let service = ctx
-            .service
-            .get_service(ctx.system_caller(), server.service_id)
-            .await?;
-        let deployments = ctx
-            .service
-            .list_deployments(ctx.system_caller(), server.service_id)
-            .await?;
+    // A registration that is waiting for approval is evaluated against the
+    // registration policy when one is configured.
+    let server = match (&ctx.policy, server.state) {
+        (Some(policy), ServerRegistrationState::Proven) => {
+            apply_registration_policy(ctx, policy, server).await?
+        }
+        _ => server,
+    };
 
-        match policy.evaluate_server_auto_registration(&server, &service, deployments.iter()) {
-            Ok(PolicyDecision::Accept) => {
-                tracing::info!(
-                    server = ?server.id,
-                    "Policy engine auto-accepting server registration"
-                );
+    Ok(HttpResponseOk(server))
+}
 
-                // We need to refetch the server with its updated state
-                let server = ctx
-                    .service
-                    .get_server(ctx.system_caller(), server.id)
-                    .await?;
-                ctx.service
-                    .accept_server(ctx.system_caller(), &server)
-                    .await
-                    .map_err(|err| {
-                        tracing::error!(?err, "Failed to auto-accept server via policy");
-                        HttpError::for_internal_error(
-                            "Failed to apply registration policy".to_string(),
-                        )
-                    })?;
-            }
-            Ok(PolicyDecision::Reject) => {
-                tracing::info!(
-                    server = ?server.id,
-                    "Policy engine did not allow auto-accepting server registration; server remains in proven state"
-                );
-            }
-            Err(err) => {
-                tracing::error!(
-                    ?err,
-                    server = ?server.id,
-                    "Policy evaluation failed; server remains in proven state"
-                );
-            }
+/// Evaluate the registration policy for a proven server and accept the server
+/// when the policy allows it. The returned registration reflects any change.
+async fn apply_registration_policy(
+    ctx: &ApiContext,
+    policy: &PolicyEngine,
+    server: ServerRegistration,
+) -> Result<ServerRegistration, HttpError> {
+    let service = ctx
+        .service
+        .get_service(ctx.system_caller(), server.service_id)
+        .await?;
+    let deployments = ctx
+        .service
+        .list_deployments(ctx.system_caller(), server.service_id)
+        .await?;
+
+    match policy.evaluate_server_auto_registration(&server, &service, deployments.iter()) {
+        Ok(PolicyDecision::Accept) => {
+            tracing::info!(
+                server = ?server.id,
+                "Policy engine auto-accepting server registration"
+            );
+            ctx.service
+                .accept_server(ctx.system_caller(), &server)
+                .await
+                .map_err(|err| {
+                    tracing::error!(?err, "Failed to auto-accept server via policy");
+                    HttpError::for_internal_error("Failed to apply registration policy".to_string())
+                })?;
+            Ok(ctx
+                .service
+                .get_server(ctx.system_caller(), server.id)
+                .await?)
+        }
+        Ok(PolicyDecision::Reject) => {
+            tracing::info!(
+                server = ?server.id,
+                "Policy engine did not allow auto-accepting server registration; server remains in proven state"
+            );
+            Ok(server)
+        }
+        Err(err) => {
+            tracing::error!(
+                ?err,
+                server = ?server.id,
+                "Policy evaluation failed; server remains in proven state"
+            );
+            Ok(server)
         }
     }
-
-    Ok(HttpResponseUpdatedNoContent())
 }
 
 /// Accept a server's request to be added as a representative instance of a service
@@ -555,6 +536,20 @@ pub async fn create_deployment(
         .service
         .create_deployment(&caller, service.id, body.project, body.silo)
         .await?;
+
+    // A new deployment may allow servers that are waiting for approval to be
+    // accepted, so they are evaluated against the registration policy again.
+    if let Some(policy) = &ctx.policy {
+        let waiting = ctx
+            .service
+            .get_service_servers(ctx.system_caller(), service.id)
+            .await?
+            .into_iter()
+            .filter(|server| server.state == ServerRegistrationState::Proven);
+        for server in waiting {
+            apply_registration_policy(ctx, policy, server).await?;
+        }
+    }
 
     Ok(HttpResponseOk(deployment))
 }

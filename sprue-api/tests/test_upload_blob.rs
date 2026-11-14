@@ -42,30 +42,7 @@ async fn test_upload_blob() {
     let vm_config: VmInstanceConf =
         serde_json::from_slice(include_bytes!("../test-data/attestation/vm.json")).unwrap();
     let mut vm = seed.vm(vm_config);
-    let registration = vm
-        .client
-        .register_server()
-        .service(service.id.to_string())
-        .body_map(|body| {
-            body.instance(vm.conf.uuid)
-                .project_id(vm.conf().project)
-                .silo_id(vm.conf().silo)
-        })
-        .send()
-        .await
-        .unwrap()
-        .into_inner()
-        .registration;
-
-    let qualifying_data = nonce_to_data(registration.nonce.as_ref().unwrap());
-    let attestation = vm.rot().attest(&vm.conf(), &qualifying_data).await.unwrap();
-    vm.client
-        .prove_server()
-        .server(registration.id.0)
-        .body_map(|body| body.attestation(attestation))
-        .send()
-        .await
-        .unwrap();
+    let registration = vm.register(&service.id.to_string()).await;
 
     // We should have now successfully registered the server, and the user can now approve it
     user.client

@@ -4602,28 +4602,42 @@ pub mod types {
         }
     }
 
-    /// `RegisterServerBody`
+    /// A challenge issued to a VM that wants to join a service. The VM answers
+    /// the challenge by attesting over the nonce, and the server registration
+    /// is then built from the attested identity.
     ///
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
     /// {
+    ///  "description": "A challenge issued to a VM that wants to join a
+    /// service. The VM answers the challenge by attesting over the nonce, and
+    /// the server registration is then built from the attested identity.",
     ///  "type": "object",
     ///  "required": [
-    ///    "instance",
-    ///    "project_id",
-    ///    "silo_id"
+    ///    "created_at",
+    ///    "expires_at",
+    ///    "id",
+    ///    "nonce",
+    ///    "service_id"
     ///  ],
     ///  "properties": {
-    ///    "instance": {
-    ///      "$ref":
-    /// "#/components/schemas/TypedUuidForServerRegistrationInstanceId"
+    ///    "created_at": {
+    ///      "type": "string",
+    ///      "format": "date-time"
     ///    },
-    ///    "project_id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForProjectId"
+    ///    "expires_at": {
+    ///      "type": "string",
+    ///      "format": "date-time"
     ///    },
-    ///    "silo_id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForSiloId"
+    ///    "id": {
+    ///      "$ref": "#/components/schemas/TypedUuidForRegistrationChallengeId"
+    ///    },
+    ///    "nonce": {
+    ///      "type": "string"
+    ///    },
+    ///    "service_id": {
+    ///      "$ref": "#/components/schemas/TypedUuidForServiceId"
     ///    }
 
     ///  }
@@ -4635,51 +4649,43 @@ pub mod types {
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
-    pub struct RegisterServerBody {
-        pub instance: TypedUuidForServerRegistrationInstanceId,
-        pub project_id: TypedUuidForProjectId,
-        pub silo_id: TypedUuidForSiloId,
+    pub struct RegistrationChallenge {
+        pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
+        pub expires_at: ::chrono::DateTime<::chrono::offset::Utc>,
+        pub id: TypedUuidForRegistrationChallengeId,
+        pub nonce: ::std::string::String,
+        pub service_id: TypedUuidForServiceId,
     }
 
-    impl RegisterServerBody {
-        pub fn builder() -> builder::RegisterServerBody {
+    impl RegistrationChallenge {
+        pub fn builder() -> builder::RegistrationChallenge {
             Default::default()
         }
     }
 
-    /// `RegisterServerResponse`
+    /// `RegistrationChallengeId`
     ///
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "registration"
-    ///  ],
-    ///  "properties": {
-    ///    "registration": {
-    ///      "$ref": "#/components/schemas/ServerRegistration"
-    ///    }
-
-    ///  }
-
-    /// }
-
+    /// false
     /// ```
     /// </details>
     #[derive(
-        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+        :: serde :: Deserialize,
+        :: serde :: Serialize,
+        Clone,
+        Copy,
+        Debug,
+        Eq,
+        Hash,
+        Ord,
+        PartialEq,
+        PartialOrd,
+        schemars :: JsonSchema,
     )]
-    pub struct RegisterServerResponse {
-        pub registration: ServerRegistration,
-    }
-
-    impl RegisterServerResponse {
-        pub fn builder() -> builder::RegisterServerResponse {
-            Default::default()
-        }
-    }
+    #[serde(deny_unknown_fields)]
+    pub enum RegistrationChallengeId {}
 
     /// `SecretString`
     ///
@@ -4794,25 +4800,12 @@ pub mod types {
     ///      "type": "string",
     ///      "format": "date-time"
     ///    },
-    ///    "expires_at": {
-    ///      "type": [
-    ///        "string",
-    ///        "null"
-    ///      ],
-    ///      "format": "date-time"
-    ///    },
     ///    "id": {
     ///      "$ref": "#/components/schemas/TypedUuidForServerRegistrationId"
     ///    },
     ///    "instance_id": {
     ///      "$ref":
     /// "#/components/schemas/TypedUuidForServerRegistrationInstanceId"
-    ///    },
-    ///    "nonce": {
-    ///      "type": [
-    ///        "string",
-    ///        "null"
-    ///      ]
     ///    },
     ///    "project_id": {
     ///      "$ref": "#/components/schemas/TypedUuidForProjectId"
@@ -4842,12 +4835,8 @@ pub mod types {
     )]
     pub struct ServerRegistration {
         pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
-        pub expires_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
         pub id: TypedUuidForServerRegistrationId,
         pub instance_id: TypedUuidForServerRegistrationInstanceId,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
-        pub nonce: ::std::option::Option<::std::string::String>,
         pub project_id: TypedUuidForProjectId,
         pub service_id: TypedUuidForServiceId,
         pub silo_id: TypedUuidForSiloId,
@@ -4909,12 +4898,19 @@ pub mod types {
     #[serde(deny_unknown_fields)]
     pub enum ServerRegistrationInstanceId {}
 
-    /// `ServerRegistrationState`
+    /// The lifecycle of a server registration. New registrations start out as
+    /// Proven because they are only created once an attestation has been
+    /// verified. The Pending state remains so that older state history can
+    /// still be read.
     ///
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
     /// {
+    ///  "description": "The lifecycle of a server registration. New
+    /// registrations start out as Proven because they are only created once an
+    /// attestation has been verified. The Pending state remains so that older
+    /// state history can still be read.",
     ///  "type": "string",
     ///  "enum": [
     ///    "Pending",
@@ -6381,6 +6377,81 @@ pub mod types {
     }
 
     impl ::std::fmt::Display for TypedUuidForProjectId {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            self.0.fmt(f)
+        }
+    }
+
+    /// `TypedUuidForRegistrationChallengeId`
+    ///
+    /// <details><summary>JSON schema</summary>
+    ///
+    /// ```json
+    /// {
+    ///  "type": "string",
+    ///  "format": "uuid",
+    ///  "x-rust-type": {
+    ///    "crate": "newtype-uuid",
+    ///    "parameters": [
+    ///      {
+    ///        "$ref": "#/components/schemas/RegistrationChallengeId"
+    ///      }
+
+    ///    ],
+    ///    "path": "newtype_uuid::TypedUuid",
+    ///    "version": "1"
+    ///  }
+
+    /// }
+
+    /// ```
+    /// </details>
+    #[derive(
+        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+    )]
+    #[serde(transparent)]
+    pub struct TypedUuidForRegistrationChallengeId(pub ::uuid::Uuid);
+    impl ::std::ops::Deref for TypedUuidForRegistrationChallengeId {
+        type Target = ::uuid::Uuid;
+        fn deref(&self) -> &::uuid::Uuid {
+            &self.0
+        }
+    }
+
+    impl ::std::convert::From<TypedUuidForRegistrationChallengeId> for ::uuid::Uuid {
+        fn from(value: TypedUuidForRegistrationChallengeId) -> Self {
+            value.0
+        }
+    }
+
+    impl ::std::convert::From<::uuid::Uuid> for TypedUuidForRegistrationChallengeId {
+        fn from(value: ::uuid::Uuid) -> Self {
+            Self(value)
+        }
+    }
+
+    impl ::std::str::FromStr for TypedUuidForRegistrationChallengeId {
+        type Err = <::uuid::Uuid as ::std::str::FromStr>::Err;
+        fn from_str(value: &str) -> ::std::result::Result<Self, Self::Err> {
+            Ok(Self(value.parse()?))
+        }
+    }
+
+    impl ::std::convert::TryFrom<&str> for TypedUuidForRegistrationChallengeId {
+        type Error = <::uuid::Uuid as ::std::str::FromStr>::Err;
+        fn try_from(value: &str) -> ::std::result::Result<Self, Self::Error> {
+            value.parse()
+        }
+    }
+
+    impl ::std::convert::TryFrom<String> for TypedUuidForRegistrationChallengeId {
+        type Error = <::uuid::Uuid as ::std::str::FromStr>::Err;
+        fn try_from(value: String) -> ::std::result::Result<Self, Self::Error> {
+            value.parse()
+        }
+    }
+
+    impl ::std::fmt::Display for TypedUuidForRegistrationChallengeId {
         fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
             self.0.fmt(f)
         }
@@ -11774,122 +11845,111 @@ pub mod types {
         }
 
         #[derive(Clone, Debug)]
-        pub struct RegisterServerBody {
-            instance: ::std::result::Result<
-                super::TypedUuidForServerRegistrationInstanceId,
+        pub struct RegistrationChallenge {
+            created_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
                 ::std::string::String,
             >,
-            project_id: ::std::result::Result<super::TypedUuidForProjectId, ::std::string::String>,
-            silo_id: ::std::result::Result<super::TypedUuidForSiloId, ::std::string::String>,
+            expires_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+            id: ::std::result::Result<
+                super::TypedUuidForRegistrationChallengeId,
+                ::std::string::String,
+            >,
+            nonce: ::std::result::Result<::std::string::String, ::std::string::String>,
+            service_id: ::std::result::Result<super::TypedUuidForServiceId, ::std::string::String>,
         }
 
-        impl ::std::default::Default for RegisterServerBody {
+        impl ::std::default::Default for RegistrationChallenge {
             fn default() -> Self {
                 Self {
-                    instance: Err("no value supplied for instance".to_string()),
-                    project_id: Err("no value supplied for project_id".to_string()),
-                    silo_id: Err("no value supplied for silo_id".to_string()),
+                    created_at: Err("no value supplied for created_at".to_string()),
+                    expires_at: Err("no value supplied for expires_at".to_string()),
+                    id: Err("no value supplied for id".to_string()),
+                    nonce: Err("no value supplied for nonce".to_string()),
+                    service_id: Err("no value supplied for service_id".to_string()),
                 }
             }
         }
 
-        impl RegisterServerBody {
-            pub fn instance<T>(mut self, value: T) -> Self
+        impl RegistrationChallenge {
+            pub fn created_at<T>(mut self, value: T) -> Self
             where
-                T: ::std::convert::TryInto<super::TypedUuidForServerRegistrationInstanceId>,
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
                 T::Error: ::std::fmt::Display,
             {
-                self.instance = value
+                self.created_at = value
                     .try_into()
-                    .map_err(|e| format!("error converting supplied value for instance: {e}"));
+                    .map_err(|e| format!("error converting supplied value for created_at: {e}"));
                 self
             }
-            pub fn project_id<T>(mut self, value: T) -> Self
+            pub fn expires_at<T>(mut self, value: T) -> Self
             where
-                T: ::std::convert::TryInto<super::TypedUuidForProjectId>,
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
                 T::Error: ::std::fmt::Display,
             {
-                self.project_id = value
+                self.expires_at = value
                     .try_into()
-                    .map_err(|e| format!("error converting supplied value for project_id: {e}"));
+                    .map_err(|e| format!("error converting supplied value for expires_at: {e}"));
                 self
             }
-            pub fn silo_id<T>(mut self, value: T) -> Self
+            pub fn id<T>(mut self, value: T) -> Self
             where
-                T: ::std::convert::TryInto<super::TypedUuidForSiloId>,
+                T: ::std::convert::TryInto<super::TypedUuidForRegistrationChallengeId>,
                 T::Error: ::std::fmt::Display,
             {
-                self.silo_id = value
+                self.id = value
                     .try_into()
-                    .map_err(|e| format!("error converting supplied value for silo_id: {e}"));
+                    .map_err(|e| format!("error converting supplied value for id: {e}"));
+                self
+            }
+            pub fn nonce<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.nonce = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for nonce: {e}"));
+                self
+            }
+            pub fn service_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::TypedUuidForServiceId>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.service_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for service_id: {e}"));
                 self
             }
         }
 
-        impl ::std::convert::TryFrom<RegisterServerBody> for super::RegisterServerBody {
+        impl ::std::convert::TryFrom<RegistrationChallenge> for super::RegistrationChallenge {
             type Error = super::error::ConversionError;
             fn try_from(
-                value: RegisterServerBody,
+                value: RegistrationChallenge,
             ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
-                    instance: value.instance?,
-                    project_id: value.project_id?,
-                    silo_id: value.silo_id?,
+                    created_at: value.created_at?,
+                    expires_at: value.expires_at?,
+                    id: value.id?,
+                    nonce: value.nonce?,
+                    service_id: value.service_id?,
                 })
             }
         }
 
-        impl ::std::convert::From<super::RegisterServerBody> for RegisterServerBody {
-            fn from(value: super::RegisterServerBody) -> Self {
+        impl ::std::convert::From<super::RegistrationChallenge> for RegistrationChallenge {
+            fn from(value: super::RegistrationChallenge) -> Self {
                 Self {
-                    instance: Ok(value.instance),
-                    project_id: Ok(value.project_id),
-                    silo_id: Ok(value.silo_id),
-                }
-            }
-        }
-
-        #[derive(Clone, Debug)]
-        pub struct RegisterServerResponse {
-            registration: ::std::result::Result<super::ServerRegistration, ::std::string::String>,
-        }
-
-        impl ::std::default::Default for RegisterServerResponse {
-            fn default() -> Self {
-                Self {
-                    registration: Err("no value supplied for registration".to_string()),
-                }
-            }
-        }
-
-        impl RegisterServerResponse {
-            pub fn registration<T>(mut self, value: T) -> Self
-            where
-                T: ::std::convert::TryInto<super::ServerRegistration>,
-                T::Error: ::std::fmt::Display,
-            {
-                self.registration = value
-                    .try_into()
-                    .map_err(|e| format!("error converting supplied value for registration: {e}"));
-                self
-            }
-        }
-
-        impl ::std::convert::TryFrom<RegisterServerResponse> for super::RegisterServerResponse {
-            type Error = super::error::ConversionError;
-            fn try_from(
-                value: RegisterServerResponse,
-            ) -> ::std::result::Result<Self, super::error::ConversionError> {
-                Ok(Self {
-                    registration: value.registration?,
-                })
-            }
-        }
-
-        impl ::std::convert::From<super::RegisterServerResponse> for RegisterServerResponse {
-            fn from(value: super::RegisterServerResponse) -> Self {
-                Self {
-                    registration: Ok(value.registration),
+                    created_at: Ok(value.created_at),
+                    expires_at: Ok(value.expires_at),
+                    id: Ok(value.id),
+                    nonce: Ok(value.nonce),
+                    service_id: Ok(value.service_id),
                 }
             }
         }
@@ -11945,20 +12005,12 @@ pub mod types {
                 ::chrono::DateTime<::chrono::offset::Utc>,
                 ::std::string::String,
             >,
-            expires_at: ::std::result::Result<
-                ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
-                ::std::string::String,
-            >,
             id: ::std::result::Result<
                 super::TypedUuidForServerRegistrationId,
                 ::std::string::String,
             >,
             instance_id: ::std::result::Result<
                 super::TypedUuidForServerRegistrationInstanceId,
-                ::std::string::String,
-            >,
-            nonce: ::std::result::Result<
-                ::std::option::Option<::std::string::String>,
                 ::std::string::String,
             >,
             project_id: ::std::result::Result<super::TypedUuidForProjectId, ::std::string::String>,
@@ -11975,10 +12027,8 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     created_at: Err("no value supplied for created_at".to_string()),
-                    expires_at: Ok(Default::default()),
                     id: Err("no value supplied for id".to_string()),
                     instance_id: Err("no value supplied for instance_id".to_string()),
-                    nonce: Ok(Default::default()),
                     project_id: Err("no value supplied for project_id".to_string()),
                     service_id: Err("no value supplied for service_id".to_string()),
                     silo_id: Err("no value supplied for silo_id".to_string()),
@@ -11999,18 +12049,6 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for created_at: {e}"));
                 self
             }
-            pub fn expires_at<T>(mut self, value: T) -> Self
-            where
-                T: ::std::convert::TryInto<
-                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
-                    >,
-                T::Error: ::std::fmt::Display,
-            {
-                self.expires_at = value
-                    .try_into()
-                    .map_err(|e| format!("error converting supplied value for expires_at: {e}"));
-                self
-            }
             pub fn id<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<super::TypedUuidForServerRegistrationId>,
@@ -12029,16 +12067,6 @@ pub mod types {
                 self.instance_id = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for instance_id: {e}"));
-                self
-            }
-            pub fn nonce<T>(mut self, value: T) -> Self
-            where
-                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
-                T::Error: ::std::fmt::Display,
-            {
-                self.nonce = value
-                    .try_into()
-                    .map_err(|e| format!("error converting supplied value for nonce: {e}"));
                 self
             }
             pub fn project_id<T>(mut self, value: T) -> Self
@@ -12100,10 +12128,8 @@ pub mod types {
             ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
                     created_at: value.created_at?,
-                    expires_at: value.expires_at?,
                     id: value.id?,
                     instance_id: value.instance_id?,
-                    nonce: value.nonce?,
                     project_id: value.project_id?,
                     service_id: value.service_id?,
                     silo_id: value.silo_id?,
@@ -12117,10 +12143,8 @@ pub mod types {
             fn from(value: super::ServerRegistration) -> Self {
                 Self {
                     created_at: Ok(value.created_at),
-                    expires_at: Ok(value.expires_at),
                     id: Ok(value.id),
                     instance_id: Ok(value.instance_id),
-                    nonce: Ok(value.nonce),
                     project_id: Ok(value.project_id),
                     service_id: Ok(value.service_id),
                     silo_id: Ok(value.silo_id),
@@ -13215,6 +13239,26 @@ impl Client {
         builder::DeleteOauthClientSecret::new(self)
     }
 
+    /// Answer a registration challenge with an attestation
+    ///
+    /// The server registration is built from the instance identity in the
+    /// verified attestation. An instance that is already registered receives
+    /// its existing registration, so a server also uses this to learn the
+    /// current state of its registration.
+    ///
+    /// Sends a `POST` request to `/registration/{challenge}/prove`
+    ///
+    /// ```ignore
+    /// let response = client.prove_registration()
+    ///    .challenge(challenge)
+    ///    .body(body)
+    ///    .send()
+    ///    .await;
+    /// ```
+    pub fn prove_registration(&self) -> builder::ProveRegistration<'_> {
+        builder::ProveRegistration::new(self)
+    }
+
     /// View details for the calling user
     ///
     /// Sends a `GET` request to `/self`
@@ -13367,21 +13411,6 @@ impl Client {
         builder::ProveOidcTokenRequest::new(self)
     }
 
-    /// Prove the identity of a server
-    ///
-    /// Sends a `POST` request to `/server/{server}/prove`
-    ///
-    /// ```ignore
-    /// let response = client.prove_server()
-    ///    .server(server)
-    ///    .body(body)
-    ///    .send()
-    ///    .await;
-    /// ```
-    pub fn prove_server(&self) -> builder::ProveServer<'_> {
-        builder::ProveServer::new(self)
-    }
-
     /// Reject a server's request to be added as a representative instance of a
     /// service
     ///
@@ -13528,18 +13557,17 @@ impl Client {
         builder::DeleteDeployment::new(self)
     }
 
-    /// Request a server be registered as a representative instance of a service
+    /// Request a challenge for registering a server as an instance of a service
     ///
-    /// The server will need to prove its identity via an attestation. Once its
-    /// identity is verified the server will need to either be accepted by
-    /// policy or manual intervention.
+    /// The server must answer the challenge with an attestation. The
+    /// registration is only created once that attestation has been verified,
+    /// and it is then either accepted by policy or by manual intervention.
     ///
     /// Sends a `POST` request to `/service/{service}/register`
     ///
     /// ```ignore
     /// let response = client.register_server()
     ///    .service(service)
-    ///    .body(body)
     ///    .send()
     ///    .await;
     /// ```
@@ -18162,6 +18190,112 @@ pub mod builder {
         }
     }
 
+    /// Builder for [`Client::prove_registration`]
+    ///
+    /// [`Client::prove_registration`]: super::Client::prove_registration
+    #[derive(Debug, Clone)]
+    pub struct ProveRegistration<'a> {
+        client: &'a super::Client,
+        challenge: Result<types::TypedUuidForRegistrationChallengeId, String>,
+        body: Result<types::builder::ServerAttestation, String>,
+    }
+
+    impl<'a> ProveRegistration<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                challenge: Err("challenge was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+
+        pub fn challenge<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::TypedUuidForRegistrationChallengeId>,
+        {
+            self.challenge = value.try_into().map_err(|_| {
+                "conversion to `TypedUuidForRegistrationChallengeId` for challenge failed"
+                    .to_string()
+            });
+            self
+        }
+
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::ServerAttestation>,
+            <V as std::convert::TryInto<types::ServerAttestation>>::Error: std::fmt::Display,
+        {
+            self.body = value
+                .try_into()
+                .map(From::from)
+                .map_err(|s| format!("conversion to `ServerAttestation` for body failed: {}", s));
+            self
+        }
+
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::ServerAttestation,
+                ) -> types::builder::ServerAttestation,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+
+        /// Sends a `POST` request to `/registration/{challenge}/prove`
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<types::ServerRegistration>, Error<types::Error>> {
+            let Self {
+                client,
+                challenge,
+                body,
+            } = self;
+            let challenge = challenge.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| types::ServerAttestation::try_from(v).map_err(|e| e.to_string()))
+                .map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/registration/{}/prove",
+                client.baseurl,
+                encode_path(&challenge.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "prove_registration",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                400u16..=499u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                500u16..=599u16 => Err(Error::ErrorResponse(
+                    ResponseValue::from_response(response).await?,
+                )),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+
     /// Builder for [`Client::get_self`]
     ///
     /// [`Client::get_self`]: super::Client::get_self
@@ -19047,109 +19181,6 @@ pub mod builder {
         }
     }
 
-    /// Builder for [`Client::prove_server`]
-    ///
-    /// [`Client::prove_server`]: super::Client::prove_server
-    #[derive(Debug, Clone)]
-    pub struct ProveServer<'a> {
-        client: &'a super::Client,
-        server: Result<types::TypedUuidForServerRegistrationId, String>,
-        body: Result<types::builder::ServerAttestation, String>,
-    }
-
-    impl<'a> ProveServer<'a> {
-        pub fn new(client: &'a super::Client) -> Self {
-            Self {
-                client: client,
-                server: Err("server was not initialized".to_string()),
-                body: Ok(::std::default::Default::default()),
-            }
-        }
-
-        pub fn server<V>(mut self, value: V) -> Self
-        where
-            V: std::convert::TryInto<types::TypedUuidForServerRegistrationId>,
-        {
-            self.server = value.try_into().map_err(|_| {
-                "conversion to `TypedUuidForServerRegistrationId` for server failed".to_string()
-            });
-            self
-        }
-
-        pub fn body<V>(mut self, value: V) -> Self
-        where
-            V: std::convert::TryInto<types::ServerAttestation>,
-            <V as std::convert::TryInto<types::ServerAttestation>>::Error: std::fmt::Display,
-        {
-            self.body = value
-                .try_into()
-                .map(From::from)
-                .map_err(|s| format!("conversion to `ServerAttestation` for body failed: {}", s));
-            self
-        }
-
-        pub fn body_map<F>(mut self, f: F) -> Self
-        where
-            F: std::ops::FnOnce(
-                    types::builder::ServerAttestation,
-                ) -> types::builder::ServerAttestation,
-        {
-            self.body = self.body.map(f);
-            self
-        }
-
-        /// Sends a `POST` request to `/server/{server}/prove`
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<types::Error>> {
-            let Self {
-                client,
-                server,
-                body,
-            } = self;
-            let server = server.map_err(Error::InvalidRequest)?;
-            let body = body
-                .and_then(|v| types::ServerAttestation::try_from(v).map_err(|e| e.to_string()))
-                .map_err(Error::InvalidRequest)?;
-            let url = format!(
-                "{}/server/{}/prove",
-                client.baseurl,
-                encode_path(&server.to_string()),
-            );
-            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
-            header_map.append(
-                ::reqwest::header::HeaderName::from_static("api-version"),
-                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
-            );
-            #[allow(unused_mut)]
-            let mut request = client
-                .client
-                .post(url)
-                .header(
-                    ::reqwest::header::ACCEPT,
-                    ::reqwest::header::HeaderValue::from_static("application/json"),
-                )
-                .json(&body)
-                .headers(header_map)
-                .build()?;
-            let info = OperationInfo {
-                operation_id: "prove_server",
-            };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                204u16 => Ok(ResponseValue::empty(response)),
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
-        }
-    }
-
     /// Builder for [`Client::reject_server`]
     ///
     /// [`Client::reject_server`]: super::Client::reject_server
@@ -19934,7 +19965,6 @@ pub mod builder {
     pub struct RegisterServer<'a> {
         client: &'a super::Client,
         service: Result<types::ServiceIdentifier, String>,
-        body: Result<types::builder::RegisterServerBody, String>,
     }
 
     impl<'a> RegisterServer<'a> {
@@ -19942,7 +19972,6 @@ pub mod builder {
             Self {
                 client: client,
                 service: Err("service was not initialized".to_string()),
-                body: Ok(::std::default::Default::default()),
             }
         }
 
@@ -19956,41 +19985,12 @@ pub mod builder {
             self
         }
 
-        pub fn body<V>(mut self, value: V) -> Self
-        where
-            V: std::convert::TryInto<types::RegisterServerBody>,
-            <V as std::convert::TryInto<types::RegisterServerBody>>::Error: std::fmt::Display,
-        {
-            self.body = value
-                .try_into()
-                .map(From::from)
-                .map_err(|s| format!("conversion to `RegisterServerBody` for body failed: {}", s));
-            self
-        }
-
-        pub fn body_map<F>(mut self, f: F) -> Self
-        where
-            F: std::ops::FnOnce(
-                    types::builder::RegisterServerBody,
-                ) -> types::builder::RegisterServerBody,
-        {
-            self.body = self.body.map(f);
-            self
-        }
-
         /// Sends a `POST` request to `/service/{service}/register`
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<types::RegisterServerResponse>, Error<types::Error>> {
-            let Self {
-                client,
-                service,
-                body,
-            } = self;
+        ) -> Result<ResponseValue<types::RegistrationChallenge>, Error<types::Error>> {
+            let Self { client, service } = self;
             let service = service.map_err(Error::InvalidRequest)?;
-            let body = body
-                .and_then(|v| types::RegisterServerBody::try_from(v).map_err(|e| e.to_string()))
-                .map_err(Error::InvalidRequest)?;
             let url = format!(
                 "{}/service/{}/register",
                 client.baseurl,
@@ -20009,7 +20009,6 @@ pub mod builder {
                     ::reqwest::header::ACCEPT,
                     ::reqwest::header::HeaderValue::from_static("application/json"),
                 )
-                .json(&body)
                 .headers(header_map)
                 .build()?;
             let info = OperationInfo {

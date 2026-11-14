@@ -13,6 +13,8 @@ pub static DEFAULT_SPRUE_SOCKET: &str = "/run/sprue-agent/agent.sock";
 pub enum SprueError {
     #[error("Sprue service failure: {0}")]
     Failure(String),
+    #[error("Server registration is not accepted: {0}")]
+    NotAccepted(String),
 }
 
 #[tarpc::service]
@@ -20,6 +22,6 @@ pub trait SprueService {
     async fn checkin() -> Result<(), SprueError>;
     async fn backup(path: PathBuf) -> Result<String, SprueError>;
     async fn get_token() -> Result<String, SprueError>;
-    async fn get_registration_id() -> TypedUuidForServerRegistrationId;
+    async fn get_registration_id() -> Result<TypedUuidForServerRegistrationId, SprueError>;
     async fn register_server() -> Result<TypedUuidForServerRegistrationId, SprueError>;
 }

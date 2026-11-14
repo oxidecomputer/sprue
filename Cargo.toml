@@ -36,7 +36,6 @@ chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4.5.60", features = ["derive", "string"] }
 clap_complete = "4.5"
 config = { version = "0.15", features = ["toml"] }
-crossterm = "0.28"
 const-oid = { version = "0.9.5", features = ["db"] }
 ctrlc = "3.5"
 derive_builder = "0.20.2"

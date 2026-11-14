@@ -14,8 +14,8 @@ use crate::{
         service::{
             accept_server, checkin_server, create_deployment, create_service, delete_deployment,
             delete_server, delete_service, get_deployment, get_service, get_service_servers,
-            list_deployments, list_server_blobs, list_server_checkins, list_services, prove_server,
-            register_blob, register_server, reject_server, terminate_server,
+            list_deployments, list_server_blobs, list_server_checkins, list_services,
+            prove_registration, register_blob, register_server, reject_server, terminate_server,
         },
     },
     permissions::ApiPermissions,
@@ -63,7 +63,7 @@ pub fn describe() -> ApiDescription<ApiContext> {
         .register(accept_server)
         .expect("Register endpoint");
     description
-        .register(prove_server)
+        .register(prove_registration)
         .expect("Register endpoint");
     description
         .register(reject_server)

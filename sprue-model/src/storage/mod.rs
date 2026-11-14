@@ -8,14 +8,15 @@ use newtype_uuid::TypedUuid;
 
 use crate::db::{
     BlobModel, DeploymentModel, HealthCheckModel, IdempotentRequestModel, NewBlobModel,
-    NewDeploymentModel, NewHealthCheckModel, NewIdempotentRequestModel, NewServerRegistrationModel,
-    NewServiceModel, NewTokenRequestModel, ServerRegistrationModel, ServiceModel,
+    NewDeploymentModel, NewHealthCheckModel, NewIdempotentRequestModel,
+    NewRegistrationChallengeModel, NewServerRegistrationModel, NewServiceModel,
+    NewTokenRequestModel, RegistrationChallengeModel, ServerRegistrationModel, ServiceModel,
     TokenRequestModel,
 };
 use crate::{
     BlobId, BlobState, DeploymentId, IdempotentRequestId, IdempotentRequestState,
-    ServerRegistrationId, ServerRegistrationInstanceId, ServerRegistrationState, ServiceId,
-    TokenRequestId, TokenRequestState,
+    RegistrationChallengeId, ServerRegistrationId, ServerRegistrationInstanceId,
+    ServerRegistrationState, ServiceId, TokenRequestId, TokenRequestState,
 };
 
 pub mod postgres;
@@ -202,11 +203,35 @@ pub trait DeploymentStorage: Send + Sync {
     async fn delete_deployment(&self, id: TypedUuid<DeploymentId>) -> StorageResult<Option<()>>;
 }
 
+/// Storage interface for registration challenge operations
+#[async_trait]
+pub trait RegistrationChallengeStorage: Send + Sync {
+    /// Create a new registration challenge for a service.
+    async fn create_registration_challenge(
+        &self,
+        challenge: &NewRegistrationChallengeModel,
+    ) -> StorageResult<RegistrationChallengeModel>;
+
+    /// Get a challenge that has not yet expired or been consumed. Returns None
+    /// when no such challenge exists.
+    async fn get_active_registration_challenge(
+        &self,
+        id: TypedUuid<RegistrationChallengeId>,
+    ) -> StorageResult<Option<RegistrationChallengeModel>>;
+
+    /// Atomically mark an active challenge as consumed so that it can not be
+    /// answered twice. Returns None when the challenge is not active.
+    async fn consume_registration_challenge(
+        &self,
+        id: TypedUuid<RegistrationChallengeId>,
+    ) -> StorageResult<Option<()>>;
+}
+
 /// Storage interface for server registration operations
 #[async_trait]
 pub trait ServerRegistrationStorage: Send + Sync {
-    /// Create a new server registration (associates a public key with a service)
-    /// The registration is created with Pending state
+    /// Create a new server registration for an instance whose identity has
+    /// already been proven. The registration is created in the Proven state.
     async fn create_server_registration(
         &self,
         registration: &NewServerRegistrationModel,
@@ -428,6 +453,7 @@ pub trait TokenRequestStorage: Send + Sync {
 #[async_trait]
 pub trait Storage:
     ServiceStorage
+    + RegistrationChallengeStorage
     + ServerRegistrationStorage
     + BlobStorage
     + HealthCheckStorage

@@ -83,8 +83,9 @@ fn extract_corim<R: Read + Seek>(
         Regex::new("repo/targets/[0-9a-f]*.artifacts.json").expect("Known valid regex");
     let manifest_name = archive
         .file_names()
+        .filter_map(Result::ok)
         .find(|name| manifest_pattern.is_match(name.as_bytes()))
-        .map(|name| name.to_owned())
+        .map(|name| name.into_owned())
         .ok_or(MeasurementError::MissingManifest)?;
     tracing::trace!(?manifest_name, "Extracting manifest name");
     let manifest = {
@@ -112,9 +113,10 @@ fn extract_corim<R: Read + Seek>(
             let full_file_name = {
                 let full_file_name = archive
                     .file_names()
+                    .filter_map(Result::ok)
                     .find(|f| f.ends_with(name.as_ref()))
                     .ok_or(MeasurementError::MissingMeasurement)?;
-                full_file_name.to_string()
+                full_file_name.into_owned()
             };
             archive
                 .by_name(&full_file_name)

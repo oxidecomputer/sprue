@@ -3,97 +3,17 @@
 #[allow(unused_imports)]
 pub use progenitor_client::{ByteStream, ClientInfo, Error, ResponseValue};
 #[allow(unused_imports)]
-use progenitor_client::{ClientHooks, OperationInfo, RequestBuilderExt, encode_path};
+use progenitor_client::{ClientHooks, OperationInfo, QueryParam, RequestBuilderExt, encode_path};
 /// Types used as operation parameters and responses.
 #[allow(clippy::all)]
 pub mod types {
-    /// Error types.
-    pub mod error {
-        /// Error from a `TryFrom` or `FromStr` implementation.
-        pub struct ConversionError(::std::borrow::Cow<'static, str>);
-        impl ::std::error::Error for ConversionError {}
-
-        impl ::std::fmt::Display for ConversionError {
-            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
-                ::std::fmt::Display::fmt(&self.0, f)
-            }
-        }
-
-        impl ::std::fmt::Debug for ConversionError {
-            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
-                ::std::fmt::Debug::fmt(&self.0, f)
-            }
-        }
-
-        impl From<&'static str> for ConversionError {
-            fn from(value: &'static str) -> Self {
-                Self(value.into())
-            }
-        }
-
-        impl From<String> for ConversionError {
-            fn from(value: String) -> Self {
-                Self(value.into())
-            }
-        }
-    }
-
     /// `AccessGroupForApiPermissions`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "created_at",
-    ///    "id",
-    ///    "name",
-    ///    "permissions",
-    ///    "source",
-    ///    "updated_at"
-    ///  ],
-    ///  "properties": {
-    ///    "created_at": {
-    ///      "type": "string",
-    ///      "format": "date-time"
-    ///    },
-    ///    "deleted_at": {
-    ///      "type": [
-    ///        "string",
-    ///        "null"
-    ///      ],
-    ///      "format": "date-time"
-    ///    },
-    ///    "id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForAccessGroupId"
-    ///    },
-    ///    "name": {
-    ///      "type": "string"
-    ///    },
-    ///    "permissions": {
-    ///      "$ref": "#/components/schemas/Permissions_for_ApiPermissions"
-    ///    },
-    ///    "source": {
-    ///      "$ref": "#/components/schemas/AccessGroupSource"
-    ///    },
-    ///    "updated_at": {
-    ///      "type": "string",
-    ///      "format": "date-time"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
     pub struct AccessGroupForApiPermissions {
         pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        #[serde(skip_serializing_if = "::std::option::Option::is_none")]
         pub deleted_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
         pub id: TypedUuidForAccessGroupId,
         pub name: ::std::string::String,
@@ -109,13 +29,6 @@ pub mod types {
     }
 
     /// `AccessGroupId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// false
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize,
         :: serde :: Serialize,
@@ -135,36 +48,6 @@ pub mod types {
     /// Where an access group is defined. Groups loaded from service
     /// configuration are immutable at runtime; only their membership can
     /// change.
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "description": "Where an access group is defined. Groups loaded from
-    /// service configuration are immutable at runtime; only their membership
-    /// can change.",
-    ///  "oneOf": [
-    ///    {
-    ///      "description": "Created via the API and persisted in the database",
-    ///      "type": "string",
-    ///      "enum": [
-    ///        "dynamic"
-    ///      ]
-    ///    },
-    ///    {
-    ///      "description": "Loaded from service configuration, in-memory only,
-    /// name and permissions are fixed",
-    ///      "type": "string",
-    ///      "enum": [
-    ///        "preset"
-    ///      ]
-    ///    }
-
-    ///  ]
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize,
         :: serde :: Serialize,
@@ -215,15 +98,6 @@ pub mod types {
         }
     }
 
-    impl ::std::convert::TryFrom<&::std::string::String> for AccessGroupSource {
-        type Error = self::error::ConversionError;
-        fn try_from(
-            value: &::std::string::String,
-        ) -> ::std::result::Result<Self, self::error::ConversionError> {
-            value.parse()
-        }
-    }
-
     impl ::std::convert::TryFrom<::std::string::String> for AccessGroupSource {
         type Error = self::error::ConversionError;
         fn try_from(
@@ -234,30 +108,6 @@ pub mod types {
     }
 
     /// `AccessGroupUpdateParamsForApiPermissions`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "name",
-    ///    "permissions"
-    ///  ],
-    ///  "properties": {
-    ///    "name": {
-    ///      "type": "string"
-    ///    },
-    ///    "permissions": {
-    ///      "$ref": "#/components/schemas/Permissions_for_ApiPermissions"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -273,26 +123,6 @@ pub mod types {
     }
 
     /// `AddGroupBody`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "group_id"
-    ///  ],
-    ///  "properties": {
-    ///    "group_id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForAccessGroupId"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -307,26 +137,6 @@ pub mod types {
     }
 
     /// `AddMagicLinkRedirectBody`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "redirect_uri"
-    ///  ],
-    ///  "properties": {
-    ///    "redirect_uri": {
-    ///      "type": "string"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -341,26 +151,6 @@ pub mod types {
     }
 
     /// `AddOAuthClientRedirectBody`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "redirect_uri"
-    ///  ],
-    ///  "properties": {
-    ///    "redirect_uri": {
-    ///      "type": "string"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -375,50 +165,12 @@ pub mod types {
     }
 
     /// `ApiKeyCreateParamsForApiPermissions`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "expires_at"
-    ///  ],
-    ///  "properties": {
-    ///    "expires_at": {
-    ///      "type": "string",
-    ///      "format": "date-time"
-    ///    },
-    ///    "permission_boundary": {
-    ///      "oneOf": [
-    ///        {
-    ///          "type": "null"
-    ///        },
-    ///        {
-    ///          "allOf": [
-    ///            {
-    ///              "$ref":
-    /// "#/components/schemas/Permissions_for_ApiPermissions"
-    ///            }
-
-    ///          ]
-    ///        }
-
-    ///      ]
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
     pub struct ApiKeyCreateParamsForApiPermissions {
         pub expires_at: ::chrono::DateTime<::chrono::offset::Utc>,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        #[serde(skip_serializing_if = "::std::option::Option::is_none")]
         pub permission_boundary: ::std::option::Option<PermissionsForApiPermissions>,
     }
 
@@ -429,13 +181,6 @@ pub mod types {
     }
 
     /// `ApiKeyId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// false
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize,
         :: serde :: Serialize,
@@ -453,55 +198,13 @@ pub mod types {
     pub enum ApiKeyId {}
 
     /// `ApiKeyResponseForApiPermissions`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "created_at",
-    ///    "id"
-    ///  ],
-    ///  "properties": {
-    ///    "created_at": {
-    ///      "type": "string",
-    ///      "format": "date-time"
-    ///    },
-    ///    "id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForApiKeyId"
-    ///    },
-    ///    "permission_boundary": {
-    ///      "oneOf": [
-    ///        {
-    ///          "type": "null"
-    ///        },
-    ///        {
-    ///          "allOf": [
-    ///            {
-    ///              "$ref":
-    /// "#/components/schemas/Permissions_for_ApiPermissions"
-    ///            }
-
-    ///          ]
-    ///        }
-
-    ///      ]
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
     pub struct ApiKeyResponseForApiPermissions {
         pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
         pub id: TypedUuidForApiKeyId,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        #[serde(skip_serializing_if = "::std::option::Option::is_none")]
         pub permission_boundary: ::std::option::Option<PermissionsForApiPermissions>,
     }
 
@@ -512,527 +215,6 @@ pub mod types {
     }
 
     /// `ApiPermissions`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "oneOf": [
-    ///    {
-    ///      "type": "string",
-    ///      "enum": [
-    ///        "GetServicesAssigned",
-    ///        "GetServicesAll",
-    ///        "CreateService",
-    ///        "ManageServicesAssigned",
-    ///        "ManageServicesAll",
-    ///        "GetBlobsAssigned",
-    ///        "GetBlobsAll",
-    ///        "ManageBlobsAll",
-    ///        "CreateApiUser",
-    ///        "GetApiUserSelf",
-    ///        "GetApiUsersAssigned",
-    ///        "GetApiUsersAll",
-    ///        "ManageApiUsersAssigned",
-    ///        "ManageApiUsersAll",
-    ///        "CreateApiKeySelf",
-    ///        "CreateApiKeyAssigned",
-    ///        "CreateApiKeyAll",
-    ///        "GetApiKeysAssigned",
-    ///        "GetApiKeysAll",
-    ///        "ManageApiKeysAssigned",
-    ///        "ManageApiKeysAll",
-    ///        "CreateUserApiProviderLinkToken",
-    ///        "CreateGroup",
-    ///        "GetGroupsJoined",
-    ///        "GetGroupsAll",
-    ///        "ManageGroupsAssigned",
-    ///        "ManageGroupsAll",
-    ///        "ManageGroupMembershipsAssigned",
-    ///        "ManageGroupMembershipsAll",
-    ///        "CreateMapper",
-    ///        "GetMappersAll",
-    ///        "ManageMappersAssigned",
-    ///        "ManageMappersAll",
-    ///        "CreateOAuthClient",
-    ///        "GetOAuthClientsAssigned",
-    ///        "GetOAuthClientsAll",
-    ///        "ManageOAuthClientsAssigned",
-    ///        "ManageOAuthClientsAll",
-    ///        "CreateMagicLinkClient",
-    ///        "GetMagicLinkClientsAssigned",
-    ///        "GetMagicLinkClientsAll",
-    ///        "ManageMagicLinkClientsAssigned",
-    ///        "ManageMagicLinkClientsAll",
-    ///        "CreateAccessToken",
-    ///        "RetrieveRemoteAccessToken",
-    ///        "GetSagasAll",
-    ///        "ManageSagasAll"
-    ///      ]
-    ///    },
-    ///    {
-    ///      "type": "object",
-    ///      "required": [
-    ///        "GetService"
-    ///      ],
-    ///      "properties": {
-    ///        "GetService": {
-    ///          "$ref": "#/components/schemas/TypedUuidForServiceId"
-    ///        }
-
-    ///      },
-    ///      "additionalProperties": false
-    ///    },
-    ///    {
-    ///      "type": "object",
-    ///      "required": [
-    ///        "GetServices"
-    ///      ],
-    ///      "properties": {
-    ///        "GetServices": {
-    ///          "type": "array",
-    ///          "items": {
-    ///            "$ref": "#/components/schemas/TypedUuidForServiceId"
-    ///          },
-    ///          "uniqueItems": true
-    ///        }
-
-    ///      },
-    ///      "additionalProperties": false
-    ///    },
-    ///    {
-    ///      "type": "object",
-    ///      "required": [
-    ///        "ManageService"
-    ///      ],
-    ///      "properties": {
-    ///        "ManageService": {
-    ///          "$ref": "#/components/schemas/TypedUuidForServiceId"
-    ///        }
-
-    ///      },
-    ///      "additionalProperties": false
-    ///    },
-    ///    {
-    ///      "type": "object",
-    ///      "required": [
-    ///        "ManageServices"
-    ///      ],
-    ///      "properties": {
-    ///        "ManageServices": {
-    ///          "type": "array",
-    ///          "items": {
-    ///            "$ref": "#/components/schemas/TypedUuidForServiceId"
-    ///          },
-    ///          "uniqueItems": true
-    ///        }
-
-    ///      },
-    ///      "additionalProperties": false
-    ///    },
-    ///    {
-    ///      "type": "object",
-    ///      "required": [
-    ///        "GetBlob"
-    ///      ],
-    ///      "properties": {
-    ///        "GetBlob": {
-    ///          "$ref": "#/components/schemas/TypedUuidForBlobId"
-    ///        }
-
-    ///      },
-    ///      "additionalProperties": false
-    ///    },
-    ///    {
-    ///      "type": "object",
-    ///      "required": [
-    ///        "GetBlobs"
-    ///      ],
-    ///      "properties": {
-    ///        "GetBlobs": {
-    ///          "type": "array",
-    ///          "items": {
-    ///            "$ref": "#/components/schemas/TypedUuidForBlobId"
-    ///          },
-    ///          "uniqueItems": true
-    ///        }
-
-    ///      },
-    ///      "additionalProperties": false
-    ///    },
-    ///    {
-    ///      "type": "object",
-    ///      "required": [
-    ///        "GetApiUser"
-    ///      ],
-    ///      "properties": {
-    ///        "GetApiUser": {
-    ///          "$ref": "#/components/schemas/TypedUuidForUserId"
-    ///        }
-
-    ///      },
-    ///      "additionalProperties": false
-    ///    },
-    ///    {
-    ///      "type": "object",
-    ///      "required": [
-    ///        "GetApiUsers"
-    ///      ],
-    ///      "properties": {
-    ///        "GetApiUsers": {
-    ///          "type": "array",
-    ///          "items": {
-    ///            "$ref": "#/components/schemas/TypedUuidForUserId"
-    ///          },
-    ///          "uniqueItems": true
-    ///        }
-
-    ///      },
-    ///      "additionalProperties": false
-    ///    },
-    ///    {
-    ///      "type": "object",
-    ///      "required": [
-    ///        "ManageApiUser"
-    ///      ],
-    ///      "properties": {
-    ///        "ManageApiUser": {
-    ///          "$ref": "#/components/schemas/TypedUuidForUserId"
-    ///        }
-
-    ///      },
-    ///      "additionalProperties": false
-    ///    },
-    ///    {
-    ///      "type": "object",
-    ///      "required": [
-    ///        "ManageApiUsers"
-    ///      ],
-    ///      "properties": {
-    ///        "ManageApiUsers": {
-    ///          "type": "array",
-    ///          "items": {
-    ///            "$ref": "#/components/schemas/TypedUuidForUserId"
-    ///          },
-    ///          "uniqueItems": true
-    ///        }
-
-    ///      },
-    ///      "additionalProperties": false
-    ///    },
-    ///    {
-    ///      "type": "object",
-    ///      "required": [
-    ///        "CreateApiKey"
-    ///      ],
-    ///      "properties": {
-    ///        "CreateApiKey": {
-    ///          "$ref": "#/components/schemas/TypedUuidForUserId"
-    ///        }
-
-    ///      },
-    ///      "additionalProperties": false
-    ///    },
-    ///    {
-    ///      "type": "object",
-    ///      "required": [
-    ///        "GetApiKey"
-    ///      ],
-    ///      "properties": {
-    ///        "GetApiKey": {
-    ///          "$ref": "#/components/schemas/TypedUuidForApiKeyId"
-    ///        }
-
-    ///      },
-    ///      "additionalProperties": false
-    ///    },
-    ///    {
-    ///      "type": "object",
-    ///      "required": [
-    ///        "GetApiKeys"
-    ///      ],
-    ///      "properties": {
-    ///        "GetApiKeys": {
-    ///          "type": "array",
-    ///          "items": {
-    ///            "$ref": "#/components/schemas/TypedUuidForApiKeyId"
-    ///          },
-    ///          "uniqueItems": true
-    ///        }
-
-    ///      },
-    ///      "additionalProperties": false
-    ///    },
-    ///    {
-    ///      "type": "object",
-    ///      "required": [
-    ///        "ManageApiKey"
-    ///      ],
-    ///      "properties": {
-    ///        "ManageApiKey": {
-    ///          "$ref": "#/components/schemas/TypedUuidForApiKeyId"
-    ///        }
-
-    ///      },
-    ///      "additionalProperties": false
-    ///    },
-    ///    {
-    ///      "type": "object",
-    ///      "required": [
-    ///        "ManageApiKeys"
-    ///      ],
-    ///      "properties": {
-    ///        "ManageApiKeys": {
-    ///          "type": "array",
-    ///          "items": {
-    ///            "$ref": "#/components/schemas/TypedUuidForApiKeyId"
-    ///          },
-    ///          "uniqueItems": true
-    ///        }
-
-    ///      },
-    ///      "additionalProperties": false
-    ///    },
-    ///    {
-    ///      "type": "object",
-    ///      "required": [
-    ///        "GetGroup"
-    ///      ],
-    ///      "properties": {
-    ///        "GetGroup": {
-    ///          "$ref": "#/components/schemas/TypedUuidForAccessGroupId"
-    ///        }
-
-    ///      },
-    ///      "additionalProperties": false
-    ///    },
-    ///    {
-    ///      "type": "object",
-    ///      "required": [
-    ///        "ManageGroup"
-    ///      ],
-    ///      "properties": {
-    ///        "ManageGroup": {
-    ///          "$ref": "#/components/schemas/TypedUuidForAccessGroupId"
-    ///        }
-
-    ///      },
-    ///      "additionalProperties": false
-    ///    },
-    ///    {
-    ///      "type": "object",
-    ///      "required": [
-    ///        "ManageGroups"
-    ///      ],
-    ///      "properties": {
-    ///        "ManageGroups": {
-    ///          "type": "array",
-    ///          "items": {
-    ///            "$ref": "#/components/schemas/TypedUuidForAccessGroupId"
-    ///          },
-    ///          "uniqueItems": true
-    ///        }
-
-    ///      },
-    ///      "additionalProperties": false
-    ///    },
-    ///    {
-    ///      "type": "object",
-    ///      "required": [
-    ///        "ManageGroupMembership"
-    ///      ],
-    ///      "properties": {
-    ///        "ManageGroupMembership": {
-    ///          "$ref": "#/components/schemas/TypedUuidForAccessGroupId"
-    ///        }
-
-    ///      },
-    ///      "additionalProperties": false
-    ///    },
-    ///    {
-    ///      "type": "object",
-    ///      "required": [
-    ///        "ManageGroupMemberships"
-    ///      ],
-    ///      "properties": {
-    ///        "ManageGroupMemberships": {
-    ///          "type": "array",
-    ///          "items": {
-    ///            "$ref": "#/components/schemas/TypedUuidForAccessGroupId"
-    ///          },
-    ///          "uniqueItems": true
-    ///        }
-
-    ///      },
-    ///      "additionalProperties": false
-    ///    },
-    ///    {
-    ///      "type": "object",
-    ///      "required": [
-    ///        "ManageMapper"
-    ///      ],
-    ///      "properties": {
-    ///        "ManageMapper": {
-    ///          "$ref": "#/components/schemas/TypedUuidForMapperId"
-    ///        }
-
-    ///      },
-    ///      "additionalProperties": false
-    ///    },
-    ///    {
-    ///      "type": "object",
-    ///      "required": [
-    ///        "ManageMappers"
-    ///      ],
-    ///      "properties": {
-    ///        "ManageMappers": {
-    ///          "type": "array",
-    ///          "items": {
-    ///            "$ref": "#/components/schemas/TypedUuidForMapperId"
-    ///          },
-    ///          "uniqueItems": true
-    ///        }
-
-    ///      },
-    ///      "additionalProperties": false
-    ///    },
-    ///    {
-    ///      "type": "object",
-    ///      "required": [
-    ///        "GetOAuthClient"
-    ///      ],
-    ///      "properties": {
-    ///        "GetOAuthClient": {
-    ///          "$ref": "#/components/schemas/TypedUuidForOAuthClientId"
-    ///        }
-
-    ///      },
-    ///      "additionalProperties": false
-    ///    },
-    ///    {
-    ///      "type": "object",
-    ///      "required": [
-    ///        "GetOAuthClients"
-    ///      ],
-    ///      "properties": {
-    ///        "GetOAuthClients": {
-    ///          "type": "array",
-    ///          "items": {
-    ///            "$ref": "#/components/schemas/TypedUuidForOAuthClientId"
-    ///          },
-    ///          "uniqueItems": true
-    ///        }
-
-    ///      },
-    ///      "additionalProperties": false
-    ///    },
-    ///    {
-    ///      "type": "object",
-    ///      "required": [
-    ///        "ManageOAuthClient"
-    ///      ],
-    ///      "properties": {
-    ///        "ManageOAuthClient": {
-    ///          "$ref": "#/components/schemas/TypedUuidForOAuthClientId"
-    ///        }
-
-    ///      },
-    ///      "additionalProperties": false
-    ///    },
-    ///    {
-    ///      "type": "object",
-    ///      "required": [
-    ///        "ManageOAuthClients"
-    ///      ],
-    ///      "properties": {
-    ///        "ManageOAuthClients": {
-    ///          "type": "array",
-    ///          "items": {
-    ///            "$ref": "#/components/schemas/TypedUuidForOAuthClientId"
-    ///          },
-    ///          "uniqueItems": true
-    ///        }
-
-    ///      },
-    ///      "additionalProperties": false
-    ///    },
-    ///    {
-    ///      "type": "object",
-    ///      "required": [
-    ///        "GetMagicLinkClient"
-    ///      ],
-    ///      "properties": {
-    ///        "GetMagicLinkClient": {
-    ///          "$ref": "#/components/schemas/TypedUuidForMagicLinkId"
-    ///        }
-
-    ///      },
-    ///      "additionalProperties": false
-    ///    },
-    ///    {
-    ///      "type": "object",
-    ///      "required": [
-    ///        "GetMagicLinkClients"
-    ///      ],
-    ///      "properties": {
-    ///        "GetMagicLinkClients": {
-    ///          "type": "array",
-    ///          "items": {
-    ///            "$ref": "#/components/schemas/TypedUuidForMagicLinkId"
-    ///          },
-    ///          "uniqueItems": true
-    ///        }
-
-    ///      },
-    ///      "additionalProperties": false
-    ///    },
-    ///    {
-    ///      "type": "object",
-    ///      "required": [
-    ///        "ManageMagicLinkClient"
-    ///      ],
-    ///      "properties": {
-    ///        "ManageMagicLinkClient": {
-    ///          "$ref": "#/components/schemas/TypedUuidForMagicLinkId"
-    ///        }
-
-    ///      },
-    ///      "additionalProperties": false
-    ///    },
-    ///    {
-    ///      "type": "object",
-    ///      "required": [
-    ///        "ManageMagicLinkClients"
-    ///      ],
-    ///      "properties": {
-    ///        "ManageMagicLinkClients": {
-    ///          "type": "array",
-    ///          "items": {
-    ///            "$ref": "#/components/schemas/TypedUuidForMagicLinkId"
-    ///          },
-    ///          "uniqueItems": true
-    ///        }
-
-    ///      },
-    ///      "additionalProperties": false
-    ///    },
-    ///    {
-    ///      "type": "object",
-    ///      "required": [
-    ///        "Unsupported"
-    ///      ],
-    ///      "properties": {
-    ///        "Unsupported": {}
-
-    ///      },
-    ///      "additionalProperties": false
-    ///    }
-
-    ///  ]
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -1085,35 +267,35 @@ pub mod types {
         GetSagasAll,
         ManageSagasAll,
         GetService(TypedUuidForServiceId),
-        GetServices(Vec<TypedUuidForServiceId>),
+        GetServices(::std::vec::Vec<TypedUuidForServiceId>),
         ManageService(TypedUuidForServiceId),
-        ManageServices(Vec<TypedUuidForServiceId>),
+        ManageServices(::std::vec::Vec<TypedUuidForServiceId>),
         GetBlob(TypedUuidForBlobId),
-        GetBlobs(Vec<TypedUuidForBlobId>),
+        GetBlobs(::std::vec::Vec<TypedUuidForBlobId>),
         GetApiUser(TypedUuidForUserId),
-        GetApiUsers(Vec<TypedUuidForUserId>),
+        GetApiUsers(::std::vec::Vec<TypedUuidForUserId>),
         ManageApiUser(TypedUuidForUserId),
-        ManageApiUsers(Vec<TypedUuidForUserId>),
+        ManageApiUsers(::std::vec::Vec<TypedUuidForUserId>),
         CreateApiKey(TypedUuidForUserId),
         GetApiKey(TypedUuidForApiKeyId),
-        GetApiKeys(Vec<TypedUuidForApiKeyId>),
+        GetApiKeys(::std::vec::Vec<TypedUuidForApiKeyId>),
         ManageApiKey(TypedUuidForApiKeyId),
-        ManageApiKeys(Vec<TypedUuidForApiKeyId>),
+        ManageApiKeys(::std::vec::Vec<TypedUuidForApiKeyId>),
         GetGroup(TypedUuidForAccessGroupId),
         ManageGroup(TypedUuidForAccessGroupId),
-        ManageGroups(Vec<TypedUuidForAccessGroupId>),
+        ManageGroups(::std::vec::Vec<TypedUuidForAccessGroupId>),
         ManageGroupMembership(TypedUuidForAccessGroupId),
-        ManageGroupMemberships(Vec<TypedUuidForAccessGroupId>),
+        ManageGroupMemberships(::std::vec::Vec<TypedUuidForAccessGroupId>),
         ManageMapper(TypedUuidForMapperId),
-        ManageMappers(Vec<TypedUuidForMapperId>),
+        ManageMappers(::std::vec::Vec<TypedUuidForMapperId>),
         GetOAuthClient(TypedUuidForOAuthClientId),
-        GetOAuthClients(Vec<TypedUuidForOAuthClientId>),
+        GetOAuthClients(::std::vec::Vec<TypedUuidForOAuthClientId>),
         ManageOAuthClient(TypedUuidForOAuthClientId),
-        ManageOAuthClients(Vec<TypedUuidForOAuthClientId>),
+        ManageOAuthClients(::std::vec::Vec<TypedUuidForOAuthClientId>),
         GetMagicLinkClient(TypedUuidForMagicLinkId),
-        GetMagicLinkClients(Vec<TypedUuidForMagicLinkId>),
+        GetMagicLinkClients(::std::vec::Vec<TypedUuidForMagicLinkId>),
         ManageMagicLinkClient(TypedUuidForMagicLinkId),
-        ManageMagicLinkClients(Vec<TypedUuidForMagicLinkId>),
+        ManageMagicLinkClients(::std::vec::Vec<TypedUuidForMagicLinkId>),
         Unsupported(::serde_json::Value),
     }
 
@@ -1123,8 +305,8 @@ pub mod types {
         }
     }
 
-    impl ::std::convert::From<Vec<TypedUuidForBlobId>> for ApiPermissions {
-        fn from(value: Vec<TypedUuidForBlobId>) -> Self {
+    impl ::std::convert::From<::std::vec::Vec<TypedUuidForBlobId>> for ApiPermissions {
+        fn from(value: ::std::vec::Vec<TypedUuidForBlobId>) -> Self {
             Self::GetBlobs(value)
         }
     }
@@ -1135,8 +317,8 @@ pub mod types {
         }
     }
 
-    impl ::std::convert::From<Vec<TypedUuidForMapperId>> for ApiPermissions {
-        fn from(value: Vec<TypedUuidForMapperId>) -> Self {
+    impl ::std::convert::From<::std::vec::Vec<TypedUuidForMapperId>> for ApiPermissions {
+        fn from(value: ::std::vec::Vec<TypedUuidForMapperId>) -> Self {
             Self::ManageMappers(value)
         }
     }
@@ -1148,57 +330,12 @@ pub mod types {
     }
 
     /// `ApiUserContactEmail`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "created_at",
-    ///    "email",
-    ///    "id",
-    ///    "updated_at",
-    ///    "user_id"
-    ///  ],
-    ///  "properties": {
-    ///    "created_at": {
-    ///      "type": "string",
-    ///      "format": "date-time"
-    ///    },
-    ///    "deleted_at": {
-    ///      "type": [
-    ///        "string",
-    ///        "null"
-    ///      ],
-    ///      "format": "date-time"
-    ///    },
-    ///    "email": {
-    ///      "type": "string"
-    ///    },
-    ///    "id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForUserProviderId"
-    ///    },
-    ///    "updated_at": {
-    ///      "type": "string",
-    ///      "format": "date-time"
-    ///    },
-    ///    "user_id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForUserId"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
     pub struct ApiUserContactEmail {
         pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        #[serde(skip_serializing_if = "::std::option::Option::is_none")]
         pub deleted_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
         pub email: ::std::string::String,
         pub id: TypedUuidForUserProviderId,
@@ -1213,26 +350,6 @@ pub mod types {
     }
 
     /// `ApiUserEmailUpdateParams`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "email"
-    ///  ],
-    ///  "properties": {
-    ///    "email": {
-    ///      "type": "string"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -1247,63 +364,14 @@ pub mod types {
     }
 
     /// `ApiUserForApiPermissions`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "created_at",
-    ///    "groups",
-    ///    "id",
-    ///    "permissions",
-    ///    "updated_at"
-    ///  ],
-    ///  "properties": {
-    ///    "created_at": {
-    ///      "type": "string",
-    ///      "format": "date-time"
-    ///    },
-    ///    "deleted_at": {
-    ///      "type": [
-    ///        "string",
-    ///        "null"
-    ///      ],
-    ///      "format": "date-time"
-    ///    },
-    ///    "groups": {
-    ///      "type": "array",
-    ///      "items": {
-    ///        "$ref": "#/components/schemas/TypedUuidForAccessGroupId"
-    ///      },
-    ///      "uniqueItems": true
-    ///    },
-    ///    "id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForUserId"
-    ///    },
-    ///    "permissions": {
-    ///      "$ref": "#/components/schemas/Permissions_for_ApiPermissions"
-    ///    },
-    ///    "updated_at": {
-    ///      "type": "string",
-    ///      "format": "date-time"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
     pub struct ApiUserForApiPermissions {
         pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        #[serde(skip_serializing_if = "::std::option::Option::is_none")]
         pub deleted_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
-        pub groups: Vec<TypedUuidForAccessGroupId>,
+        pub groups: ::std::vec::Vec<TypedUuidForAccessGroupId>,
         pub id: TypedUuidForUserId,
         pub permissions: PermissionsForApiPermissions,
         pub updated_at: ::chrono::DateTime<::chrono::offset::Utc>,
@@ -1316,26 +384,6 @@ pub mod types {
     }
 
     /// `ApiUserLinkRequestPayload`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "user_id"
-    ///  ],
-    ///  "properties": {
-    ///    "user_id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForUserId"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -1350,26 +398,6 @@ pub mod types {
     }
 
     /// `ApiUserLinkRequestResponse`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "token"
-    ///  ],
-    ///  "properties": {
-    ///    "token": {
-    ///      "$ref": "#/components/schemas/SecretString"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -1384,26 +412,6 @@ pub mod types {
     }
 
     /// `ApiUserPermissionParamsForApiPermissions`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "permission"
-    ///  ],
-    ///  "properties": {
-    ///    "permission": {
-    ///      "$ref": "#/components/schemas/ApiPermissions"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -1418,77 +426,12 @@ pub mod types {
     }
 
     /// `ApiUserProvider`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "created_at",
-    ///    "display_names",
-    ///    "emails",
-    ///    "id",
-    ///    "provider",
-    ///    "provider_id",
-    ///    "updated_at",
-    ///    "user_id"
-    ///  ],
-    ///  "properties": {
-    ///    "created_at": {
-    ///      "type": "string",
-    ///      "format": "date-time"
-    ///    },
-    ///    "deleted_at": {
-    ///      "type": [
-    ///        "string",
-    ///        "null"
-    ///      ],
-    ///      "format": "date-time"
-    ///    },
-    ///    "display_names": {
-    ///      "type": "array",
-    ///      "items": {
-    ///        "type": "string"
-    ///      }
-
-    ///    },
-    ///    "emails": {
-    ///      "type": "array",
-    ///      "items": {
-    ///        "type": "string"
-    ///      }
-
-    ///    },
-    ///    "id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForUserProviderId"
-    ///    },
-    ///    "provider": {
-    ///      "type": "string"
-    ///    },
-    ///    "provider_id": {
-    ///      "type": "string"
-    ///    },
-    ///    "updated_at": {
-    ///      "type": "string",
-    ///      "format": "date-time"
-    ///    },
-    ///    "user_id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForUserId"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
     pub struct ApiUserProvider {
         pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        #[serde(skip_serializing_if = "::std::option::Option::is_none")]
         pub deleted_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
         pub display_names: ::std::vec::Vec<::std::string::String>,
         pub emails: ::std::vec::Vec<::std::string::String>,
@@ -1506,26 +449,6 @@ pub mod types {
     }
 
     /// `ApiUserProviderLinkPayload`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "token"
-    ///  ],
-    ///  "properties": {
-    ///    "token": {
-    ///      "type": "string"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -1540,40 +463,12 @@ pub mod types {
     }
 
     /// `ApiUserUpdateParamsForApiPermissions`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "permissions"
-    ///  ],
-    ///  "properties": {
-    ///    "group_ids": {
-    ///      "default": [],
-    ///      "type": "array",
-    ///      "items": {
-    ///        "$ref": "#/components/schemas/TypedUuidForAccessGroupId"
-    ///      },
-    ///      "uniqueItems": true
-    ///    },
-    ///    "permissions": {
-    ///      "$ref": "#/components/schemas/Permissions_for_ApiPermissions"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
     pub struct ApiUserUpdateParamsForApiPermissions {
         #[serde(default = "defaults::api_user_update_params_for_api_permissions_group_ids")]
-        pub group_ids: Vec<TypedUuidForAccessGroupId>,
+        pub group_ids: ::std::vec::Vec<TypedUuidForAccessGroupId>,
         pub permissions: PermissionsForApiPermissions,
     }
 
@@ -1584,74 +479,6 @@ pub mod types {
     }
 
     /// `Attestation`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "attestation",
-    ///    "cert_chain",
-    ///    "measurement_logs"
-    ///  ],
-    ///  "properties": {
-    ///    "attestation": {
-    ///      "type": "array",
-    ///      "items": {
-    ///        "type": "integer",
-    ///        "format": "uint8",
-    ///        "minimum": 0.0
-    ///      }
-
-    ///    },
-    ///    "cert_chain": {
-    ///      "type": "array",
-    ///      "items": {
-    ///        "type": "array",
-    ///        "items": {
-    ///          "type": "integer",
-    ///          "format": "uint8",
-    ///          "minimum": 0.0
-    ///        }
-
-    ///      }
-
-    ///    },
-    ///    "measurement_logs": {
-    ///      "type": "array",
-    ///      "items": {
-    ///        "type": "object",
-    ///        "required": [
-    ///          "data",
-    ///          "rot"
-    ///        ],
-    ///        "properties": {
-    ///          "data": {
-    ///            "type": "array",
-    ///            "items": {
-    ///              "type": "integer",
-    ///              "format": "uint8",
-    ///              "minimum": 0.0
-    ///            }
-
-    ///          },
-    ///          "rot": {
-    ///            "type": "string"
-    ///          }
-
-    ///        }
-
-    ///      }
-
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -1668,36 +495,6 @@ pub mod types {
     }
 
     /// `AttestationMeasurementLogsItem`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "data",
-    ///    "rot"
-    ///  ],
-    ///  "properties": {
-    ///    "data": {
-    ///      "type": "array",
-    ///      "items": {
-    ///        "type": "integer",
-    ///        "format": "uint8",
-    ///        "minimum": 0.0
-    ///      }
-
-    ///    },
-    ///    "rot": {
-    ///      "type": "string"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -1714,21 +511,6 @@ pub mod types {
 
     /// The audience of a token. It must only contain printable ASCII characters
     /// without whitespace.
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "description": "The audience of a token. It must only contain printable
-    /// ASCII characters without whitespace.",
-    ///  "type": "string",
-    ///  "maxLength": 512,
-    ///  "minLength": 1,
-    ///  "pattern": "^[!-~]+$"
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Serialize,
         Clone,
@@ -1780,15 +562,6 @@ pub mod types {
         }
     }
 
-    impl ::std::convert::TryFrom<&::std::string::String> for Audience {
-        type Error = self::error::ConversionError;
-        fn try_from(
-            value: &::std::string::String,
-        ) -> ::std::result::Result<Self, self::error::ConversionError> {
-            value.parse()
-        }
-    }
-
     impl ::std::convert::TryFrom<::std::string::String> for Audience {
         type Error = self::error::ConversionError;
         fn try_from(
@@ -1812,63 +585,6 @@ pub mod types {
     }
 
     /// `Blob`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "blob_time",
-    ///    "created_at",
-    ///    "id",
-    ///    "server_registration_id",
-    ///    "service_id",
-    ///    "size",
-    ///    "state",
-    ///    "total_size",
-    ///    "updated_at"
-    ///  ],
-    ///  "properties": {
-    ///    "blob_time": {
-    ///      "type": "string",
-    ///      "format": "date-time"
-    ///    },
-    ///    "created_at": {
-    ///      "type": "string",
-    ///      "format": "date-time"
-    ///    },
-    ///    "id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForBlobId"
-    ///    },
-    ///    "server_registration_id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForServerRegistrationId"
-    ///    },
-    ///    "service_id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForServiceId"
-    ///    },
-    ///    "size": {
-    ///      "type": "integer",
-    ///      "format": "int64"
-    ///    },
-    ///    "state": {
-    ///      "$ref": "#/components/schemas/BlobState"
-    ///    },
-    ///    "total_size": {
-    ///      "type": "integer",
-    ///      "format": "int64"
-    ///    },
-    ///    "updated_at": {
-    ///      "type": "string",
-    ///      "format": "date-time"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -1891,13 +607,6 @@ pub mod types {
     }
 
     /// `BlobId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// false
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize,
         :: serde :: Serialize,
@@ -1915,40 +624,6 @@ pub mod types {
     pub enum BlobId {}
 
     /// A single page of results
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "description": "A single page of results",
-    ///  "type": "object",
-    ///  "required": [
-    ///    "items"
-    ///  ],
-    ///  "properties": {
-    ///    "items": {
-    ///      "description": "list of items on this page of results",
-    ///      "type": "array",
-    ///      "items": {
-    ///        "$ref": "#/components/schemas/Blob"
-    ///      }
-
-    ///    },
-    ///    "next_page": {
-    ///      "description": "token used to fetch the next page of results (if
-    /// any)",
-    ///      "type": [
-    ///        "string",
-    ///        "null"
-    ///      ]
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -1956,7 +631,7 @@ pub mod types {
         /// list of items on this page of results
         pub items: ::std::vec::Vec<Blob>,
         /// token used to fetch the next page of results (if any)
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        #[serde(skip_serializing_if = "::std::option::Option::is_none")]
         pub next_page: ::std::option::Option<::std::string::String>,
     }
 
@@ -1967,51 +642,6 @@ pub mod types {
     }
 
     /// `BlobState`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "oneOf": [
-    ///    {
-    ///      "type": "string",
-    ///      "enum": [
-    ///        "Pending",
-    ///        "Cancelled"
-    ///      ]
-    ///    },
-    ///    {
-    ///      "type": "object",
-    ///      "required": [
-    ///        "Uploading"
-    ///      ],
-    ///      "properties": {
-    ///        "Uploading": {
-    ///          "$ref": "#/components/schemas/BlobUploadState"
-    ///        }
-
-    ///      },
-    ///      "additionalProperties": false
-    ///    },
-    ///    {
-    ///      "type": "object",
-    ///      "required": [
-    ///        "Transferring"
-    ///      ],
-    ///      "properties": {
-    ///        "Transferring": {
-    ///          "$ref": "#/components/schemas/BlobTransferState"
-    ///        }
-
-    ///      },
-    ///      "additionalProperties": false
-    ///    }
-
-    ///  ]
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -2035,21 +665,6 @@ pub mod types {
     }
 
     /// `BlobTransferState`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "string",
-    ///  "enum": [
-    ///    "Started",
-    ///    "Complete",
-    ///    "Failed"
-    ///  ]
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize,
         :: serde :: Serialize,
@@ -2098,15 +713,6 @@ pub mod types {
         }
     }
 
-    impl ::std::convert::TryFrom<&::std::string::String> for BlobTransferState {
-        type Error = self::error::ConversionError;
-        fn try_from(
-            value: &::std::string::String,
-        ) -> ::std::result::Result<Self, self::error::ConversionError> {
-            value.parse()
-        }
-    }
-
     impl ::std::convert::TryFrom<::std::string::String> for BlobTransferState {
         type Error = self::error::ConversionError;
         fn try_from(
@@ -2117,20 +723,6 @@ pub mod types {
     }
 
     /// `BlobUploadState`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "string",
-    ///  "enum": [
-    ///    "Started",
-    ///    "Complete"
-    ///  ]
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize,
         :: serde :: Serialize,
@@ -2176,15 +768,6 @@ pub mod types {
         }
     }
 
-    impl ::std::convert::TryFrom<&::std::string::String> for BlobUploadState {
-        type Error = self::error::ConversionError;
-        fn try_from(
-            value: &::std::string::String,
-        ) -> ::std::result::Result<Self, self::error::ConversionError> {
-            value.parse()
-        }
-    }
-
     impl ::std::convert::TryFrom<::std::string::String> for BlobUploadState {
         type Error = self::error::ConversionError;
         fn try_from(
@@ -2195,27 +778,6 @@ pub mod types {
     }
 
     /// `CheckinBody`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "checked_in_at"
-    ///  ],
-    ///  "properties": {
-    ///    "checked_in_at": {
-    ///      "type": "string",
-    ///      "format": "date-time"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -2230,30 +792,6 @@ pub mod types {
     }
 
     /// `CreateDeploymentBody`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "project",
-    ///    "silo"
-    ///  ],
-    ///  "properties": {
-    ///    "project": {
-    ///      "$ref": "#/components/schemas/TypedUuidForProjectId"
-    ///    },
-    ///    "silo": {
-    ///      "$ref": "#/components/schemas/TypedUuidForSiloId"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -2269,40 +807,11 @@ pub mod types {
     }
 
     /// `CreateMapper`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "name",
-    ///    "rule"
-    ///  ],
-    ///  "properties": {
-    ///    "max_activations": {
-    ///      "type": [
-    ///        "integer",
-    ///        "null"
-    ///      ],
-    ///      "format": "int32"
-    ///    },
-    ///    "name": {
-    ///      "type": "string"
-    ///    },
-    ///    "rule": {}
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
     pub struct CreateMapper {
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        #[serde(skip_serializing_if = "::std::option::Option::is_none")]
         pub max_activations: ::std::option::Option<i32>,
         pub name: ::std::string::String,
         pub rule: ::serde_json::Value,
@@ -2315,26 +824,6 @@ pub mod types {
     }
 
     /// `CreateService`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "name"
-    ///  ],
-    ///  "properties": {
-    ///    "name": {
-    ///      "type": "string"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -2349,43 +838,6 @@ pub mod types {
     }
 
     /// `Deployment`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "created_at",
-    ///    "id",
-    ///    "project_id",
-    ///    "service_id",
-    ///    "silo_id"
-    ///  ],
-    ///  "properties": {
-    ///    "created_at": {
-    ///      "type": "string",
-    ///      "format": "date-time"
-    ///    },
-    ///    "id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForDeploymentId"
-    ///    },
-    ///    "project_id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForProjectId"
-    ///    },
-    ///    "service_id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForServiceId"
-    ///    },
-    ///    "silo_id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForSiloId"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -2404,13 +856,6 @@ pub mod types {
     }
 
     /// `DeploymentId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// false
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize,
         :: serde :: Serialize,
@@ -2431,42 +876,12 @@ pub mod types {
     /// sends its `client_id` and an optional `scope`. The API server proxies
     /// the device authorization request to the upstream provider and tracks it
     /// as a login attempt.
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "description": "Request body for initiating a device authorization
-    /// flow. The client sends its `client_id` and an optional `scope`. The API
-    /// server proxies the device authorization request to the upstream provider
-    /// and tracks it as a login attempt.",
-    ///  "type": "object",
-    ///  "required": [
-    ///    "client_id"
-    ///  ],
-    ///  "properties": {
-    ///    "client_id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForOAuthClientId"
-    ///    },
-    ///    "scope": {
-    ///      "type": [
-    ///        "string",
-    ///        "null"
-    ///      ]
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
     pub struct DeviceAuthorizationRequest {
         pub client_id: TypedUuidForOAuthClientId,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        #[serde(skip_serializing_if = "::std::option::Option::is_none")]
         pub scope: ::std::option::Option<::std::string::String>,
     }
 
@@ -2478,37 +893,6 @@ pub mod types {
 
     /// Request body for the device token exchange. The client polls this
     /// endpoint with the device_code received from the authorization step.
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "description": "Request body for the device token exchange. The client
-    /// polls this endpoint with the device_code received from the authorization
-    /// step.",
-    ///  "type": "object",
-    ///  "required": [
-    ///    "client_id",
-    ///    "device_code",
-    ///    "grant_type"
-    ///  ],
-    ///  "properties": {
-    ///    "client_id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForOAuthClientId"
-    ///    },
-    ///    "device_code": {
-    ///      "type": "string"
-    ///    },
-    ///    "grant_type": {
-    ///      "type": "string"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -2525,39 +909,11 @@ pub mod types {
     }
 
     /// Error information from a response.
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "description": "Error information from a response.",
-    ///  "type": "object",
-    ///  "required": [
-    ///    "message",
-    ///    "request_id"
-    ///  ],
-    ///  "properties": {
-    ///    "error_code": {
-    ///      "type": "string"
-    ///    },
-    ///    "message": {
-    ///      "type": "string"
-    ///    },
-    ///    "request_id": {
-    ///      "type": "string"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
     pub struct Error {
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        #[serde(skip_serializing_if = "::std::option::Option::is_none")]
         pub error_code: ::std::option::Option<::std::string::String>,
         pub message: ::std::string::String,
         pub request_id: ::std::string::String,
@@ -2570,34 +926,6 @@ pub mod types {
     }
 
     /// `GetUserResponseForApiPermissions`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "info",
-    ///    "providers"
-    ///  ],
-    ///  "properties": {
-    ///    "info": {
-    ///      "$ref": "#/components/schemas/ApiUser_for_ApiPermissions"
-    ///    },
-    ///    "providers": {
-    ///      "type": "array",
-    ///      "items": {
-    ///        "$ref": "#/components/schemas/ApiUserProvider"
-    ///      }
-
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -2613,40 +941,6 @@ pub mod types {
     }
 
     /// `HealthCheck`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "checked_in_at",
-    ///    "created_at",
-    ///    "id",
-    ///    "server_registration_id"
-    ///  ],
-    ///  "properties": {
-    ///    "checked_in_at": {
-    ///      "type": "string",
-    ///      "format": "date-time"
-    ///    },
-    ///    "created_at": {
-    ///      "type": "string",
-    ///      "format": "date-time"
-    ///    },
-    ///    "id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForHealthCheckId"
-    ///    },
-    ///    "server_registration_id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForServerRegistrationId"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -2664,13 +958,6 @@ pub mod types {
     }
 
     /// `HealthCheckId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// false
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize,
         :: serde :: Serialize,
@@ -2688,40 +975,6 @@ pub mod types {
     pub enum HealthCheckId {}
 
     /// A single page of results
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "description": "A single page of results",
-    ///  "type": "object",
-    ///  "required": [
-    ///    "items"
-    ///  ],
-    ///  "properties": {
-    ///    "items": {
-    ///      "description": "list of items on this page of results",
-    ///      "type": "array",
-    ///      "items": {
-    ///        "$ref": "#/components/schemas/HealthCheck"
-    ///      }
-
-    ///    },
-    ///    "next_page": {
-    ///      "description": "token used to fetch the next page of results (if
-    /// any)",
-    ///      "type": [
-    ///        "string",
-    ///        "null"
-    ///      ]
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -2729,7 +982,7 @@ pub mod types {
         /// list of items on this page of results
         pub items: ::std::vec::Vec<HealthCheck>,
         /// token used to fetch the next page of results (if any)
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        #[serde(skip_serializing_if = "::std::option::Option::is_none")]
         pub next_page: ::std::option::Option<::std::string::String>,
     }
 
@@ -2740,52 +993,6 @@ pub mod types {
     }
 
     /// `InitialApiKeyResponseForApiPermissions`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "created_at",
-    ///    "id",
-    ///    "key"
-    ///  ],
-    ///  "properties": {
-    ///    "created_at": {
-    ///      "type": "string",
-    ///      "format": "date-time"
-    ///    },
-    ///    "id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForApiKeyId"
-    ///    },
-    ///    "key": {
-    ///      "$ref": "#/components/schemas/SecretString"
-    ///    },
-    ///    "permission_boundary": {
-    ///      "oneOf": [
-    ///        {
-    ///          "type": "null"
-    ///        },
-    ///        {
-    ///          "allOf": [
-    ///            {
-    ///              "$ref":
-    /// "#/components/schemas/Permissions_for_ApiPermissions"
-    ///            }
-
-    ///          ]
-    ///        }
-
-    ///      ]
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -2793,7 +1000,7 @@ pub mod types {
         pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
         pub id: TypedUuidForApiKeyId,
         pub key: SecretString,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        #[serde(skip_serializing_if = "::std::option::Option::is_none")]
         pub permission_boundary: ::std::option::Option<PermissionsForApiPermissions>,
     }
 
@@ -2804,35 +1011,6 @@ pub mod types {
     }
 
     /// `InitialMagicLinkSecretResponse`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "created_at",
-    ///    "id",
-    ///    "key"
-    ///  ],
-    ///  "properties": {
-    ///    "created_at": {
-    ///      "type": "string",
-    ///      "format": "date-time"
-    ///    },
-    ///    "id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForMagicLinkSecretId"
-    ///    },
-    ///    "key": {
-    ///      "$ref": "#/components/schemas/SecretString"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -2849,35 +1027,6 @@ pub mod types {
     }
 
     /// `InitialOAuthClientSecretResponse`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "created_at",
-    ///    "id",
-    ///    "key"
-    ///  ],
-    ///  "properties": {
-    ///    "created_at": {
-    ///      "type": "string",
-    ///      "format": "date-time"
-    ///    },
-    ///    "id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForOAuthSecretId"
-    ///    },
-    ///    "key": {
-    ///      "$ref": "#/components/schemas/SecretString"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -2894,42 +1043,6 @@ pub mod types {
     }
 
     /// `Jwk`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "e",
-    ///    "kid",
-    ///    "kty",
-    ///    "n",
-    ///    "use"
-    ///  ],
-    ///  "properties": {
-    ///    "e": {
-    ///      "type": "string"
-    ///    },
-    ///    "kid": {
-    ///      "type": "string"
-    ///    },
-    ///    "kty": {
-    ///      "type": "string"
-    ///    },
-    ///    "n": {
-    ///      "type": "string"
-    ///    },
-    ///    "use": {
-    ///      "type": "string"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -2949,30 +1062,6 @@ pub mod types {
     }
 
     /// `Jwks`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "keys"
-    ///  ],
-    ///  "properties": {
-    ///    "keys": {
-    ///      "type": "array",
-    ///      "items": {
-    ///        "$ref": "#/components/schemas/Jwk"
-    ///      }
-
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -2987,60 +1076,12 @@ pub mod types {
     }
 
     /// `MagicLink`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "created_at",
-    ///    "id",
-    ///    "redirect_uris",
-    ///    "secrets"
-    ///  ],
-    ///  "properties": {
-    ///    "created_at": {
-    ///      "type": "string",
-    ///      "format": "date-time"
-    ///    },
-    ///    "deleted_at": {
-    ///      "type": [
-    ///        "string",
-    ///        "null"
-    ///      ],
-    ///      "format": "date-time"
-    ///    },
-    ///    "id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForMagicLinkId"
-    ///    },
-    ///    "redirect_uris": {
-    ///      "type": "array",
-    ///      "items": {
-    ///        "$ref": "#/components/schemas/MagicLinkRedirectUri"
-    ///      }
-
-    ///    },
-    ///    "secrets": {
-    ///      "type": "array",
-    ///      "items": {
-    ///        "$ref": "#/components/schemas/MagicLinkSecret"
-    ///      }
-
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
     pub struct MagicLink {
         pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        #[serde(skip_serializing_if = "::std::option::Option::is_none")]
         pub deleted_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
         pub id: TypedUuidForMagicLinkId,
         pub redirect_uris: ::std::vec::Vec<MagicLinkRedirectUri>,
@@ -3054,13 +1095,6 @@ pub mod types {
     }
 
     /// `MagicLinkAttemptId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// false
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize,
         :: serde :: Serialize,
@@ -3078,34 +1112,6 @@ pub mod types {
     pub enum MagicLinkAttemptId {}
 
     /// `MagicLinkExchangeRequest`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "attempt_id",
-    ///    "recipient",
-    ///    "secret"
-    ///  ],
-    ///  "properties": {
-    ///    "attempt_id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForMagicLinkAttemptId"
-    ///    },
-    ///    "recipient": {
-    ///      "type": "string"
-    ///    },
-    ///    "secret": {
-    ///      "$ref": "#/components/schemas/SecretString"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -3122,35 +1128,6 @@ pub mod types {
     }
 
     /// `MagicLinkExchangeResponse`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "access_token",
-    ///    "expires_in",
-    ///    "token_type"
-    ///  ],
-    ///  "properties": {
-    ///    "access_token": {
-    ///      "type": "string"
-    ///    },
-    ///    "expires_in": {
-    ///      "type": "integer",
-    ///      "format": "int64"
-    ///    },
-    ///    "token_type": {
-    ///      "type": "string"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -3167,13 +1144,6 @@ pub mod types {
     }
 
     /// `MagicLinkId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// false
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize,
         :: serde :: Serialize,
@@ -3191,19 +1161,6 @@ pub mod types {
     pub enum MagicLinkId {}
 
     /// `MagicLinkMedium`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "string",
-    ///  "enum": [
-    ///    "email"
-    ///  ]
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize,
         :: serde :: Serialize,
@@ -3247,15 +1204,6 @@ pub mod types {
         }
     }
 
-    impl ::std::convert::TryFrom<&::std::string::String> for MagicLinkMedium {
-        type Error = self::error::ConversionError;
-        fn try_from(
-            value: &::std::string::String,
-        ) -> ::std::result::Result<Self, self::error::ConversionError> {
-            value.parse()
-        }
-    }
-
     impl ::std::convert::TryFrom<::std::string::String> for MagicLinkMedium {
         type Error = self::error::ConversionError;
         fn try_from(
@@ -3266,52 +1214,12 @@ pub mod types {
     }
 
     /// `MagicLinkRedirectUri`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "created_at",
-    ///    "id",
-    ///    "magic_link_client_id",
-    ///    "redirect_uri"
-    ///  ],
-    ///  "properties": {
-    ///    "created_at": {
-    ///      "type": "string",
-    ///      "format": "date-time"
-    ///    },
-    ///    "deleted_at": {
-    ///      "type": [
-    ///        "string",
-    ///        "null"
-    ///      ],
-    ///      "format": "date-time"
-    ///    },
-    ///    "id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForMagicLinkRedirectUriId"
-    ///    },
-    ///    "magic_link_client_id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForMagicLinkId"
-    ///    },
-    ///    "redirect_uri": {
-    ///      "type": "string"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
     pub struct MagicLinkRedirectUri {
         pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        #[serde(skip_serializing_if = "::std::option::Option::is_none")]
         pub deleted_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
         pub id: TypedUuidForMagicLinkRedirectUriId,
         pub magic_link_client_id: TypedUuidForMagicLinkId,
@@ -3325,13 +1233,6 @@ pub mod types {
     }
 
     /// `MagicLinkRedirectUriId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// false
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize,
         :: serde :: Serialize,
@@ -3349,52 +1250,12 @@ pub mod types {
     pub enum MagicLinkRedirectUriId {}
 
     /// `MagicLinkSecret`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "created_at",
-    ///    "id",
-    ///    "magic_link_client_id",
-    ///    "secret_signature"
-    ///  ],
-    ///  "properties": {
-    ///    "created_at": {
-    ///      "type": "string",
-    ///      "format": "date-time"
-    ///    },
-    ///    "deleted_at": {
-    ///      "type": [
-    ///        "string",
-    ///        "null"
-    ///      ],
-    ///      "format": "date-time"
-    ///    },
-    ///    "id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForMagicLinkSecretId"
-    ///    },
-    ///    "magic_link_client_id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForMagicLinkId"
-    ///    },
-    ///    "secret_signature": {
-    ///      "type": "string"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
     pub struct MagicLinkSecret {
         pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        #[serde(skip_serializing_if = "::std::option::Option::is_none")]
         pub deleted_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
         pub id: TypedUuidForMagicLinkSecretId,
         pub magic_link_client_id: TypedUuidForMagicLinkId,
@@ -3408,13 +1269,6 @@ pub mod types {
     }
 
     /// `MagicLinkSecretId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// false
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize,
         :: serde :: Serialize,
@@ -3432,50 +1286,6 @@ pub mod types {
     pub enum MagicLinkSecretId {}
 
     /// `MagicLinkSendRequest`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "expires_in",
-    ///    "medium",
-    ///    "recipient",
-    ///    "redirect_uri",
-    ///    "secret"
-    ///  ],
-    ///  "properties": {
-    ///    "expires_in": {
-    ///      "type": "integer",
-    ///      "format": "int64"
-    ///    },
-    ///    "medium": {
-    ///      "$ref": "#/components/schemas/MagicLinkMedium"
-    ///    },
-    ///    "recipient": {
-    ///      "type": "string"
-    ///    },
-    ///    "redirect_uri": {
-    ///      "type": "string",
-    ///      "format": "uri"
-    ///    },
-    ///    "scope": {
-    ///      "type": [
-    ///        "string",
-    ///        "null"
-    ///      ]
-    ///    },
-    ///    "secret": {
-    ///      "$ref": "#/components/schemas/SecretString"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -3484,7 +1294,7 @@ pub mod types {
         pub medium: MagicLinkMedium,
         pub recipient: ::std::string::String,
         pub redirect_uri: ::std::string::String,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        #[serde(skip_serializing_if = "::std::option::Option::is_none")]
         pub scope: ::std::option::Option<::std::string::String>,
         pub secret: SecretString,
     }
@@ -3496,26 +1306,6 @@ pub mod types {
     }
 
     /// `MagicLinkSendResponse`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "attempt_id"
-    ///  ],
-    ///  "properties": {
-    ///    "attempt_id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForMagicLinkAttemptId"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -3530,87 +1320,19 @@ pub mod types {
     }
 
     /// `Mapper`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "created_at",
-    ///    "id",
-    ///    "name",
-    ///    "rule",
-    ///    "source",
-    ///    "updated_at"
-    ///  ],
-    ///  "properties": {
-    ///    "activations": {
-    ///      "type": [
-    ///        "integer",
-    ///        "null"
-    ///      ],
-    ///      "format": "int32"
-    ///    },
-    ///    "created_at": {
-    ///      "type": "string",
-    ///      "format": "date-time"
-    ///    },
-    ///    "deleted_at": {
-    ///      "type": [
-    ///        "string",
-    ///        "null"
-    ///      ],
-    ///      "format": "date-time"
-    ///    },
-    ///    "depleted_at": {
-    ///      "type": [
-    ///        "string",
-    ///        "null"
-    ///      ],
-    ///      "format": "date-time"
-    ///    },
-    ///    "id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForMapperId"
-    ///    },
-    ///    "max_activations": {
-    ///      "type": [
-    ///        "integer",
-    ///        "null"
-    ///      ],
-    ///      "format": "int32"
-    ///    },
-    ///    "name": {
-    ///      "type": "string"
-    ///    },
-    ///    "rule": {},
-    ///    "source": {
-    ///      "$ref": "#/components/schemas/MapperSource"
-    ///    },
-    ///    "updated_at": {
-    ///      "type": "string",
-    ///      "format": "date-time"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
     pub struct Mapper {
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        #[serde(skip_serializing_if = "::std::option::Option::is_none")]
         pub activations: ::std::option::Option<i32>,
         pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        #[serde(skip_serializing_if = "::std::option::Option::is_none")]
         pub deleted_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        #[serde(skip_serializing_if = "::std::option::Option::is_none")]
         pub depleted_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
         pub id: TypedUuidForMapperId,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        #[serde(skip_serializing_if = "::std::option::Option::is_none")]
         pub max_activations: ::std::option::Option<i32>,
         pub name: ::std::string::String,
         pub rule: ::serde_json::Value,
@@ -3625,13 +1347,6 @@ pub mod types {
     }
 
     /// `MapperId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// false
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize,
         :: serde :: Serialize,
@@ -3649,34 +1364,6 @@ pub mod types {
     pub enum MapperId {}
 
     /// `MapperSource`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "oneOf": [
-    ///    {
-    ///      "description": "Created via the API, persisted in the database,
-    /// supports activation limits",
-    ///      "type": "string",
-    ///      "enum": [
-    ///        "dynamic"
-    ///      ]
-    ///    },
-    ///    {
-    ///      "description": "Loaded from service configuration, in-memory only,
-    /// no activation limits",
-    ///      "type": "string",
-    ///      "enum": [
-    ///        "preset"
-    ///      ]
-    ///    }
-
-    ///  ]
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize,
         :: serde :: Serialize,
@@ -3728,15 +1415,6 @@ pub mod types {
         }
     }
 
-    impl ::std::convert::TryFrom<&::std::string::String> for MapperSource {
-        type Error = self::error::ConversionError;
-        fn try_from(
-            value: &::std::string::String,
-        ) -> ::std::result::Result<Self, self::error::ConversionError> {
-            value.parse()
-        }
-    }
-
     impl ::std::convert::TryFrom<::std::string::String> for MapperSource {
         type Error = self::error::ConversionError;
         fn try_from(
@@ -3747,79 +1425,13 @@ pub mod types {
     }
 
     /// `OAuthAuthzCodeExchangeBody`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "code",
-    ///    "code_verifier",
-    ///    "grant_type",
-    ///    "redirect_uri"
-    ///  ],
-    ///  "properties": {
-    ///    "client_id": {
-    ///      "oneOf": [
-    ///        {
-    ///          "type": "null"
-    ///        },
-    ///        {
-    ///          "allOf": [
-    ///            {
-    ///              "$ref": "#/components/schemas/TypedUuidForOAuthClientId"
-    ///            }
-
-    ///          ]
-    ///        }
-
-    ///      ]
-    ///    },
-    ///    "client_secret": {
-    ///      "oneOf": [
-    ///        {
-    ///          "type": "null"
-    ///        },
-    ///        {
-    ///          "allOf": [
-    ///            {
-    ///              "$ref": "#/components/schemas/SecretString"
-    ///            }
-
-    ///          ]
-    ///        }
-
-    ///      ]
-    ///    },
-    ///    "code": {
-    ///      "type": "string"
-    ///    },
-    ///    "code_verifier": {
-    ///      "description": "PKCE code verifier (RFC 7636). Required for all
-    /// authorization code exchanges.",
-    ///      "type": "string"
-    ///    },
-    ///    "grant_type": {
-    ///      "type": "string"
-    ///    },
-    ///    "redirect_uri": {
-    ///      "type": "string"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
     pub struct OAuthAuthzCodeExchangeBody {
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        #[serde(skip_serializing_if = "::std::option::Option::is_none")]
         pub client_id: ::std::option::Option<TypedUuidForOAuthClientId>,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        #[serde(skip_serializing_if = "::std::option::Option::is_none")]
         pub client_secret: ::std::option::Option<SecretString>,
         pub code: ::std::string::String,
         /// PKCE code verifier (RFC 7636). Required for all authorization code
@@ -3836,60 +1448,6 @@ pub mod types {
     }
 
     /// `OAuthAuthzCodeExchangeResponse`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "access_token",
-    ///    "expires_in",
-    ///    "scope",
-    ///    "token_type"
-    ///  ],
-    ///  "properties": {
-    ///    "access_token": {
-    ///      "type": "string"
-    ///    },
-    ///    "expires_in": {
-    ///      "type": "integer",
-    ///      "format": "int64"
-    ///    },
-    ///    "idp_refresh_token": {
-    ///      "description": "Refresh token issued by the upstream identity
-    /// provider. Returned under the same conditions as `idp_token`, and only
-    /// when the provider issued one.",
-    ///      "type": [
-    ///        "string",
-    ///        "null"
-    ///      ]
-    ///    },
-    ///    "idp_token": {
-    ///      "description": "Access token issued by the upstream identity
-    /// provider. Only returned when the caller requested it and holds the
-    /// `RetrieveRemoteAccessToken` permission.",
-    ///      "type": [
-    ///        "string",
-    ///        "null"
-    ///      ]
-    ///    },
-    ///    "scope": {
-    ///      "description": "The scope granted to the access token per RFC 6749
-    /// §5.1. An empty string indicates no permissions. Use \"full\" for all
-    /// permissions.",
-    ///      "type": "string"
-    ///    },
-    ///    "token_type": {
-    ///      "type": "string"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -3899,12 +1457,12 @@ pub mod types {
         /// Refresh token issued by the upstream identity provider. Returned
         /// under the same conditions as `idp_token`, and only when the provider
         /// issued one.
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        #[serde(skip_serializing_if = "::std::option::Option::is_none")]
         pub idp_refresh_token: ::std::option::Option<::std::string::String>,
         /// Access token issued by the upstream identity provider. Only returned
         /// when the caller requested it and holds the
         /// `RetrieveRemoteAccessToken` permission.
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        #[serde(skip_serializing_if = "::std::option::Option::is_none")]
         pub idp_token: ::std::option::Option<::std::string::String>,
         /// The scope granted to the access token per RFC 6749 §5.1. An empty
         /// string indicates no permissions. Use "full" for all permissions.
@@ -3919,60 +1477,12 @@ pub mod types {
     }
 
     /// `OAuthClient`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "created_at",
-    ///    "id",
-    ///    "redirect_uris",
-    ///    "secrets"
-    ///  ],
-    ///  "properties": {
-    ///    "created_at": {
-    ///      "type": "string",
-    ///      "format": "date-time"
-    ///    },
-    ///    "deleted_at": {
-    ///      "type": [
-    ///        "string",
-    ///        "null"
-    ///      ],
-    ///      "format": "date-time"
-    ///    },
-    ///    "id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForOAuthClientId"
-    ///    },
-    ///    "redirect_uris": {
-    ///      "type": "array",
-    ///      "items": {
-    ///        "$ref": "#/components/schemas/OAuthClientRedirectUri"
-    ///      }
-
-    ///    },
-    ///    "secrets": {
-    ///      "type": "array",
-    ///      "items": {
-    ///        "$ref": "#/components/schemas/OAuthClientSecret"
-    ///      }
-
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
     pub struct OAuthClient {
         pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        #[serde(skip_serializing_if = "::std::option::Option::is_none")]
         pub deleted_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
         pub id: TypedUuidForOAuthClientId,
         pub redirect_uris: ::std::vec::Vec<OAuthClientRedirectUri>,
@@ -3986,13 +1496,6 @@ pub mod types {
     }
 
     /// `OAuthClientId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// false
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize,
         :: serde :: Serialize,
@@ -4010,52 +1513,12 @@ pub mod types {
     pub enum OAuthClientId {}
 
     /// `OAuthClientRedirectUri`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "created_at",
-    ///    "id",
-    ///    "oauth_client_id",
-    ///    "redirect_uri"
-    ///  ],
-    ///  "properties": {
-    ///    "created_at": {
-    ///      "type": "string",
-    ///      "format": "date-time"
-    ///    },
-    ///    "deleted_at": {
-    ///      "type": [
-    ///        "string",
-    ///        "null"
-    ///      ],
-    ///      "format": "date-time"
-    ///    },
-    ///    "id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForOAuthRedirectUriId"
-    ///    },
-    ///    "oauth_client_id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForOAuthClientId"
-    ///    },
-    ///    "redirect_uri": {
-    ///      "type": "string"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
     pub struct OAuthClientRedirectUri {
         pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        #[serde(skip_serializing_if = "::std::option::Option::is_none")]
         pub deleted_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
         pub id: TypedUuidForOAuthRedirectUriId,
         pub oauth_client_id: TypedUuidForOAuthClientId,
@@ -4069,52 +1532,12 @@ pub mod types {
     }
 
     /// `OAuthClientSecret`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "created_at",
-    ///    "id",
-    ///    "oauth_client_id",
-    ///    "secret_signature"
-    ///  ],
-    ///  "properties": {
-    ///    "created_at": {
-    ///      "type": "string",
-    ///      "format": "date-time"
-    ///    },
-    ///    "deleted_at": {
-    ///      "type": [
-    ///        "string",
-    ///        "null"
-    ///      ],
-    ///      "format": "date-time"
-    ///    },
-    ///    "id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForOAuthSecretId"
-    ///    },
-    ///    "oauth_client_id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForOAuthClientId"
-    ///    },
-    ///    "secret_signature": {
-    ///      "type": "string"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
     pub struct OAuthClientSecret {
         pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        #[serde(skip_serializing_if = "::std::option::Option::is_none")]
         pub deleted_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
         pub id: TypedUuidForOAuthSecretId,
         pub oauth_client_id: TypedUuidForOAuthClientId,
@@ -4128,38 +1551,6 @@ pub mod types {
     }
 
     /// `OAuthProviderAuthorizationCodeInfo`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "auth_url_endpoint",
-    ///    "redirect_endpoint",
-    ///    "token_endpoint",
-    ///    "token_endpoint_content_type"
-    ///  ],
-    ///  "properties": {
-    ///    "auth_url_endpoint": {
-    ///      "type": "string"
-    ///    },
-    ///    "redirect_endpoint": {
-    ///      "type": "string"
-    ///    },
-    ///    "token_endpoint": {
-    ///      "type": "string"
-    ///    },
-    ///    "token_endpoint_content_type": {
-    ///      "type": "string"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -4177,40 +1568,6 @@ pub mod types {
     }
 
     /// `OAuthProviderAuthorizationCodePkceInfo`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "client_id",
-    ///    "proxy_port",
-    ///    "redirect_endpoint",
-    ///    "web"
-    ///  ],
-    ///  "properties": {
-    ///    "client_id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForOAuthClientId"
-    ///    },
-    ///    "proxy_port": {
-    ///      "type": "integer",
-    ///      "format": "uint16",
-    ///      "minimum": 0.0
-    ///    },
-    ///    "redirect_endpoint": {
-    ///      "type": "string"
-    ///    },
-    ///    "web": {
-    ///      "$ref": "#/components/schemas/OAuthProviderAuthorizationCodeInfo"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -4228,34 +1585,6 @@ pub mod types {
     }
 
     /// `OAuthProviderDeviceInfo`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "auth_url_endpoint",
-    ///    "client_id",
-    ///    "token_endpoint"
-    ///  ],
-    ///  "properties": {
-    ///    "auth_url_endpoint": {
-    ///      "type": "string"
-    ///    },
-    ///    "client_id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForOAuthClientId"
-    ///    },
-    ///    "token_endpoint": {
-    ///      "type": "string"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -4272,21 +1601,6 @@ pub mod types {
     }
 
     /// `OAuthProviderName`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "string",
-    ///  "enum": [
-    ///    "github",
-    ///    "google",
-    ///    "zendesk"
-    ///  ]
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize,
         :: serde :: Serialize,
@@ -4338,15 +1652,6 @@ pub mod types {
         }
     }
 
-    impl ::std::convert::TryFrom<&::std::string::String> for OAuthProviderName {
-        type Error = self::error::ConversionError;
-        fn try_from(
-            value: &::std::string::String,
-        ) -> ::std::result::Result<Self, self::error::ConversionError> {
-            value.parse()
-        }
-    }
-
     impl ::std::convert::TryFrom<::std::string::String> for OAuthProviderName {
         type Error = self::error::ConversionError;
         fn try_from(
@@ -4357,13 +1662,6 @@ pub mod types {
     }
 
     /// `OAuthRedirectUriId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// false
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize,
         :: serde :: Serialize,
@@ -4381,13 +1679,6 @@ pub mod types {
     pub enum OAuthRedirectUriId {}
 
     /// `OAuthSecretId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// false
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize,
         :: serde :: Serialize,
@@ -4405,30 +1696,6 @@ pub mod types {
     pub enum OAuthSecretId {}
 
     /// `OidcProveBody`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "attestation",
-    ///    "request"
-    ///  ],
-    ///  "properties": {
-    ///    "attestation": {
-    ///      "$ref": "#/components/schemas/Attestation"
-    ///    },
-    ///    "request": {
-    ///      "$ref": "#/components/schemas/TypedUuidForTokenRequestId"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -4444,26 +1711,6 @@ pub mod types {
     }
 
     /// `OidcServerToken`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "token"
-    ///  ],
-    ///  "properties": {
-    ///    "token": {
-    ///      "type": "string"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -4478,54 +1725,19 @@ pub mod types {
     }
 
     /// `OidcTokenRequestBody`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "properties": {
-    ///    "audience": {
-    ///      "description": "The audience of the issued token. The token is
-    /// issued for sprue itself when no audience is requested.",
-    ///      "oneOf": [
-    ///        {
-    ///          "type": "null"
-    ///        },
-    ///        {
-    ///          "allOf": [
-    ///            {
-    ///              "$ref": "#/components/schemas/Audience"
-    ///            }
-
-    ///          ]
-    ///        }
-
-    ///      ]
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
-        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+        :: serde :: Deserialize,
+        :: serde :: Serialize,
+        Clone,
+        Debug,
+        Default,
+        schemars :: JsonSchema,
     )]
     pub struct OidcTokenRequestBody {
         /// The audience of the issued token. The token is issued for sprue
         /// itself when no audience is requested.
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        #[serde(skip_serializing_if = "::std::option::Option::is_none")]
         pub audience: ::std::option::Option<Audience>,
-    }
-
-    impl ::std::default::Default for OidcTokenRequestBody {
-        fn default() -> Self {
-            Self {
-                audience: Default::default(),
-            }
-        }
     }
 
     impl OidcTokenRequestBody {
@@ -4535,62 +1747,6 @@ pub mod types {
     }
 
     /// `OpenIdConfiguration`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "claims_supported",
-    ///    "id_token_signing_alg_values_supported",
-    ///    "issuer",
-    ///    "jwks_uri",
-    ///    "response_types_supported",
-    ///    "subject_types_supported"
-    ///  ],
-    ///  "properties": {
-    ///    "claims_supported": {
-    ///      "type": "array",
-    ///      "items": {
-    ///        "type": "string"
-    ///      }
-
-    ///    },
-    ///    "id_token_signing_alg_values_supported": {
-    ///      "type": "array",
-    ///      "items": {
-    ///        "type": "string"
-    ///      }
-
-    ///    },
-    ///    "issuer": {
-    ///      "type": "string"
-    ///    },
-    ///    "jwks_uri": {
-    ///      "type": "string"
-    ///    },
-    ///    "response_types_supported": {
-    ///      "type": "array",
-    ///      "items": {
-    ///        "type": "string"
-    ///      }
-
-    ///    },
-    ///    "subject_types_supported": {
-    ///      "type": "array",
-    ///      "items": {
-    ///        "type": "string"
-    ///      }
-
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -4610,20 +1766,6 @@ pub mod types {
     }
 
     /// `PermissionsForApiPermissions`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "array",
-    ///  "items": {
-    ///    "$ref": "#/components/schemas/ApiPermissions"
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -4649,13 +1791,6 @@ pub mod types {
     }
 
     /// `ProjectId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// false
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize,
         :: serde :: Serialize,
@@ -4673,47 +1808,13 @@ pub mod types {
     pub enum ProjectId {}
 
     /// `RegisterBlobBody`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "size"
-    ///  ],
-    ///  "properties": {
-    ///    "blob_time": {
-    ///      "type": [
-    ///        "string",
-    ///        "null"
-    ///      ],
-    ///      "format": "date-time"
-    ///    },
-    ///    "idempotency_key": {
-    ///      "type": [
-    ///        "string",
-    ///        "null"
-    ///      ]
-    ///    },
-    ///    "size": {
-    ///      "type": "integer",
-    ///      "format": "int64"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
     pub struct RegisterBlobBody {
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        #[serde(skip_serializing_if = "::std::option::Option::is_none")]
         pub blob_time: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        #[serde(skip_serializing_if = "::std::option::Option::is_none")]
         pub idempotency_key: ::std::option::Option<::std::string::String>,
         pub size: i64,
     }
@@ -4725,26 +1826,6 @@ pub mod types {
     }
 
     /// `RegisterBlobResponse`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "blob"
-    ///  ],
-    ///  "properties": {
-    ///    "blob": {
-    ///      "$ref": "#/components/schemas/Blob"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -4759,46 +1840,6 @@ pub mod types {
     }
 
     /// A challenge issued to a VM that wants to join a service.
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "description": "A challenge issued to a VM that wants to join a
-    /// service.",
-    ///  "type": "object",
-    ///  "required": [
-    ///    "created_at",
-    ///    "expires_at",
-    ///    "id",
-    ///    "nonce",
-    ///    "service_id"
-    ///  ],
-    ///  "properties": {
-    ///    "created_at": {
-    ///      "type": "string",
-    ///      "format": "date-time"
-    ///    },
-    ///    "expires_at": {
-    ///      "type": "string",
-    ///      "format": "date-time"
-    ///    },
-    ///    "id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForRegistrationChallengeId"
-    ///    },
-    ///    "nonce": {
-    ///      "type": "string"
-    ///    },
-    ///    "service_id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForServiceId"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -4817,13 +1858,6 @@ pub mod types {
     }
 
     /// `RegistrationChallengeId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// false
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize,
         :: serde :: Serialize,
@@ -4841,16 +1875,6 @@ pub mod types {
     pub enum RegistrationChallengeId {}
 
     /// `SecretString`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "string"
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize,
         :: serde :: Serialize,
@@ -4884,6 +1908,12 @@ pub mod types {
         }
     }
 
+    impl ::std::fmt::Display for SecretString {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            self.0.fmt(f)
+        }
+    }
+
     impl ::std::str::FromStr for SecretString {
         type Err = ::std::convert::Infallible;
         fn from_str(value: &str) -> ::std::result::Result<Self, Self::Err> {
@@ -4891,33 +1921,7 @@ pub mod types {
         }
     }
 
-    impl ::std::fmt::Display for SecretString {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-            self.0.fmt(f)
-        }
-    }
-
     /// `ServerAttestation`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "attestation"
-    ///  ],
-    ///  "properties": {
-    ///    "attestation": {
-    ///      "$ref": "#/components/schemas/Attestation"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -4932,57 +1936,6 @@ pub mod types {
     }
 
     /// `ServerRegistration`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "created_at",
-    ///    "id",
-    ///    "instance_id",
-    ///    "project_id",
-    ///    "service_id",
-    ///    "silo_id",
-    ///    "state",
-    ///    "updated_at"
-    ///  ],
-    ///  "properties": {
-    ///    "created_at": {
-    ///      "type": "string",
-    ///      "format": "date-time"
-    ///    },
-    ///    "id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForServerRegistrationId"
-    ///    },
-    ///    "instance_id": {
-    ///      "$ref":
-    /// "#/components/schemas/TypedUuidForServerRegistrationInstanceId"
-    ///    },
-    ///    "project_id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForProjectId"
-    ///    },
-    ///    "service_id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForServiceId"
-    ///    },
-    ///    "silo_id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForSiloId"
-    ///    },
-    ///    "state": {
-    ///      "$ref": "#/components/schemas/ServerRegistrationState"
-    ///    },
-    ///    "updated_at": {
-    ///      "type": "string",
-    ///      "format": "date-time"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -5004,13 +1957,6 @@ pub mod types {
     }
 
     /// `ServerRegistrationId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// false
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize,
         :: serde :: Serialize,
@@ -5028,13 +1974,6 @@ pub mod types {
     pub enum ServerRegistrationId {}
 
     /// `ServerRegistrationInstanceId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// false
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize,
         :: serde :: Serialize,
@@ -5052,25 +1991,6 @@ pub mod types {
     pub enum ServerRegistrationInstanceId {}
 
     /// The lifecycle of a server registration.
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "description": "The lifecycle of a server registration.",
-    ///  "type": "string",
-    ///  "enum": [
-    ///    "Pending",
-    ///    "Proven",
-    ///    "Accepted",
-    ///    "Rejected",
-    ///    "Terminated",
-    ///    "Expired"
-    ///  ]
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize,
         :: serde :: Serialize,
@@ -5128,15 +2048,6 @@ pub mod types {
         }
     }
 
-    impl ::std::convert::TryFrom<&::std::string::String> for ServerRegistrationState {
-        type Error = self::error::ConversionError;
-        fn try_from(
-            value: &::std::string::String,
-        ) -> ::std::result::Result<Self, self::error::ConversionError> {
-            value.parse()
-        }
-    }
-
     impl ::std::convert::TryFrom<::std::string::String> for ServerRegistrationState {
         type Error = self::error::ConversionError;
         fn try_from(
@@ -5147,35 +2058,6 @@ pub mod types {
     }
 
     /// `Service`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "created_at",
-    ///    "id",
-    ///    "name"
-    ///  ],
-    ///  "properties": {
-    ///    "created_at": {
-    ///      "type": "string",
-    ///      "format": "date-time"
-    ///    },
-    ///    "id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForServiceId"
-    ///    },
-    ///    "name": {
-    ///      "type": "string"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -5192,13 +2074,6 @@ pub mod types {
     }
 
     /// `ServiceId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// false
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize,
         :: serde :: Serialize,
@@ -5216,16 +2091,6 @@ pub mod types {
     pub enum ServiceId {}
 
     /// `ServiceIdentifier`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "string"
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize,
         :: serde :: Serialize,
@@ -5259,6 +2124,12 @@ pub mod types {
         }
     }
 
+    impl ::std::fmt::Display for ServiceIdentifier {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            self.0.fmt(f)
+        }
+    }
+
     impl ::std::str::FromStr for ServiceIdentifier {
         type Err = ::std::convert::Infallible;
         fn from_str(value: &str) -> ::std::result::Result<Self, Self::Err> {
@@ -5266,20 +2137,7 @@ pub mod types {
         }
     }
 
-    impl ::std::fmt::Display for ServiceIdentifier {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-            self.0.fmt(f)
-        }
-    }
-
     /// `SiloId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// false
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize,
         :: serde :: Serialize,
@@ -5297,79 +2155,19 @@ pub mod types {
     pub enum SiloId {}
 
     /// `TokenRequest`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "object",
-    ///  "required": [
-    ///    "created_at",
-    ///    "id",
-    ///    "server_registration_id",
-    ///    "state",
-    ///    "updated_at"
-    ///  ],
-    ///  "properties": {
-    ///    "audience": {
-    ///      "description": "The audience of the token that this request issues.
-    /// This is None only for requests that were made before audiences were
-    /// recorded.",
-    ///      "type": [
-    ///        "string",
-    ///        "null"
-    ///      ]
-    ///    },
-    ///    "created_at": {
-    ///      "type": "string",
-    ///      "format": "date-time"
-    ///    },
-    ///    "expires_at": {
-    ///      "type": [
-    ///        "string",
-    ///        "null"
-    ///      ],
-    ///      "format": "date-time"
-    ///    },
-    ///    "id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForTokenRequestId"
-    ///    },
-    ///    "nonce": {
-    ///      "type": [
-    ///        "string",
-    ///        "null"
-    ///      ]
-    ///    },
-    ///    "server_registration_id": {
-    ///      "$ref": "#/components/schemas/TypedUuidForServerRegistrationId"
-    ///    },
-    ///    "state": {
-    ///      "$ref": "#/components/schemas/TokenRequestState"
-    ///    },
-    ///    "updated_at": {
-    ///      "type": "string",
-    ///      "format": "date-time"
-    ///    }
-
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
     pub struct TokenRequest {
         /// The audience of the token that this request issues. This is None
         /// only for requests that were made before audiences were recorded.
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        #[serde(skip_serializing_if = "::std::option::Option::is_none")]
         pub audience: ::std::option::Option<::std::string::String>,
         pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        #[serde(skip_serializing_if = "::std::option::Option::is_none")]
         pub expires_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
         pub id: TypedUuidForTokenRequestId,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        #[serde(skip_serializing_if = "::std::option::Option::is_none")]
         pub nonce: ::std::option::Option<::std::string::String>,
         pub server_registration_id: TypedUuidForServerRegistrationId,
         pub state: TokenRequestState,
@@ -5383,13 +2181,6 @@ pub mod types {
     }
 
     /// `TokenRequestId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// false
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize,
         :: serde :: Serialize,
@@ -5407,22 +2198,6 @@ pub mod types {
     pub enum TokenRequestId {}
 
     /// `TokenRequestState`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "string",
-    ///  "enum": [
-    ///    "Pending",
-    ///    "Consume",
-    ///    "Terminated",
-    ///    "Expired"
-    ///  ]
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize,
         :: serde :: Serialize,
@@ -5474,15 +2249,6 @@ pub mod types {
         }
     }
 
-    impl ::std::convert::TryFrom<&::std::string::String> for TokenRequestState {
-        type Error = self::error::ConversionError;
-        fn try_from(
-            value: &::std::string::String,
-        ) -> ::std::result::Result<Self, self::error::ConversionError> {
-            value.parse()
-        }
-    }
-
     impl ::std::convert::TryFrom<::std::string::String> for TokenRequestState {
         type Error = self::error::ConversionError;
         fn try_from(
@@ -5493,29 +2259,6 @@ pub mod types {
     }
 
     /// `TypedUuidForAccessGroupId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "string",
-    ///  "format": "uuid",
-    ///  "x-rust-type": {
-    ///    "crate": "newtype-uuid",
-    ///    "parameters": [
-    ///      {
-    ///        "$ref": "#/components/schemas/AccessGroupId"
-    ///      }
-
-    ///    ],
-    ///    "path": "newtype_uuid::TypedUuid",
-    ///    "version": "1"
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -5540,6 +2283,12 @@ pub mod types {
         }
     }
 
+    impl ::std::fmt::Display for TypedUuidForAccessGroupId {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            self.0.fmt(f)
+        }
+    }
+
     impl ::std::str::FromStr for TypedUuidForAccessGroupId {
         type Err = <::uuid::Uuid as ::std::str::FromStr>::Err;
         fn from_str(value: &str) -> ::std::result::Result<Self, Self::Err> {
@@ -5561,36 +2310,7 @@ pub mod types {
         }
     }
 
-    impl ::std::fmt::Display for TypedUuidForAccessGroupId {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-            self.0.fmt(f)
-        }
-    }
-
     /// `TypedUuidForApiKeyId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "string",
-    ///  "format": "uuid",
-    ///  "x-rust-type": {
-    ///    "crate": "newtype-uuid",
-    ///    "parameters": [
-    ///      {
-    ///        "$ref": "#/components/schemas/ApiKeyId"
-    ///      }
-
-    ///    ],
-    ///    "path": "newtype_uuid::TypedUuid",
-    ///    "version": "1"
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -5615,6 +2335,12 @@ pub mod types {
         }
     }
 
+    impl ::std::fmt::Display for TypedUuidForApiKeyId {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            self.0.fmt(f)
+        }
+    }
+
     impl ::std::str::FromStr for TypedUuidForApiKeyId {
         type Err = <::uuid::Uuid as ::std::str::FromStr>::Err;
         fn from_str(value: &str) -> ::std::result::Result<Self, Self::Err> {
@@ -5636,36 +2362,7 @@ pub mod types {
         }
     }
 
-    impl ::std::fmt::Display for TypedUuidForApiKeyId {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-            self.0.fmt(f)
-        }
-    }
-
     /// `TypedUuidForBlobId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "string",
-    ///  "format": "uuid",
-    ///  "x-rust-type": {
-    ///    "crate": "newtype-uuid",
-    ///    "parameters": [
-    ///      {
-    ///        "$ref": "#/components/schemas/BlobId"
-    ///      }
-
-    ///    ],
-    ///    "path": "newtype_uuid::TypedUuid",
-    ///    "version": "1"
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -5690,6 +2387,12 @@ pub mod types {
         }
     }
 
+    impl ::std::fmt::Display for TypedUuidForBlobId {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            self.0.fmt(f)
+        }
+    }
+
     impl ::std::str::FromStr for TypedUuidForBlobId {
         type Err = <::uuid::Uuid as ::std::str::FromStr>::Err;
         fn from_str(value: &str) -> ::std::result::Result<Self, Self::Err> {
@@ -5711,36 +2414,7 @@ pub mod types {
         }
     }
 
-    impl ::std::fmt::Display for TypedUuidForBlobId {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-            self.0.fmt(f)
-        }
-    }
-
     /// `TypedUuidForDeploymentId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "string",
-    ///  "format": "uuid",
-    ///  "x-rust-type": {
-    ///    "crate": "newtype-uuid",
-    ///    "parameters": [
-    ///      {
-    ///        "$ref": "#/components/schemas/DeploymentId"
-    ///      }
-
-    ///    ],
-    ///    "path": "newtype_uuid::TypedUuid",
-    ///    "version": "1"
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -5765,6 +2439,12 @@ pub mod types {
         }
     }
 
+    impl ::std::fmt::Display for TypedUuidForDeploymentId {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            self.0.fmt(f)
+        }
+    }
+
     impl ::std::str::FromStr for TypedUuidForDeploymentId {
         type Err = <::uuid::Uuid as ::std::str::FromStr>::Err;
         fn from_str(value: &str) -> ::std::result::Result<Self, Self::Err> {
@@ -5786,36 +2466,7 @@ pub mod types {
         }
     }
 
-    impl ::std::fmt::Display for TypedUuidForDeploymentId {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-            self.0.fmt(f)
-        }
-    }
-
     /// `TypedUuidForHealthCheckId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "string",
-    ///  "format": "uuid",
-    ///  "x-rust-type": {
-    ///    "crate": "newtype-uuid",
-    ///    "parameters": [
-    ///      {
-    ///        "$ref": "#/components/schemas/HealthCheckId"
-    ///      }
-
-    ///    ],
-    ///    "path": "newtype_uuid::TypedUuid",
-    ///    "version": "1"
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -5840,6 +2491,12 @@ pub mod types {
         }
     }
 
+    impl ::std::fmt::Display for TypedUuidForHealthCheckId {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            self.0.fmt(f)
+        }
+    }
+
     impl ::std::str::FromStr for TypedUuidForHealthCheckId {
         type Err = <::uuid::Uuid as ::std::str::FromStr>::Err;
         fn from_str(value: &str) -> ::std::result::Result<Self, Self::Err> {
@@ -5861,36 +2518,7 @@ pub mod types {
         }
     }
 
-    impl ::std::fmt::Display for TypedUuidForHealthCheckId {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-            self.0.fmt(f)
-        }
-    }
-
     /// `TypedUuidForMagicLinkAttemptId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "string",
-    ///  "format": "uuid",
-    ///  "x-rust-type": {
-    ///    "crate": "newtype-uuid",
-    ///    "parameters": [
-    ///      {
-    ///        "$ref": "#/components/schemas/MagicLinkAttemptId"
-    ///      }
-
-    ///    ],
-    ///    "path": "newtype_uuid::TypedUuid",
-    ///    "version": "1"
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -5915,6 +2543,12 @@ pub mod types {
         }
     }
 
+    impl ::std::fmt::Display for TypedUuidForMagicLinkAttemptId {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            self.0.fmt(f)
+        }
+    }
+
     impl ::std::str::FromStr for TypedUuidForMagicLinkAttemptId {
         type Err = <::uuid::Uuid as ::std::str::FromStr>::Err;
         fn from_str(value: &str) -> ::std::result::Result<Self, Self::Err> {
@@ -5936,36 +2570,7 @@ pub mod types {
         }
     }
 
-    impl ::std::fmt::Display for TypedUuidForMagicLinkAttemptId {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-            self.0.fmt(f)
-        }
-    }
-
     /// `TypedUuidForMagicLinkId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "string",
-    ///  "format": "uuid",
-    ///  "x-rust-type": {
-    ///    "crate": "newtype-uuid",
-    ///    "parameters": [
-    ///      {
-    ///        "$ref": "#/components/schemas/MagicLinkId"
-    ///      }
-
-    ///    ],
-    ///    "path": "newtype_uuid::TypedUuid",
-    ///    "version": "1"
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -5990,6 +2595,12 @@ pub mod types {
         }
     }
 
+    impl ::std::fmt::Display for TypedUuidForMagicLinkId {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            self.0.fmt(f)
+        }
+    }
+
     impl ::std::str::FromStr for TypedUuidForMagicLinkId {
         type Err = <::uuid::Uuid as ::std::str::FromStr>::Err;
         fn from_str(value: &str) -> ::std::result::Result<Self, Self::Err> {
@@ -6011,36 +2622,7 @@ pub mod types {
         }
     }
 
-    impl ::std::fmt::Display for TypedUuidForMagicLinkId {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-            self.0.fmt(f)
-        }
-    }
-
     /// `TypedUuidForMagicLinkRedirectUriId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "string",
-    ///  "format": "uuid",
-    ///  "x-rust-type": {
-    ///    "crate": "newtype-uuid",
-    ///    "parameters": [
-    ///      {
-    ///        "$ref": "#/components/schemas/MagicLinkRedirectUriId"
-    ///      }
-
-    ///    ],
-    ///    "path": "newtype_uuid::TypedUuid",
-    ///    "version": "1"
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -6065,6 +2647,12 @@ pub mod types {
         }
     }
 
+    impl ::std::fmt::Display for TypedUuidForMagicLinkRedirectUriId {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            self.0.fmt(f)
+        }
+    }
+
     impl ::std::str::FromStr for TypedUuidForMagicLinkRedirectUriId {
         type Err = <::uuid::Uuid as ::std::str::FromStr>::Err;
         fn from_str(value: &str) -> ::std::result::Result<Self, Self::Err> {
@@ -6086,36 +2674,7 @@ pub mod types {
         }
     }
 
-    impl ::std::fmt::Display for TypedUuidForMagicLinkRedirectUriId {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-            self.0.fmt(f)
-        }
-    }
-
     /// `TypedUuidForMagicLinkSecretId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "string",
-    ///  "format": "uuid",
-    ///  "x-rust-type": {
-    ///    "crate": "newtype-uuid",
-    ///    "parameters": [
-    ///      {
-    ///        "$ref": "#/components/schemas/MagicLinkSecretId"
-    ///      }
-
-    ///    ],
-    ///    "path": "newtype_uuid::TypedUuid",
-    ///    "version": "1"
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -6140,6 +2699,12 @@ pub mod types {
         }
     }
 
+    impl ::std::fmt::Display for TypedUuidForMagicLinkSecretId {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            self.0.fmt(f)
+        }
+    }
+
     impl ::std::str::FromStr for TypedUuidForMagicLinkSecretId {
         type Err = <::uuid::Uuid as ::std::str::FromStr>::Err;
         fn from_str(value: &str) -> ::std::result::Result<Self, Self::Err> {
@@ -6161,36 +2726,7 @@ pub mod types {
         }
     }
 
-    impl ::std::fmt::Display for TypedUuidForMagicLinkSecretId {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-            self.0.fmt(f)
-        }
-    }
-
     /// `TypedUuidForMapperId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "string",
-    ///  "format": "uuid",
-    ///  "x-rust-type": {
-    ///    "crate": "newtype-uuid",
-    ///    "parameters": [
-    ///      {
-    ///        "$ref": "#/components/schemas/MapperId"
-    ///      }
-
-    ///    ],
-    ///    "path": "newtype_uuid::TypedUuid",
-    ///    "version": "1"
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -6215,6 +2751,12 @@ pub mod types {
         }
     }
 
+    impl ::std::fmt::Display for TypedUuidForMapperId {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            self.0.fmt(f)
+        }
+    }
+
     impl ::std::str::FromStr for TypedUuidForMapperId {
         type Err = <::uuid::Uuid as ::std::str::FromStr>::Err;
         fn from_str(value: &str) -> ::std::result::Result<Self, Self::Err> {
@@ -6236,36 +2778,7 @@ pub mod types {
         }
     }
 
-    impl ::std::fmt::Display for TypedUuidForMapperId {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-            self.0.fmt(f)
-        }
-    }
-
     /// `TypedUuidForOAuthClientId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "string",
-    ///  "format": "uuid",
-    ///  "x-rust-type": {
-    ///    "crate": "newtype-uuid",
-    ///    "parameters": [
-    ///      {
-    ///        "$ref": "#/components/schemas/OAuthClientId"
-    ///      }
-
-    ///    ],
-    ///    "path": "newtype_uuid::TypedUuid",
-    ///    "version": "1"
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -6290,6 +2803,12 @@ pub mod types {
         }
     }
 
+    impl ::std::fmt::Display for TypedUuidForOAuthClientId {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            self.0.fmt(f)
+        }
+    }
+
     impl ::std::str::FromStr for TypedUuidForOAuthClientId {
         type Err = <::uuid::Uuid as ::std::str::FromStr>::Err;
         fn from_str(value: &str) -> ::std::result::Result<Self, Self::Err> {
@@ -6311,36 +2830,7 @@ pub mod types {
         }
     }
 
-    impl ::std::fmt::Display for TypedUuidForOAuthClientId {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-            self.0.fmt(f)
-        }
-    }
-
     /// `TypedUuidForOAuthRedirectUriId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "string",
-    ///  "format": "uuid",
-    ///  "x-rust-type": {
-    ///    "crate": "newtype-uuid",
-    ///    "parameters": [
-    ///      {
-    ///        "$ref": "#/components/schemas/OAuthRedirectUriId"
-    ///      }
-
-    ///    ],
-    ///    "path": "newtype_uuid::TypedUuid",
-    ///    "version": "1"
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -6365,6 +2855,12 @@ pub mod types {
         }
     }
 
+    impl ::std::fmt::Display for TypedUuidForOAuthRedirectUriId {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            self.0.fmt(f)
+        }
+    }
+
     impl ::std::str::FromStr for TypedUuidForOAuthRedirectUriId {
         type Err = <::uuid::Uuid as ::std::str::FromStr>::Err;
         fn from_str(value: &str) -> ::std::result::Result<Self, Self::Err> {
@@ -6386,36 +2882,7 @@ pub mod types {
         }
     }
 
-    impl ::std::fmt::Display for TypedUuidForOAuthRedirectUriId {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-            self.0.fmt(f)
-        }
-    }
-
     /// `TypedUuidForOAuthSecretId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "string",
-    ///  "format": "uuid",
-    ///  "x-rust-type": {
-    ///    "crate": "newtype-uuid",
-    ///    "parameters": [
-    ///      {
-    ///        "$ref": "#/components/schemas/OAuthSecretId"
-    ///      }
-
-    ///    ],
-    ///    "path": "newtype_uuid::TypedUuid",
-    ///    "version": "1"
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -6440,6 +2907,12 @@ pub mod types {
         }
     }
 
+    impl ::std::fmt::Display for TypedUuidForOAuthSecretId {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            self.0.fmt(f)
+        }
+    }
+
     impl ::std::str::FromStr for TypedUuidForOAuthSecretId {
         type Err = <::uuid::Uuid as ::std::str::FromStr>::Err;
         fn from_str(value: &str) -> ::std::result::Result<Self, Self::Err> {
@@ -6461,36 +2934,7 @@ pub mod types {
         }
     }
 
-    impl ::std::fmt::Display for TypedUuidForOAuthSecretId {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-            self.0.fmt(f)
-        }
-    }
-
     /// `TypedUuidForProjectId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "string",
-    ///  "format": "uuid",
-    ///  "x-rust-type": {
-    ///    "crate": "newtype-uuid",
-    ///    "parameters": [
-    ///      {
-    ///        "$ref": "#/components/schemas/ProjectId"
-    ///      }
-
-    ///    ],
-    ///    "path": "newtype_uuid::TypedUuid",
-    ///    "version": "1"
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -6515,6 +2959,12 @@ pub mod types {
         }
     }
 
+    impl ::std::fmt::Display for TypedUuidForProjectId {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            self.0.fmt(f)
+        }
+    }
+
     impl ::std::str::FromStr for TypedUuidForProjectId {
         type Err = <::uuid::Uuid as ::std::str::FromStr>::Err;
         fn from_str(value: &str) -> ::std::result::Result<Self, Self::Err> {
@@ -6536,36 +2986,7 @@ pub mod types {
         }
     }
 
-    impl ::std::fmt::Display for TypedUuidForProjectId {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-            self.0.fmt(f)
-        }
-    }
-
     /// `TypedUuidForRegistrationChallengeId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "string",
-    ///  "format": "uuid",
-    ///  "x-rust-type": {
-    ///    "crate": "newtype-uuid",
-    ///    "parameters": [
-    ///      {
-    ///        "$ref": "#/components/schemas/RegistrationChallengeId"
-    ///      }
-
-    ///    ],
-    ///    "path": "newtype_uuid::TypedUuid",
-    ///    "version": "1"
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -6590,6 +3011,12 @@ pub mod types {
         }
     }
 
+    impl ::std::fmt::Display for TypedUuidForRegistrationChallengeId {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            self.0.fmt(f)
+        }
+    }
+
     impl ::std::str::FromStr for TypedUuidForRegistrationChallengeId {
         type Err = <::uuid::Uuid as ::std::str::FromStr>::Err;
         fn from_str(value: &str) -> ::std::result::Result<Self, Self::Err> {
@@ -6611,36 +3038,7 @@ pub mod types {
         }
     }
 
-    impl ::std::fmt::Display for TypedUuidForRegistrationChallengeId {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-            self.0.fmt(f)
-        }
-    }
-
     /// `TypedUuidForServerRegistrationId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "string",
-    ///  "format": "uuid",
-    ///  "x-rust-type": {
-    ///    "crate": "newtype-uuid",
-    ///    "parameters": [
-    ///      {
-    ///        "$ref": "#/components/schemas/ServerRegistrationId"
-    ///      }
-
-    ///    ],
-    ///    "path": "newtype_uuid::TypedUuid",
-    ///    "version": "1"
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -6665,6 +3063,12 @@ pub mod types {
         }
     }
 
+    impl ::std::fmt::Display for TypedUuidForServerRegistrationId {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            self.0.fmt(f)
+        }
+    }
+
     impl ::std::str::FromStr for TypedUuidForServerRegistrationId {
         type Err = <::uuid::Uuid as ::std::str::FromStr>::Err;
         fn from_str(value: &str) -> ::std::result::Result<Self, Self::Err> {
@@ -6686,36 +3090,7 @@ pub mod types {
         }
     }
 
-    impl ::std::fmt::Display for TypedUuidForServerRegistrationId {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-            self.0.fmt(f)
-        }
-    }
-
     /// `TypedUuidForServerRegistrationInstanceId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "string",
-    ///  "format": "uuid",
-    ///  "x-rust-type": {
-    ///    "crate": "newtype-uuid",
-    ///    "parameters": [
-    ///      {
-    ///        "$ref": "#/components/schemas/ServerRegistrationInstanceId"
-    ///      }
-
-    ///    ],
-    ///    "path": "newtype_uuid::TypedUuid",
-    ///    "version": "1"
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -6740,6 +3115,12 @@ pub mod types {
         }
     }
 
+    impl ::std::fmt::Display for TypedUuidForServerRegistrationInstanceId {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            self.0.fmt(f)
+        }
+    }
+
     impl ::std::str::FromStr for TypedUuidForServerRegistrationInstanceId {
         type Err = <::uuid::Uuid as ::std::str::FromStr>::Err;
         fn from_str(value: &str) -> ::std::result::Result<Self, Self::Err> {
@@ -6761,36 +3142,7 @@ pub mod types {
         }
     }
 
-    impl ::std::fmt::Display for TypedUuidForServerRegistrationInstanceId {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-            self.0.fmt(f)
-        }
-    }
-
     /// `TypedUuidForServiceId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "string",
-    ///  "format": "uuid",
-    ///  "x-rust-type": {
-    ///    "crate": "newtype-uuid",
-    ///    "parameters": [
-    ///      {
-    ///        "$ref": "#/components/schemas/ServiceId"
-    ///      }
-
-    ///    ],
-    ///    "path": "newtype_uuid::TypedUuid",
-    ///    "version": "1"
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -6815,6 +3167,12 @@ pub mod types {
         }
     }
 
+    impl ::std::fmt::Display for TypedUuidForServiceId {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            self.0.fmt(f)
+        }
+    }
+
     impl ::std::str::FromStr for TypedUuidForServiceId {
         type Err = <::uuid::Uuid as ::std::str::FromStr>::Err;
         fn from_str(value: &str) -> ::std::result::Result<Self, Self::Err> {
@@ -6836,36 +3194,7 @@ pub mod types {
         }
     }
 
-    impl ::std::fmt::Display for TypedUuidForServiceId {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-            self.0.fmt(f)
-        }
-    }
-
     /// `TypedUuidForSiloId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "string",
-    ///  "format": "uuid",
-    ///  "x-rust-type": {
-    ///    "crate": "newtype-uuid",
-    ///    "parameters": [
-    ///      {
-    ///        "$ref": "#/components/schemas/SiloId"
-    ///      }
-
-    ///    ],
-    ///    "path": "newtype_uuid::TypedUuid",
-    ///    "version": "1"
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -6890,6 +3219,12 @@ pub mod types {
         }
     }
 
+    impl ::std::fmt::Display for TypedUuidForSiloId {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            self.0.fmt(f)
+        }
+    }
+
     impl ::std::str::FromStr for TypedUuidForSiloId {
         type Err = <::uuid::Uuid as ::std::str::FromStr>::Err;
         fn from_str(value: &str) -> ::std::result::Result<Self, Self::Err> {
@@ -6911,36 +3246,7 @@ pub mod types {
         }
     }
 
-    impl ::std::fmt::Display for TypedUuidForSiloId {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-            self.0.fmt(f)
-        }
-    }
-
     /// `TypedUuidForTokenRequestId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "string",
-    ///  "format": "uuid",
-    ///  "x-rust-type": {
-    ///    "crate": "newtype-uuid",
-    ///    "parameters": [
-    ///      {
-    ///        "$ref": "#/components/schemas/TokenRequestId"
-    ///      }
-
-    ///    ],
-    ///    "path": "newtype_uuid::TypedUuid",
-    ///    "version": "1"
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -6965,6 +3271,12 @@ pub mod types {
         }
     }
 
+    impl ::std::fmt::Display for TypedUuidForTokenRequestId {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            self.0.fmt(f)
+        }
+    }
+
     impl ::std::str::FromStr for TypedUuidForTokenRequestId {
         type Err = <::uuid::Uuid as ::std::str::FromStr>::Err;
         fn from_str(value: &str) -> ::std::result::Result<Self, Self::Err> {
@@ -6986,36 +3298,7 @@ pub mod types {
         }
     }
 
-    impl ::std::fmt::Display for TypedUuidForTokenRequestId {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-            self.0.fmt(f)
-        }
-    }
-
     /// `TypedUuidForUserId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "string",
-    ///  "format": "uuid",
-    ///  "x-rust-type": {
-    ///    "crate": "newtype-uuid",
-    ///    "parameters": [
-    ///      {
-    ///        "$ref": "#/components/schemas/UserId"
-    ///      }
-
-    ///    ],
-    ///    "path": "newtype_uuid::TypedUuid",
-    ///    "version": "1"
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -7040,6 +3323,12 @@ pub mod types {
         }
     }
 
+    impl ::std::fmt::Display for TypedUuidForUserId {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            self.0.fmt(f)
+        }
+    }
+
     impl ::std::str::FromStr for TypedUuidForUserId {
         type Err = <::uuid::Uuid as ::std::str::FromStr>::Err;
         fn from_str(value: &str) -> ::std::result::Result<Self, Self::Err> {
@@ -7061,36 +3350,7 @@ pub mod types {
         }
     }
 
-    impl ::std::fmt::Display for TypedUuidForUserId {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-            self.0.fmt(f)
-        }
-    }
-
     /// `TypedUuidForUserProviderId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// {
-    ///  "type": "string",
-    ///  "format": "uuid",
-    ///  "x-rust-type": {
-    ///    "crate": "newtype-uuid",
-    ///    "parameters": [
-    ///      {
-    ///        "$ref": "#/components/schemas/UserProviderId"
-    ///      }
-
-    ///    ],
-    ///    "path": "newtype_uuid::TypedUuid",
-    ///    "version": "1"
-    ///  }
-
-    /// }
-
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
     )]
@@ -7115,6 +3375,12 @@ pub mod types {
         }
     }
 
+    impl ::std::fmt::Display for TypedUuidForUserProviderId {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            self.0.fmt(f)
+        }
+    }
+
     impl ::std::str::FromStr for TypedUuidForUserProviderId {
         type Err = <::uuid::Uuid as ::std::str::FromStr>::Err;
         fn from_str(value: &str) -> ::std::result::Result<Self, Self::Err> {
@@ -7136,20 +3402,7 @@ pub mod types {
         }
     }
 
-    impl ::std::fmt::Display for TypedUuidForUserProviderId {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-            self.0.fmt(f)
-        }
-    }
-
     /// `UserId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// false
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize,
         :: serde :: Serialize,
@@ -7167,13 +3420,6 @@ pub mod types {
     pub enum UserId {}
 
     /// `UserProviderId`
-    ///
-    /// <details><summary>JSON schema</summary>
-    ///
-    /// ```json
-    /// false
-    /// ```
-    /// </details>
     #[derive(
         :: serde :: Deserialize,
         :: serde :: Serialize,
@@ -7870,8 +4116,10 @@ pub mod types {
                 ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
                 ::std::string::String,
             >,
-            groups:
-                ::std::result::Result<Vec<super::TypedUuidForAccessGroupId>, ::std::string::String>,
+            groups: ::std::result::Result<
+                ::std::vec::Vec<super::TypedUuidForAccessGroupId>,
+                ::std::string::String,
+            >,
             id: ::std::result::Result<super::TypedUuidForUserId, ::std::string::String>,
             permissions:
                 ::std::result::Result<super::PermissionsForApiPermissions, ::std::string::String>,
@@ -7919,7 +4167,7 @@ pub mod types {
             }
             pub fn groups<T>(mut self, value: T) -> Self
             where
-                T: ::std::convert::TryInto<Vec<super::TypedUuidForAccessGroupId>>,
+                T: ::std::convert::TryInto<::std::vec::Vec<super::TypedUuidForAccessGroupId>>,
                 T::Error: ::std::fmt::Display,
             {
                 self.groups = value
@@ -8348,8 +4596,10 @@ pub mod types {
 
         #[derive(Clone, Debug)]
         pub struct ApiUserUpdateParamsForApiPermissions {
-            group_ids:
-                ::std::result::Result<Vec<super::TypedUuidForAccessGroupId>, ::std::string::String>,
+            group_ids: ::std::result::Result<
+                ::std::vec::Vec<super::TypedUuidForAccessGroupId>,
+                ::std::string::String,
+            >,
             permissions:
                 ::std::result::Result<super::PermissionsForApiPermissions, ::std::string::String>,
         }
@@ -8368,7 +4618,7 @@ pub mod types {
         impl ApiUserUpdateParamsForApiPermissions {
             pub fn group_ids<T>(mut self, value: T) -> Self
             where
-                T: ::std::convert::TryInto<Vec<super::TypedUuidForAccessGroupId>>,
+                T: ::std::convert::TryInto<::std::vec::Vec<super::TypedUuidForAccessGroupId>>,
                 T::Error: ::std::fmt::Display,
             {
                 self.group_ids = value
@@ -12607,8 +8857,39 @@ pub mod types {
     /// Generation of default values for serde.
     pub mod defaults {
         pub(super) fn api_user_update_params_for_api_permissions_group_ids()
-        -> Vec<super::TypedUuidForAccessGroupId> {
+        -> ::std::vec::Vec<super::TypedUuidForAccessGroupId> {
             vec![]
+        }
+    }
+
+    /// Error types.
+    pub mod error {
+        /// Error from a `TryFrom` or `FromStr` implementation.
+        pub struct ConversionError(::std::borrow::Cow<'static, str>);
+        impl ::std::error::Error for ConversionError {}
+
+        impl ::std::fmt::Display for ConversionError {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+                ::std::fmt::Display::fmt(&self.0, f)
+            }
+        }
+
+        impl ::std::fmt::Debug for ConversionError {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+                ::std::fmt::Debug::fmt(&self.0, f)
+            }
+        }
+
+        impl From<&'static str> for ConversionError {
+            fn from(value: &'static str) -> Self {
+                Self(value.into())
+            }
+        }
+
+        impl From<String> for ConversionError {
+            fn from(value: String) -> Self {
+                Self(value.into())
+            }
         }
     }
 }
@@ -12630,7 +8911,10 @@ impl Client {
     /// `baseurl` is the base URL provided to the internal
     /// `reqwest::Client`, and should include a scheme and hostname,
     /// as well as port and a path stem if applicable.
-    pub fn new(baseurl: &str) -> Self {
+    ///
+    /// Returns an error if the `reqwest::Client` cannot be built,
+    /// for example when the TLS backend fails to initialize.
+    pub fn new(baseurl: &str) -> Result<Self, reqwest::Error> {
         #[cfg(not(target_arch = "wasm32"))]
         let client = {
             let dur = ::std::time::Duration::from_secs(15u64);
@@ -12640,7 +8924,7 @@ impl Client {
         };
         #[cfg(target_arch = "wasm32")]
         let client = reqwest::ClientBuilder::new();
-        Self::new_with_client(baseurl, client.build().unwrap())
+        Ok(Self::new_with_client(baseurl, client.build()?))
     }
 
     /// Construct a new client with an existing `reqwest::Client`,
@@ -13822,7 +10106,7 @@ pub mod builder {
     use super::types;
     #[allow(unused_imports)]
     use super::{
-        ByteStream, ClientHooks, ClientInfo, Error, OperationInfo, RequestBuilderExt,
+        ByteStream, ClientHooks, ClientInfo, Error, OperationInfo, QueryParam, RequestBuilderExt,
         ResponseValue, encode_path,
     };
     /// Builder for [`Client::jwks_json`]
@@ -16467,25 +12751,16 @@ pub mod builder {
             let mut request = client
                 .client
                 .get(url)
-                .query(&progenitor_client::QueryParam::new("client_id", &client_id))
-                .query(&progenitor_client::QueryParam::new(
-                    "code_challenge",
-                    &code_challenge,
-                ))
-                .query(&progenitor_client::QueryParam::new(
+                .query(&QueryParam::new("client_id", &client_id))
+                .query(&QueryParam::new("code_challenge", &code_challenge))
+                .query(&QueryParam::new(
                     "code_challenge_method",
                     &code_challenge_method,
                 ))
-                .query(&progenitor_client::QueryParam::new(
-                    "redirect_uri",
-                    &redirect_uri,
-                ))
-                .query(&progenitor_client::QueryParam::new(
-                    "response_type",
-                    &response_type,
-                ))
-                .query(&progenitor_client::QueryParam::new("scope", &scope))
-                .query(&progenitor_client::QueryParam::new("state", &state))
+                .query(&QueryParam::new("redirect_uri", &redirect_uri))
+                .query(&QueryParam::new("response_type", &response_type))
+                .query(&QueryParam::new("scope", &scope))
+                .query(&QueryParam::new("state", &state))
                 .headers(header_map)
                 .build()?;
             let info = OperationInfo {
@@ -16598,9 +12873,9 @@ pub mod builder {
             let mut request = client
                 .client
                 .get(url)
-                .query(&progenitor_client::QueryParam::new("code", &code))
-                .query(&progenitor_client::QueryParam::new("error", &error))
-                .query(&progenitor_client::QueryParam::new("state", &state))
+                .query(&QueryParam::new("code", &code))
+                .query(&QueryParam::new("error", &error))
+                .query(&QueryParam::new("state", &state))
                 .headers(header_map)
                 .build()?;
             let info = OperationInfo {
@@ -16727,10 +13002,7 @@ pub mod builder {
                     ::reqwest::header::HeaderValue::from_static("application/json"),
                 )
                 .form_urlencoded(&body)?
-                .query(&progenitor_client::QueryParam::new(
-                    "request_idp_token",
-                    &request_idp_token,
-                ))
+                .query(&QueryParam::new("request_idp_token", &request_idp_token))
                 .headers(header_map)
                 .build()?;
             let info = OperationInfo {
@@ -17692,10 +13964,7 @@ pub mod builder {
                     ::reqwest::header::ACCEPT,
                     ::reqwest::header::HeaderValue::from_static("application/json"),
                 )
-                .query(&progenitor_client::QueryParam::new(
-                    "include_depleted",
-                    &include_depleted,
-                ))
+                .query(&QueryParam::new("include_depleted", &include_depleted))
                 .headers(header_map)
                 .build()?;
             let info = OperationInfo {
@@ -18801,11 +15070,8 @@ pub mod builder {
                     ::reqwest::header::ACCEPT,
                     ::reqwest::header::HeaderValue::from_static("application/json"),
                 )
-                .query(&progenitor_client::QueryParam::new("limit", &limit))
-                .query(&progenitor_client::QueryParam::new(
-                    "page_token",
-                    &page_token,
-                ))
+                .query(&QueryParam::new("limit", &limit))
+                .query(&QueryParam::new("page_token", &page_token))
                 .headers(header_map)
                 .build()?;
             let info = OperationInfo {
@@ -19060,11 +15326,8 @@ pub mod builder {
                     ::reqwest::header::ACCEPT,
                     ::reqwest::header::HeaderValue::from_static("application/json"),
                 )
-                .query(&progenitor_client::QueryParam::new("limit", &limit))
-                .query(&progenitor_client::QueryParam::new(
-                    "page_token",
-                    &page_token,
-                ))
+                .query(&QueryParam::new("limit", &limit))
+                .query(&QueryParam::new("page_token", &page_token))
                 .headers(header_map)
                 .build()?;
             let info = OperationInfo {

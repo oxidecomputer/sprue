@@ -100,8 +100,11 @@ impl AuthenticatedClient {
     }
 
     /// Return a plain, unauthenticated client.
-    fn unauthenticated(&self) -> Client {
-        Client::new(&self.server)
+    fn unauthenticated(&self) -> Result<Client, SprueError> {
+        Client::new(&self.server).map_err(|err| {
+            tracing::error!(?err, "Failed to construct client");
+            SprueError::Failure(err.to_string())
+        })
     }
 
     /// Return the id of the registration when it is accepted. Any other
@@ -156,7 +159,7 @@ impl AuthenticatedClient {
             None => {
                 tracing::info!("Refreshing authentication token");
 
-                let plain = self.unauthenticated();
+                let plain = self.unauthenticated()?;
                 let token = cmd::get_token(TokenRequest {
                     client: &plain,
                     registration_id: id.clone(),
@@ -200,7 +203,7 @@ impl AuthenticatedClient {
     /// every call.
     async fn token_for(&self, audience: &Audience) -> Result<String, SprueError> {
         let id = self.accepted_id()?;
-        let plain = self.unauthenticated();
+        let plain = self.unauthenticated()?;
         cmd::get_token(TokenRequest {
             client: &plain,
             registration_id: id,
@@ -451,7 +454,7 @@ impl SprueAgentStarter {
             registration.clone(),
             self.platform.clone(),
         ));
-        let client = Client::new(&self.server);
+        let client = Client::new(&self.server)?;
         let registration_loop = registration.run(&client, &self.service, self.platform.as_ref());
 
         let listener = tarpc::serde_transport::unix::listen(&self.socket, Json::default).await?;

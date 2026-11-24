@@ -41,7 +41,7 @@ ctrlc = "3.5"
 derive_builder = "0.20.2"
 dice-verifier = { git = "https://github.com/oxidecomputer/dice-util", rev = "d7472bfa91aee859c3fe0bdc1dbb1e320285228e" }
 dirs = "6.0.0"
-dropshot = "0.17"
+dropshot = "0.18"
 futures = "0.3"
 futures-util = "0.3.32"
 hex = "0.4.3"
@@ -60,8 +60,8 @@ oauth2 = { version = "5.0.0", default-features = false }
 oauth2-reqwest = "0.1.0-alpha.3"
 owo-colors = "4.2.3"
 partial-struct = { git = "https://github.com/oxidecomputer/partial-struct" }
-progenitor = { version = "0.14" }
-progenitor-client = { version = "0.14" }
+progenitor = { version = "0.16.0" }
+progenitor-client = { version = "0.16.0" }
 rand = "0.10.1"
 ratatui = "0.30"
 # Transitively present via dice-verifier, which re-exports `Corim` but not the
@@ -97,11 +97,11 @@ tracing-appender = "0.2.4"
 tracing-slog = { git = "https://github.com/oxidecomputer/tracing-slog", default-features = false }
 tracing-subscriber = { version = "0.3.22", features = ["env-filter", "json"] }
 uuid = { version = "1", features = ["serde"] }
-v-api = { git = "https://github.com/oxidecomputer/v-api", rev = "v0.5.3" }
-v-api-param = { git = "https://github.com/oxidecomputer/v-api", rev = "v0.5.3" }
-v-api-permission-derive = { git = "https://github.com/oxidecomputer/v-api", rev = "v0.5.3" }
-v-cli-sdk = { git = "https://github.com/oxidecomputer/v-api", rev = "v0.5.3" }
-v-model = { git = "https://github.com/oxidecomputer/v-api", rev = "v0.5.3" }
+v-api = { git = "https://github.com/oxidecomputer/v-api", rev = "v0.6.1" }
+v-api-param = { git = "https://github.com/oxidecomputer/v-api", rev = "v0.6.1" }
+v-api-permission-derive = { git = "https://github.com/oxidecomputer/v-api", rev = "v0.6.1" }
+v-cli-sdk = { git = "https://github.com/oxidecomputer/v-api", rev = "v0.6.1" }
+v-model = { git = "https://github.com/oxidecomputer/v-api", rev = "v0.6.1" }
 vm-attest = { git = "https://github.com/oxidecomputer/vm-attest", rev = "ef821ea699c63154b04cbea90861981f92a601c2" }
 lib-vsock = { package = "vsock", version = "0.5.3" }
 x509-cert = "0.2.5"

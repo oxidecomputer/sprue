@@ -161,8 +161,10 @@ impl<T: CliConfig> Cli<T> {
                     .action(::clap::ArgAction::SetTrue)
                     .help("XXX"),
             )
-            .about("Update the permissions assigned to a given user. These replace any existing")
-            .long_about("permissions.")
+            .about(
+                "Update the permissions assigned to a given user. These replace any \
+                 existing\n\npermissions.",
+            )
     }
 
     pub fn cli_set_api_user_contact_email() -> ::clap::Command {
@@ -444,9 +446,8 @@ impl<T: CliConfig> Cli<T> {
             )
             .about(
                 "Cancels a blob so that it can no longer be written to. Any data already sent \
-                 will eventually",
+                 will eventually\n\nbe deleted.",
             )
-            .long_about("be deleted.")
     }
 
     pub fn cli_complete_blob_upload() -> ::clap::Command {
@@ -481,10 +482,8 @@ impl<T: CliConfig> Cli<T> {
             )
             .about(
                 "Stream data to fill a registered blob. Any data that is streamed is appended to \
-                 any data that",
-            )
-            .long_about(
-                "has already been recieved. Concurrent writes to the same blob are not supported.",
+                 any data that\n\nhas already been recieved. Concurrent writes to the same blob \
+                 are not supported.",
             )
     }
 
@@ -917,9 +916,9 @@ impl<T: CliConfig> Cli<T> {
                     .action(::clap::ArgAction::SetTrue)
                     .help("XXX"),
             )
-            .about("Initiate a device authorization flow by proxying the request to the")
-            .long_about(
-                "upstream OAuth provider. Creates a login attempt and returns the upstream device \
+            .about(
+                "Initiate a device authorization flow by proxying the request to the\n\nupstream \
+                 OAuth provider. Creates a login attempt and returns the upstream device \
                  authorization response.",
             )
     }
@@ -971,8 +970,10 @@ impl<T: CliConfig> Cli<T> {
                     .action(::clap::ArgAction::SetTrue)
                     .help("XXX"),
             )
-            .about("Exchange an OAuth device code for an access token. The client polls")
-            .long_about("this endpoint until the user completes authorization.")
+            .about(
+                "Exchange an OAuth device code for an access token. The client polls\n\nthis \
+                 endpoint until the user completes authorization.",
+            )
     }
 
     pub fn cli_get_web_pkce_provider() -> ::clap::Command {
@@ -1365,9 +1366,9 @@ impl<T: CliConfig> Cli<T> {
                     .action(::clap::ArgAction::SetTrue)
                     .help("XXX"),
             )
-            .about("Register a new blob request to upload a blob to")
-            .long_about(
-                "Returns a blob instance that the requesting server is authorized to upload to.",
+            .about(
+                "Register a new blob request to upload a blob to\n\nReturns a blob instance that \
+                 the requesting server is authorized to upload to.",
             )
     }
 
@@ -1460,11 +1461,11 @@ impl<T: CliConfig> Cli<T> {
                     .action(::clap::ArgAction::SetTrue)
                     .help("XXX"),
             )
-            .about("Register a request for a server OIDC token.")
-            .long_about(
-                "The server will be issued a challenge that it must sign and return to prove its \
-                 identity. The server may request any audience for the token. Without one the \
-                 token is issued for sprue itself. The audience is recorded on the request.",
+            .about(
+                "Register a request for a server OIDC token.\n\nThe server will be issued a \
+                 challenge that it must sign and return to prove its identity. The server may \
+                 request any audience for the token. Without one the token is issued for sprue \
+                 itself. The audience is recorded on the request.",
             )
     }
 
@@ -1498,11 +1499,11 @@ impl<T: CliConfig> Cli<T> {
                     .action(::clap::ArgAction::SetTrue)
                     .help("XXX"),
             )
-            .about("Complete a server OIDC token request")
-            .long_about(
-                "Server must provide an attestation that proves the server's identity along with \
-                 the challenge that was issued in the initial request. The token carries the \
-                 audience that was recorded when the request was registered.",
+            .about(
+                "Complete a server OIDC token request\n\nServer must provide an attestation that \
+                 proves the server's identity along with the challenge that was issued in the \
+                 initial request. The token carries the audience that was recorded when the \
+                 request was registered.",
             )
     }
 
@@ -1630,9 +1631,9 @@ impl<T: CliConfig> Cli<T> {
                     .action(::clap::ArgAction::SetTrue)
                     .help("XXX"),
             )
-            .about("Create a new deployment for a service")
-            .long_about(
-                "A deployment represents a project/silo pair where the service is deployed.",
+            .about(
+                "Create a new deployment for a service\n\nA deployment represents a project/silo \
+                 pair where the service is deployed.",
             )
     }
 
@@ -1678,11 +1679,11 @@ impl<T: CliConfig> Cli<T> {
                     .value_parser(::clap::value_parser!(types::ServiceIdentifier))
                     .required(true),
             )
-            .about("Request a challenge for registering a server as an instance of a service")
-            .long_about(
-                "The server must answer the challenge with an attestation. The registration is \
-                 only created once that attestation has been verified, and it is then either \
-                 accepted by policy or by manual intervention.",
+            .about(
+                "Request a challenge for registering a server as an instance of a service\n\nThe \
+                 server must answer the challenge with an attestation. The registration is only \
+                 created once that attestation has been verified, and it is then either accepted \
+                 by policy or by manual intervention.",
             )
     }
 

@@ -158,7 +158,7 @@ impl MockVm {
         Self {
             server: server.to_string(),
             conf: conf.clone(),
-            client: SprueClient::new(server),
+            client: SprueClient::new(server).expect("Failed to construct client"),
         }
     }
 

@@ -12,7 +12,6 @@ use crate::{
     context::blob::{BackupStorage, LocalBackupStorage, S3BackupStorage},
 };
 
-mod local;
 mod s3;
 
 pub type OidcTokenFetcher =

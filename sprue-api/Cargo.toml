@@ -17,14 +17,12 @@ local-dev = ["v-api/local-dev"]
 
 [dependencies]
 anyhow = { workspace = true }
-async-trait = { workspace = true }
 attest-data = { workspace = true }
 aws-config = { workspace = true }
 aws-credential-types = { workspace = true }
 aws-sdk-s3 = { workspace = true }
 aws-sdk-sts = { workspace = true }
 aws-smithy-types = { workspace = true }
-bytes = { workspace = true }
 cedar-policy = { workspace = true }
 chrono = { workspace = true }
 clap = { workspace = true }
@@ -73,6 +71,7 @@ x509-cert = { workspace = true }
 zip = { workspace = true }
 
 [dev-dependencies]
+async-trait = { workspace = true }
 aws-sdk-s3 = { workspace = true, features = ["test-util"] }
 aws-smithy-mocks = "0.2"
 bytes = { workspace = true }
@@ -83,5 +82,5 @@ reqwest = { workspace = true }
 sprue-model = { path = "../sprue-model", features = ["test-util"] }
 sprue-sdk = { path = "../sprue-sdk" }
 
-[package.metadata.cargo-machete]
-ignored = ["http", "sprue-agent"]
+[package.metadata.cargo-shear]
+ignored = ["http"]
